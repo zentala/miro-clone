@@ -4,11 +4,10 @@ import { Actions } from "@/components/actions";
 import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+
 import { cn } from "@/lib/utils";
 import { useRenameModal } from "@/store/use-rename-modal";
-import { useQuery } from "convex/react";
+import { useLocalBoard } from "@/hooks/use-local-board";
 import { ImageDown, Menu } from "lucide-react";
 import { Poppins } from "next/font/google";
 import Image from "next/image";
@@ -30,7 +29,8 @@ const TabSeparator = () => {
 
 const Info = ({ boardId, exportAsPng }: InfoProps) => {
     const { onOpen } = useRenameModal();
-    const data = useQuery(api.board.get, { id: boardId as Id<"boards"> });
+    const store = useLocalBoard();
+    const data = store.board;
 
     if (!data) return <InfoSkeleton />;
 
@@ -61,7 +61,7 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                 <Button
                     variant="board"
                     className="text-base font-normal px-2 italic"
-                    onClick={() => onOpen(data._id, data.title)}
+                    onClick={() => onOpen(data.id, data.title)}
                 >
                     {data.title}
                 </Button>
@@ -72,9 +72,11 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                     <ImageDown />
                 </Button>
             </Hint>
+            <span role="status" className="px-2 text-xs">{store.status}</span>
+            {store.status === "Save failed" && <Button variant="board" onClick={store.save}>Retry save</Button>}
             <TabSeparator />
             <Actions
-                id={data._id}
+                id={data.id}
                 title={data.title}
                 side="bottom"
                 sideOffset={10}

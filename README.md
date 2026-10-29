@@ -1,113 +1,71 @@
 # Miro Clone
 
-This project is a clone of the popular Miro whiteboard application, built using modern web technologies and tools. Follow the tutorial by [Code with Antonio](https://www.youtube.com/@codewithantonio) to create your own collaborative whiteboard app.
+A single-user whiteboard with local SQLite persistence, based on the existing
+Miro drawing editor. Create boards, draw shapes and freehand strokes, edit text
+and notes, undo/redo, and export PNG images. No accounts, credentials, or hosted
+backend are required by the active application.
 
-|<img width="1439" alt="image" src="https://github.com/jatin1510/miro-clone/assets/72184476/02756b9e-7a33-4bf6-933e-d4119d16153d">|
-|-|
-|<img width="1440" alt="image" src="https://github.com/jatin1510/miro-clone/assets/72184476/3c038d07-457e-44da-8019-15330ca4ecc8">|
-|<img width="1440" alt="image" src="https://github.com/jatin1510/miro-clone/assets/72184476/8df60147-bb35-4a2b-aaa7-73161cd9d1b5">|
+## Requirements
 
-## Tech Stack
+Node.js 22.13 or newer (built-in `node:sqlite`) and npm. Install the locked
+packages with `npm ci`. Existing drawing/UI libraries are retained.
 
-- **Framework**: [Next.js](https://nextjs.org/)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
-- **Backend**: [convex](https://www.convex.dev/)
-- **Real-time Collaboration**: [liveblocks](https://liveblocks.io/)
+The standard Next.js commands remain `npm run dev`, `npm run build`, and
+`npm start`. Run the application only in a trusted local environment: it has
+no authentication or multi-user access boundary. This change does not include
+deployment or a managed runtime.
 
-## Deployment
+## Local storage
 
-The application is deployed on Vercel. Check it out [here](https://miro-clone-chi.vercel.app).
+Board titles and documents are stored in `data/miro.sqlite`, relative to the
+application working directory. SQLite creates the directory/schema on first
+use and may create adjacent `-wal` and `-shm` files. All three are ignored by
+Git. Preserve the database when replacing source files. Do not delete it to
+reset an installation containing wanted boards.
 
-## Getting Started
+The editor shows Saving, Saved, or Save failed. Saves are serialized in edit
+order; undo and redo also persist. Wait for Saved before reloading or leaving.
+A failed save offers Retry save; the browser warns before leaving with pending
+or failed writes. Reload restores saved document content; undo/redo history
+is session-local. Multiple concurrent editor tabs are not supported.
 
-Follow these instructions to set up the project locally.
+## Verification
 
-### Prerequisites
+Read [AGENTS.md](AGENTS.md) and [DESIGN.md](DESIGN.md). `just check` runs
+TypeScript, ESLint, a production build and a focused real-browser test:
 
-Make sure you have the following installed on your system:
+```sh
+node --test --test-concurrency=1 tests/critical-editor.test.cjs
+```
 
-- Node.js (>= 14.x)
-- npm
+The direct test command needs a current build (`npm run build`); `just check`
+includes that build. The test requires the existing `/usr/bin/chromium-browser`
+and Node.js 22. It uses only Node builtins, including the test runner and CDP
+communication over WebSocket. No browser-testing packages are installed.
 
-### Installation
+The test creates a board through the UI, draws through real pointer input,
+undoes and redoes the stroke, verifies a downloaded PNG, then checks reload
+and application restart survival against a disposable SQLite database. Its
+server binds only to loopback; its database, Chromium profile and downloads
+live in a newly created temporary directory and are removed with its owned
+processes after the test. This is synthetic test execution, not deployment.
+`MIRO_SQLITE_PATH` selects an absolute database path for the disposable server;
+normal execution keeps the default `data/miro.sqlite`.
 
-1. **Clone the repository:**
+Critical manual verification, when running the app is authorized:
 
-    ```sh
-    git clone https://github.com/jatin1510/miro-clone
-    cd miro-clone
-    ```
+1. Create a board and rename it.
+2. Draw a freehand stroke and insert each supported shape/text/note.
+3. Undo and redo; drag/resize and confirm one gesture is one history entry.
+4. Export PNG and inspect the downloaded image.
+5. Wait for Saved, reload, and confirm content, order, title and geometry.
+6. Confirm a failed write remains visible and Retry save persists the latest
+   document; verify deletion returns to the board list.
 
-2. **Install dependencies:**
+## Original project
 
-    ```sh
-    npm install
-    ```
-
-3. **Configure environment variables:**
-
-    Create a `.env.local` file in the root directory and add your configuration variables. You can explore the `.env.example` file for more information.
-
-4. **Clerk Setup**
-   - Enable Organization from the "Organization settings"
-   - Add JWT Template named "convex" <img width="792" alt="image" src="https://github.com/jatin1510/miro-clone/assets/72184476/43e12f31-aa7c-4a51-b8f9-ffef2846f621">
-   - Make sure to have `org_id` and `org_role` inside **Claims** <img width="628" alt="image" src="https://github.com/jatin1510/miro-clone/assets/72184476/1536a650-4898-46e0-8e7c-3c2dc229688a">
-   - Don't forget to add issuer into the `auth.config.js` inside /convex.
-
-5. **Prepare the convex functions:**
-    ```sh
-    npx convex dev
-    ```
-
-6. **Run the development server:**
-
-    ```sh
-    npm run dev
-    ```
-
-    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Features
-
-- **Real-time collaboration**: Multiple users can interact on the whiteboard simultaneously.
-- **Interactive UI**: Intuitive and responsive user interface for a seamless experience.
-- **Scalable backend**: Powered by Convex for managing backend logic and data storage.
-- **Live updates**: Instant updates using Liveblocks for real-time synchronization.
-
-### New Features
-
-- **Keyboard Shortcuts**:
-  - **Move Selected Layers**: Use keyboard shortcuts to move selected layers within the Canvas component.
-  - **Duplicate Layers**: Duplicate selected layers with `Ctrl + D`.
-  - **Focus Search Input**: Keyboard shortcut to focus on the search input field.
-  
-
-- **Enhanced Selection Tool**:
-  - **Improved Layout and Functionality**: Added a duplicate icon in the selection box for better usability.
-  - **Select Fully Inside Rectangle**: Layers are only selected if they are fully inside the selection rectangle.
-  - **Shortcuts for Layer Insertion**: Added keyboard shortcuts for selection and insertion in the toolbar
-
-- **Board Creation Limit**:
-  - User can make only 5 boards within an organization
-
-- **Reset Camera**:
-  - When the user scrolls through the canvas, a button at the right bottom appears through which the user can reset the camera position
-
-- **Color Picker**:
-  - User now has infinite possible combinations of the layer they want. Color picker also has the debouncing technique to prevent the numerous undo/redo actions
-
-- **Export as a PNG**:
-  - Users can now export their board as a PNG image file. This functionality allows users to save their work and share it with others easily.
-
-- **Bug Fixes**:
-  - **Search and Favorite Functionality**: Fixed the search and favorite functionality by using `useSearchParams`.
-
-## Tutorial
-
-This project follows the tutorial by [Code with Antonio](https://www.youtube.com/@codewithantonio). Watch the full tutorial on [YouTube](https://www.youtube.com/watch?v=ADJKbuayubE).
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
-
----
+Original implementation: [jatin1510/miro-clone](https://github.com/jatin1510/miro-clone),
+following the [Code with Antonio](https://www.youtube.com/@codewithantonio)
+whiteboard tutorial. Unused legacy hosted-service source remains in the
+repository; active routes do not use it. Removing that source and its packages
+requires a separately scoped cleanup.

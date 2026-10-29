@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local SQLite runtime state
+/data/miro.sqlite
+/data/miro.sqlite-wal
+/data/miro.sqlite-shm

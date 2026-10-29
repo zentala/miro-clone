@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
 import { useEffect } from "react";
-import { useSelf } from "@/liveblocks.config";
+import { useSelf } from "@/hooks/use-local-board";
 
 interface ToolbarProps {
     canvasState: CanvasState;
@@ -35,14 +35,16 @@ const Toolbar = ({
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
-            if (selection?.length > 0) return;
-            switch (e.key) {
+            const target = e.target as HTMLElement;
+            if (selection?.length > 0 || target.isContentEditable || target.closest("input, textarea")) return;
+            if ((e.ctrlKey || e.metaKey) && ["a", "t", "n", "r", "e"].includes(e.key.toLowerCase())) e.preventDefault();
+            switch (e.key.toLowerCase()) {
                 case "a":
-                    if (e.ctrlKey) setCanvasState({ mode: CanvasMode.None });
+                    if (e.ctrlKey || e.metaKey) setCanvasState({ mode: CanvasMode.None });
                     break;
 
                 case "t":
-                    if (e.ctrlKey)
+                    if (e.ctrlKey || e.metaKey)
                         setCanvasState({
                             layerType: LayerType.Text,
                             mode: CanvasMode.Inserting,
@@ -50,7 +52,7 @@ const Toolbar = ({
                     break;
 
                 case "n":
-                    if (e.ctrlKey)
+                    if (e.ctrlKey || e.metaKey)
                         setCanvasState({
                             mode: CanvasMode.Inserting,
                             layerType: LayerType.Note,
@@ -58,7 +60,7 @@ const Toolbar = ({
                     break;
 
                 case "r":
-                    if (e.ctrlKey)
+                    if (e.ctrlKey || e.metaKey)
                         setCanvasState({
                             mode: CanvasMode.Inserting,
                             layerType: LayerType.Rectangle,
@@ -66,7 +68,7 @@ const Toolbar = ({
                     break;
 
                 case "e":
-                    if (e.ctrlKey)
+                    if (e.ctrlKey || e.metaKey)
                         setCanvasState({
                             mode: CanvasMode.Inserting,
                             layerType: LayerType.Ellipse,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { useMutation, useSelf } from "@/liveblocks.config";
+import { useMutation, useSelf } from "@/hooks/use-local-board";
 import { Camera, Color } from "@/types/canvas";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";

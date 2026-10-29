@@ -22,6 +22,7 @@ export const ToolButton = ({
     return (
         <Hint label={label} side="right" sideOffset={14}>
             <Button
+                aria-label={label}
                 disabled={isDisabled}
                 onClick={onClick}
                 size="icon"

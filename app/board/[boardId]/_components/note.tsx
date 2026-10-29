@@ -3,7 +3,7 @@ import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 
 import { cn, colorToCss, getContrastingTextColor } from "@/lib/utils";
 import { NoteLayer } from "@/types/canvas";
-import { useMutation } from "@/liveblocks.config";
+import { useMutation } from "@/hooks/use-local-board";
 
 const font = Kalam({
     subsets: ["latin"],

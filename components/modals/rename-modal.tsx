@@ -8,8 +8,8 @@ import {
     DialogFooter,
     DialogHeader,
 } from "@/components/ui/dialog";
-import { api } from "@/convex/_generated/api";
-import { useApiMutation } from "@/hooks/use-api-mutation";
+
+
 import { useRenameModal } from "@/store/use-rename-modal";
 import { FormEventHandler, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const RenameModal = () => {
-    const { mutate, pending } = useApiMutation(api.board.update);
+    const [pending, setPending] = useState(false);
 
     const { isOpen, onClose, initialValues } = useRenameModal();
 
@@ -27,14 +27,18 @@ export const RenameModal = () => {
         setTitle(initialValues.title);
     }, [initialValues.title]);
 
-    const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
-        e.preventDefault();
-        mutate({ id: initialValues.id, title })
-            .then(() => {
-                toast.success("Board renamed");
-            })
-            .catch(() => toast.error("Failed to rename board"))
-            .finally(onClose);
+    const onSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
+        e.preventDefault(); setPending(true);
+        try {
+            const response = await fetch(`/api/boards/${encodeURIComponent(initialValues.id)}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }),
+            });
+            if (!response.ok) throw new Error();
+            window.dispatchEvent(new CustomEvent("board-renamed", { detail: await response.json() }));
+            window.dispatchEvent(new Event("boards-changed"));
+            toast.success("Board renamed"); onClose();
+        } catch { toast.error("Failed to rename board"); }
+        finally { setPending(false); }
     };
 
     return (

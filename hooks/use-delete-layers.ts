@@ -1,4 +1,4 @@
-import { useMutation, useSelf } from "@/liveblocks.config";
+import { useMutation, useSelf } from "@/hooks/use-local-board";
 
 export const useDeleteLayers = () => {
     const selection = useSelf((me) => me.presence.selection);

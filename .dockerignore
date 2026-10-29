@@ -1,0 +1,9 @@
+**/.git
+**/.plan
+**/.env
+**/.env.*
+**/data
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+npm-debug.log*

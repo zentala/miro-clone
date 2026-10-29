@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Link2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 import { ConfirmModal } from "./confirm-modal";
 import { Button } from "./ui/button";
 import { useRenameModal } from "@/store/use-rename-modal";
@@ -36,12 +37,19 @@ export const Actions = ({
 }: ActionProps) => {
     const { onOpen } = useRenameModal();
 
-    const { mutate, pending } = useApiMutation(api.board.remove);
+    const [pending, setPending] = useState(false);
+    const router = useRouter();
 
-    const onDelete = () => {
-        mutate({ id })
-            .then(() => toast.success("Board deleted!"))
-            .catch(() => toast.error("Failed to delete board"));
+    const onDelete = async () => {
+        setPending(true);
+        try {
+            const response = await fetch(`/api/boards/${encodeURIComponent(id)}`, { method: "DELETE" });
+            if (!response.ok) throw new Error();
+            window.dispatchEvent(new Event("boards-changed"));
+            router.push("/");
+            toast.success("Board deleted!");
+        } catch { toast.error("Failed to delete board"); }
+        finally { setPending(false); }
     };
 
     const onCopyLink = () => {

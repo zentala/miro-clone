@@ -1,11 +1,10 @@
 "use client";
 
 import Info from "./info";
-import Participants from "./participants";
+
 import Toolbar from "./toolbar";
 import React, {
     useCallback,
-    useMemo,
     useState,
     useEffect,
     useRef,
@@ -28,19 +27,18 @@ import {
     useCanRedo,
     useMutation,
     useStorage,
-    useOthersMapped,
     useSelf,
-} from "@/liveblocks.config";
-import { CursorsPresence } from "./cursors-presence";
+} from "@/hooks/use-local-board";
+
 import {
     colorToCss,
-    connectionIdToColor,
     findIntersectingLayersWithRectangle,
     penPointsToPathLayer,
     pointerEventToCanvasPoint,
     resizeBounds,
 } from "@/lib/utils";
-import { LiveObject } from "@liveblocks/client";
+import { LocalObject as LiveObject } from "@/store/use-board-store";
+import { useLocalBoard } from "@/hooks/use-local-board";
 import { LayerPreview } from "./layer-preview";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
@@ -49,9 +47,6 @@ import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { ResetCamera } from "./reset-camera";
 
 import { toPng } from "html-to-image";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 
 const MAX_LAYERS = 100;
 const SELECTION_NET_THRESHOLD = 5;
@@ -341,7 +336,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     );
 
     const onPointerUp = useMutation(
-        ({}, e) => {
+        ({}, e: React.PointerEvent) => {
             const point = pointerEventToCanvasPoint(e, camera);
 
             if (
@@ -370,8 +365,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         ]
     );
 
-    const selections = useOthersMapped((other) => other.presence.selection);
-
     const onLayerPointerDown = useMutation(
         ({ self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
             if (
@@ -394,18 +387,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         },
         [setCanvasState, history, camera, canvasState.mode]
     );
-
-    const layerIdsToColorSelection = useMemo(() => {
-        const layerIdsToColorSelection: Record<string, string> = {};
-        for (const user of selections) {
-            const [connectionId, selection] = user;
-            for (const layerId of selection) {
-                layerIdsToColorSelection[layerId] =
-                    connectionIdToColor(connectionId);
-            }
-        }
-        return layerIdsToColorSelection;
-    }, [selections]);
 
     const duplicateLayers = useMutation(({ storage, self, setMyPresence }) => {
         const liveLayers = storage.get("layers");
@@ -466,20 +447,22 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     );
 
     const svgRef = useRef<SVGSVGElement | null>(null);
-    const data = useQuery(api.board.get, { id: boardId as Id<"boards"> });
+    const store = useLocalBoard();
+    const data = store.board;
 
     const exportAsPng = () => {
-        if (svgRef.current) {
+        if (svgRef.current && layerIds.length > 0) {
             const bbox = svgRef.current.getBBox();
             const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
 
-            svgClone.setAttribute("width", bbox.width.toString());
-            svgClone.setAttribute("height", bbox.height.toString());
+            svgClone.setAttribute("width", Math.max(1, bbox.width).toString());
+            svgClone.setAttribute("height", Math.max(1, bbox.height).toString());
             svgClone.setAttribute(
                 "viewBox",
-                `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+                `${bbox.x} ${bbox.y} ${Math.max(1, bbox.width)} ${Math.max(1, bbox.height)}`
             );
 
+            svgClone.querySelectorAll("[data-editor-overlay]").forEach(node => node.remove());
             document.body.appendChild(svgClone);
 
             toPng(svgClone as unknown as HTMLElement)
@@ -501,10 +484,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
+            const target = e.target as HTMLElement;
+            if (target.isContentEditable || target.closest("input, textarea")) return;
+            if ((e.ctrlKey || e.metaKey) && ["z", "d"].includes(e.key.toLowerCase())) e.preventDefault();
             let offset: Point = { x: 0, y: 0 };
-            switch (e.key) {
+            switch (e.key.length === 1 ? e.key.toLowerCase() : e.key) {
                 case "d": {
-                    if (e.ctrlKey && canvasState.mode === CanvasMode.None) {
+                    if ((e.ctrlKey || e.metaKey) && canvasState.mode === CanvasMode.None) {
                         duplicateLayers();
                     }
                     break;
@@ -545,12 +531,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return () => {
             document.removeEventListener("keydown", onKeyDown);
         };
-    }, [history]);
+    }, [history, duplicateLayers, moveSelectedLayers, canvasState.mode]);
 
     return (
         <main className="h-full w-full relative bg-neutral-100 touch-none">
             <Info boardId={boardId} exportAsPng={exportAsPng} />
-            <Participants />
+
             <Toolbar
                 canvasState={canvasState}
                 setCanvasState={setCanvasState}
@@ -588,15 +574,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                                 key={layerId}
                                 id={layerId}
                                 onLayerPointerDown={onLayerPointerDown}
-                                selectionColor={
-                                    layerIdsToColorSelection[layerId]
-                                }
                             />
                         );
                     })}
-                    <SelectionBox
+                    <g data-editor-overlay="true"><SelectionBox
                         onResizeHandlePointerDown={onResizeHandlePointerDown}
-                    />
+                    /></g>
                     {canvasState.mode === CanvasMode.SelectionNet &&
                         canvasState.current && (
                             <rect
@@ -617,7 +600,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                                 )}
                             />
                         )}
-                    <CursorsPresence />
+
                     {pencilDraft && pencilDraft.length > 0 && (
                         <Path
                             points={pencilDraft}

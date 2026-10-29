@@ -1,6 +1,5 @@
-import { useSelf, useStorage } from "@/liveblocks.config";
+import { useSelf, useStorage } from "@/hooks/use-local-board";
 import type { Layer, XYWH } from "@/types/canvas";
-import { shallow } from "@liveblocks/react";
 
 const boundingBox = (layers: Layer[]): XYWH | null => {
     const first = layers[0];
@@ -49,5 +48,5 @@ export const useSelectionBounds = () => {
             .filter(Boolean);
 
         return boundingBox(selectedLayers);
-    }, shallow);
+    });
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useStorage } from "@/liveblocks.config";
+import { useStorage } from "@/hooks/use-local-board";
 import { LayerType } from "@/types/canvas";
 import { memo } from "react";
 import { Rectangle } from "./rectangle";

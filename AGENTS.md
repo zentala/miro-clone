@@ -1,0 +1,53 @@
+# Repository instructions
+
+Read [DESIGN.md](DESIGN.md) before UI changes. Preserve the existing drawing
+editor and visual direction. This application is a single-user local workspace;
+active application paths must not require hosted identity or collaboration.
+
+## Critical workflows
+Create a board, draw freehand and shapes, undo, redo, export PNG, then reload
+and verify the saved board title, layer order, content and geometry survive
+from SQLite. Also verify rename/delete, failed saves, and grouped drag history.
+
+## Verification
+`just check` runs TypeScript, existing ESLint, a production build, and
+`node --test --test-concurrency=1 tests/critical-editor.test.cjs`.
+The browser test uses Node builtins and existing system Chromium, without
+framework packages. It must exercise UI creation, real pointer drawing,
+undo/redo, a downloaded PNG, reload and a full application process restart.
+It uses a newly created temporary SQLite file, Chromium profile and downloads,
+a loopback-only disposable server, finite waits and owned-process cleanup.
+Never run the acceptance test against the user's database or browser profile.
+Do not add dependencies or widen source paths without approval.
+
+Rename/delete, failed-save recovery, all shape types and grouped drag history
+remain outside the focused automated flow; report their coverage separately.
+
+### Verification history
+- Initial static `just check`: exit 2, pointer-event type mismatch.
+- After the source correction: static `just check` exit 0 (TypeScript/lint).
+  This result did not establish behavioral acceptance.
+- First extended `just check`: exit 1. Browser create failed with HTTP 403;
+  subsequent dependent steps failed and do not establish coverage. The Origin
+  guard used Next.js's internal request origin instead of the browser Host.
+- First Host-based correction: extended `just check` exit 0; all six browser
+  steps passed. Review then required exact synthetic request-authority evidence
+  and careful authority validation before final acceptance.
+- Controlled reproduction of the original Origin guard: extended `just check`
+  exit 1 in 16.109 seconds. UI create failed with HTTP 403; five dependent
+  steps were skipped. This was intentional diagnostic reproduction, separate
+  from the earlier six-step browser pass. Synthetic evidence: browser Origin
+  `http://127.0.0.1:44123`, Host `127.0.0.1:44123`, Request URL authority
+  `localhost:44123`; Forwarded absent, X-Forwarded-Host `127.0.0.1:44123`,
+  X-Forwarded-Proto `http`, X-Forwarded-Port `44123`, X-Forwarded-For `127.0.0.1`.
+- Accepted correction restores comparison with the actual incoming Host and
+  validates the Request URL protocol as HTTP or HTTPS. Forwarded host headers
+  are not trusted. Reproduction-only logging has been removed. The author
+  runs `just check` exactly once on this corrected candidate, then freezes it;
+  its result is reported separately for independent acceptance.
+
+## Persistence
+Node.js >=22.13 is required for built-in `node:sqlite`. Keep `data/miro.sqlite`
+and its WAL/SHM files out of Git. `MIRO_SQLITE_PATH`, when set, must be an
+absolute path; the acceptance test sets it to its own disposable database.
+No secrets or external accounts are required.
