@@ -3,7 +3,8 @@
 Goal: a lightweight personal, self-hosted replacement for paid Miro; no auth,
 collaboration or required SaaS. Future scope follows a representative board migration.
 Read [purpose](.plan/PURPOSE.md), [vision](.plan/VISION.md),
-[architecture](.plan/ARCH.md), [proposed roadmap](.plan/ROADMAP.md) and the
+[architecture](.plan/ARCH.md), [roadmap](.plan/ROADMAP.md),
+[feature map](.plan/FEATURE-MAP.md) and the
 [SQLite decision](.plan/ADR/0001-single-user-sqlite.md). Future requests are
 not implemented capabilities or approval for real-account access.
 
@@ -62,8 +63,22 @@ No secrets or external accounts are required.
 
 ## Portable product documents
 
-Only the five explicitly selected product documents under `.plan` are public:
-PURPOSE, VISION, ARCH, ROADMAP and ADR/0001-single-user-sqlite. The committed
+Only the six explicitly selected product documents under `.plan` are public:
+PURPOSE, VISION, ARCH, ROADMAP, FEATURE-MAP and ADR/0001-single-user-sqlite. The committed
 `.gitignore` defaults all other `.plan` material to private, including BACKLOG,
 STATE, archives, exports and operational notes. Never bulk-add `.plan` or force
 ignored files into the index. Publish only the explicit reviewed document list.
+
+## Feature planning boundary
+
+Epic directions are owner-accepted; detailed behavior/estimates and execution
+order await alignment in FEATURE-MAP and ROADMAP. Distinguish explicit requests
+from reference UI observations and PROPOSED additions. Inherited frame-lock
+semantics are PROPOSED. Screenshots/raw boards/private notes stay untracked;
+never copy them into product documentation or treat them as delivered UI.
+This map creates no second queue, new worker or implementation authorization.
+
+The prior unchanged-app `just check` on 2026-10-30 exited 0 (seven TAP passes:
+one parent and six critical browser steps, plus cleanup). A later planning-only
+prose update must not be described as a new app test run. Preserve the earlier
+failure history above; validate documentation links and privacy separately.

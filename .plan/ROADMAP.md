@@ -1,10 +1,14 @@
 # Roadmap
 
-Status: proposed work breakdown, 2026-10-30. The owner has requested the
-capabilities below; execution order, complete estimates and implementation
-handoffs await alignment. This roadmap serves the vision of replacing paid
-Miro by migrating a representative personal board. It authorizes no account
-access, real export/import or new dependency.
+Status: epic directions accepted by the owner on 2026-10-30; detailed behavior,
+complete estimates, priorities and execution order await alignment. This roadmap
+serves replacement of paid Miro by migrating a representative personal board.
+It authorizes no account access, real export/import or new dependency.
+
+The [feature map](FEATURE-MAP.md) separates explicit requirements, UI observed
+in private reference screenshots and additional **PROPOSED** candidates. It is
+the detailed alignment companion to this roadmap, not a second execution queue.
+Screenshots are references, not evidence of implementation in this fork.
 
 ## Delivered baseline
 
@@ -15,21 +19,23 @@ PNG, reload and application restart. All-shape workflows, rename/delete,
 failed-save recovery and grouped drag history remain outside that test's
 behavioral coverage. Delivery does not mean full Miro compatibility.
 
-## Proposed work packages
+## Accepted epic directions — detailed planning pending
 
-Importance values below are proposals for alignment, not an accepted schedule.
+Directions below are accepted. Importance values and details remain proposals
+for alignment, not an accepted schedule.
 Points use the existing relative scale; `?` means investigation is needed.
 
 | Outcome | Points | Importance | Status | Done |
 | --- | --- | --- | --- | --- |
 | Slim Docker packaging and remove hosted legacy backend remnants | ? | Medium | Optimization direction accepted; hosted-backend removal already accepted for the single-user architecture. Implementation plan and measurements pending; no cleanup in this documentation task | No |
-| Durable assets and progressive image loading | ? | High | Requested; storage/performance contract needs discovery | No |
-| Representative structural export and coverage inventory | ? | High | Proposed; source access needs separate authorization | No |
-| Large-board navigation and nested frames | ? | High | Requested; existing 100-layer cap needs review | No |
-| Link/product cards and shared extraction boundary | ? | High | Requested; inspect existing extraction capabilities first | No |
-| Repeatable importer, dry run and loss comparison | ? | High | Proposed; dependent on export/model discovery | No |
-| Full-page table view over the same underlying data | ? | Medium | Requested; interaction and model need refinement | No |
-| Rich text, syntax-highlighted code and subtle gray grid | ? | Medium | Requested; screenshots/acceptance still pending | No |
+| Durable assets and progressive image loading | ? | High | Direction accepted; storage/performance contract needs discovery | No |
+| Representative structural export and coverage inventory | ? | High | Direction accepted; source access needs separate authorization | No |
+| Large-board navigation and nested frames | ? | High | Direction accepted; existing 100-layer cap needs review | No |
+| Shared object behavior and lock/unlock | ? | High | Direction accepted; inherited locks and detailed mutation/history rules PROPOSED | No |
+| Link/product cards and shared extraction boundary | ? | High | Direction accepted; inspect existing extraction capabilities first | No |
+| Repeatable importer, dry run and loss comparison | ? | High | Direction accepted; dependent on export/model discovery | No |
+| Full-page table view over the same underlying data | ? | Medium | Direction accepted; interaction and model need refinement | No |
+| Rich text, syntax-highlighted code and subtle gray grid | ? | Medium | Direction accepted; reference review recorded in FEATURE-MAP; details pending | No |
 
 The former proposal totaled 65 points before expanded requirements. It is not
 a complete estimate for this roadmap. The current total is unknown; do not
@@ -51,7 +57,12 @@ Measure network traffic and browser memory; see [architecture](ARCH.md).
   children. Undo/redo, persistence and migration must retain those relationships.
 - A subtle gray grid supports navigation without altering authored coordinates.
 - Text gains size, font choice, bold, italic and color without content loss.
-- Board and full-page table views edit the same data, not copied representations.
+- Board and full-page record-table views edit the same data, not copied
+  representations. A rich-text table extension is a distinct capability.
+- Common lock/unlock applies to code blocks, frames and other objects. Inherited
+  frame locks and mixed-selection behavior are PROPOSED, not settled.
+- Code blocks require font-size control and a line-number toggle in addition
+  to lock/unlock; details are in the [feature map](FEATURE-MAP.md).
 - Code blocks preserve source/whitespace and gain library-based syntax
   highlighting with lazy language/editor loading. No highlighter or rich editor
   is currently installed. Selecting an existing maintained library requires
@@ -79,3 +90,12 @@ Document inspect/export/normalize/dry-run/import/verify commands only as they
 are implemented and tested. A later local skill may reference that workflow;
 it must not become a second migration engine. There is no migration command
 or approved real-account operation in this documentation change.
+
+## Additional candidates
+
+Grouping, snapping, advanced alignment/search, schema versions, richer recovery,
+portable editable exports and advanced table views/formulas remain **PROPOSED**
+additions, not accepted initial scope. Existing multi-selection/duplication,
+layer ordering and save/status/retry behavior must be distinguished from new
+work. Use [the feature map](FEATURE-MAP.md) for open questions and proposed
+acceptance scenarios. No implementation is dispatched by this document.

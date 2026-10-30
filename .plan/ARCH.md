@@ -38,6 +38,27 @@ Node 22, runs as non-root, binds inside the container to `0.0.0.0:3000`, and use
 `/app/data` for SQLite persistence. The image build is separate from deployment;
 this repository does not establish a running service or public endpoint.
 
+## Accepted component directions — detailed design pending
+
+The owner has accepted epic directions; [the feature map](FEATURE-MAP.md)
+records required behavior separately from observed reference UI and additional
+proposals. Screenshots are private references, not running application evidence.
+The current layer model has no frames, lock state, images/cards, code blocks
+or record tables. Future components need model and migration alignment before
+implementation; no schema/API/editor change is made by this planning update.
+
+Common lock/unlock for frames, code and other objects is required. Effective
+inherited frame locks, mixed-selection refusal, mutation restrictions and
+history semantics are **PROPOSED**, not a settled shared-model contract.
+Code font size and line-number toggle are explicit requirements. Record tables
+need embedded and full-page views over the same data; rich-text tables are a
+separate capability. Editor/highlighter/grid-library selection remains open.
+
+The image, extraction and migration sections below retain design proposals;
+accepting the direction does not accept every implementation detail. This
+architecture and [roadmap](ROADMAP.md) use the same map for alignment, without
+a parallel queue or ready-to-execute work packages.
+
 ## Proposed image pipeline — not implemented
 
 Store originals and derived variants as durable files and asset metadata in

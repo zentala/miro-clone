@@ -46,6 +46,7 @@ next-env.d.ts
 !/.plan/VISION.md
 !/.plan/ARCH.md
 !/.plan/ROADMAP.md
+!/.plan/FEATURE-MAP.md
 !/.plan/ADR/
 /.plan/ADR/*
 !/.plan/ADR/0001-single-user-sqlite.md
