@@ -4,6 +4,9 @@
 
 ### Documentation
 
+- Add one source-grounded personal-whiteboard execution plan with 22 pending taskmd records, dependencies, acceptance, proposed write sets and 155 indicative points. AO is selected by total scope but not run; runtime readiness remains NOT_CHECKED.
+- Include early loss-aware link/image migration without table/code/rich-text blockers, coordinated restore, independent full-feature acceptance, and final infrastructure-owned HTTPS/replacement delivery. Account access and production activation remain separately gated.
+- Publish only the exact selected epic documents/tasks; private notes, exports, screenshots and unknown plan files remain ignored. No feature, dependency or runtime changes accompany this planning update.
 - Add a feature map separating explicit requirements, observed reference UI and proposed additions; reference screenshots and raw boards remain private.
 - Record acceptance of epic directions while detailed behavior, estimates and execution order remain open. Add explicit code font-size, line-number and common object-lock requirements.
 - Record the owner-accepted requirements that frame locks protect all contained descendants and frame unlock preserves individual child locks. These are not implemented; mixed-selection, unlock gestures and other detailed behavior remain proposed.

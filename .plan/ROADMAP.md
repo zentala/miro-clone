@@ -1,14 +1,17 @@
 # Roadmap
 
-Status: epic directions accepted by the owner on 2026-10-30; detailed behavior,
-complete estimates, priorities and execution order await alignment. This roadmap
-serves replacement of paid Miro by migrating a representative personal board.
-It authorizes no account access, real export/import or new dependency.
+Status: epic directions accepted by the owner on 2026-10-30. The
+[canonical umbrella plan](epics/E001-2026-10-30-personal-whiteboard/PLAN.md)
+now breaks them into 22 pending tasks with 155 indicative points. Full size >40
+selects AO; execution is not dispatched and runtime readiness is NOT_CHECKED.
+No real source access, product change or production activation is authorized.
 
-The [feature map](FEATURE-MAP.md) separates explicit requirements, UI observed
-in private reference screenshots and additional **PROPOSED** candidates. It is
-the detailed alignment companion to this roadmap, not a second execution queue.
-Screenshots are references, not evidence of implementation in this fork.
+The [feature map](FEATURE-MAP.md) separates requirements, observed reference UI
+and additional PROPOSED candidates. Detailed defaults/library choices remain
+open where marked; screenshots are private references, not implementation.
+The [handoff](epics/E001-2026-10-30-personal-whiteboard/HANDOFF.md) and task
+records own dependencies, write-scope proposals, acceptance and future evidence.
+This roadmap is a workstream map, not a second task-state queue.
 
 ## Delivered baseline
 
@@ -19,29 +22,49 @@ PNG, reload and application restart. All-shape workflows, rename/delete,
 failed-save recovery and grouped drag history remain outside that test's
 behavioral coverage. Delivery does not mean full Miro compatibility.
 
-## Accepted epic directions — detailed planning pending
+## Canonical execution breakdown
 
-Directions below are accepted. Importance values and details remain proposals
-for alignment, not an accepted schedule.
-Points use the existing relative scale; `?` means investigation is needed.
+Task records are the sole source of status/points/evidence. They all start
+pending with completion No; no implementation has been dispatched. This
+reference table does not duplicate a status queue.
 
-| Outcome | Points | Importance | Status | Done |
-| --- | --- | --- | --- | --- |
-| Slim Docker packaging and remove hosted legacy backend remnants | ? | Medium | Optimization direction accepted; hosted-backend removal already accepted for the single-user architecture. Implementation plan and measurements pending; no cleanup in this documentation task | No |
-| Durable assets and progressive image loading | ? | High | Direction accepted; storage/performance contract needs discovery | No |
-| Representative structural export and coverage inventory | ? | High | Direction accepted; source access needs separate authorization | No |
-| Large-board navigation and nested frames | ? | High | Direction accepted; existing 100-layer cap needs review | No |
-| Shared object behavior and lock/unlock | ? | High | All-descendant parent protection and preserved individual child locks ACCEPTED; other mutation/history details PROPOSED | No |
-| Link/product cards and shared extraction boundary | ? | High | Direction accepted; inspect existing extraction capabilities first | No |
-| Repeatable importer, dry run and loss comparison | ? | High | Direction accepted; dependent on export/model discovery | No |
-| Full-page table view over the same underlying data | ? | Medium | Direction accepted; interaction and model need refinement | No |
-| Rich text, syntax-highlighted code and subtle gray grid | ? | Medium | Direction accepted; reference review recorded in FEATURE-MAP; details pending | No |
+| Accepted workstream | Canonical task records |
+| --- | --- |
+| Baseline, model and lean packaging | [E001-T01](epics/E001-2026-10-30-personal-whiteboard/tasks/T01-baseline.md), [E001-T02](epics/E001-2026-10-30-personal-whiteboard/tasks/T02-legacy-cleanup-packaging.md), [E001-T03](epics/E001-2026-10-30-personal-whiteboard/tasks/T03-versioned-document-relations.md) |
+| Durable/progressive images | [E001-T04](epics/E001-2026-10-30-personal-whiteboard/tasks/T04-durable-assets.md), [E001-T05](epics/E001-2026-10-30-personal-whiteboard/tasks/T05-image-paste-upload.md), [E001-T06](epics/E001-2026-10-30-personal-whiteboard/tasks/T06-progressive-images.md) |
+| Navigation, frames and common locks | [E001-T07](epics/E001-2026-10-30-personal-whiteboard/tasks/T07-navigation-grid-capacity.md), [E001-T08](epics/E001-2026-10-30-personal-whiteboard/tasks/T08-nested-frames.md), [E001-T09](epics/E001-2026-10-30-personal-whiteboard/tasks/T09-shared-locks.md) |
+| Rich text and syntax-highlighted code | [E001-T10](epics/E001-2026-10-30-personal-whiteboard/tasks/T10-rich-text.md), [E001-T11](epics/E001-2026-10-30-personal-whiteboard/tasks/T11-code-blocks.md) |
+| Website/product cards and extraction | [E001-T12](epics/E001-2026-10-30-personal-whiteboard/tasks/T12-website-product-cards.md), [E001-T13](epics/E001-2026-10-30-personal-whiteboard/tasks/T13-extraction-contract-handoff.md), [E001-T14](epics/E001-2026-10-30-personal-whiteboard/tasks/T14-extraction-consumer.md) |
+| Source export, loss report and new-board import | [E001-T15](epics/E001-2026-10-30-personal-whiteboard/tasks/T15-read-only-exporter.md), [E001-T16](epics/E001-2026-10-30-personal-whiteboard/tasks/T16-migration-package-dry-run.md), [E001-T17](epics/E001-2026-10-30-personal-whiteboard/tasks/T17-idempotent-importer.md) |
+| Coordinated backup/restore | [E001-T18](epics/E001-2026-10-30-personal-whiteboard/tasks/T18-backup-restore.md) |
+| Record tables and expanded view | [E001-T19](epics/E001-2026-10-30-personal-whiteboard/tasks/T19-record-tables.md), [E001-T20](epics/E001-2026-10-30-personal-whiteboard/tasks/T20-expanded-table-view.md) |
+| Independent acceptance and intended HTTPS delivery | [E001-T21](epics/E001-2026-10-30-personal-whiteboard/tasks/T21-acceptance-migration-rehearsal.md), [E001-T22](epics/E001-2026-10-30-personal-whiteboard/tasks/T22-release-deployment-acceptance.md) |
 
-The former proposal totaled 65 points before expanded requirements. It is not
-a complete estimate for this roadmap. The current total is unknown; do not
-count unknown scope as zero or select an execution route from the old total.
-These rows are discovery areas, not ready-to-dispatch tasks. Final tasks need
-bounded scope, acceptance, dependencies and independent review.
+The previous 65-point sketch is superseded by 155 indicative points across
+22 coherent tasks (5 or 8 points each). Estimates are not time/token limits.
+Re-estimation must update canonical records, phase/epic sums and selected route,
+not silently treat new/unknown work as zero. The eight dependency groupings
+have totals 5, 21, 40, 26, 32, 13, 13 and 5; no phase exceeds 70.
+
+Phases are dependency groupings, not barriers requiring unrelated siblings.
+T09 precedes T11, T13 precedes T14 and T17 precedes T21 within their groups.
+The first useful link/image migration does not wait for rich text, code or
+rare tables: T17 imports only actually delivered models and preserves/reports
+unsupported raw records. T10/T11/T19 are not its hard prerequisites. The full
+T21 acceptance still requires all required features, including code/tables.
+T19/T20 remain Medium/medium, not first-migration blockers.
+
+Early value can be reviewed after baseline/model/packaging, then durable image
+paste/navigation, then loss-aware new-board migration. Independently accepted
+partial delivery may use the existing infrastructure owner with separately
+approved scope; it need not wait for unrelated siblings. Final T22 still owns
+full intended HTTPS/replacement acceptance, not automatic production permission.
+
+Content completeness is separate from runtime readiness. Read-only source and
+synthetic work can progress without a real account; actual source fidelity,
+external extraction integration and production delivery keep their own real
+access/receipt/approval requirements. No new runtime/admission machinery is
+created or operated by this plan.
 
 ## Required image behavior
 
@@ -96,9 +119,10 @@ or approved real-account operation in this documentation change.
 
 ## Additional candidates
 
-Grouping, snapping, advanced alignment/search, schema versions, richer recovery,
+Grouping, snapping, advanced alignment/search, richer recovery,
 portable editable exports and advanced table views/formulas remain **PROPOSED**
-additions, not accepted initial scope. Existing multi-selection/duplication,
+additions, not accepted initial scope. Compatible document-version evolution
+is now scoped in the canonical shared-model task. Existing multi-selection/duplication,
 layer ordering and save/status/retry behavior must be distinguished from new
 work. Use [the feature map](FEATURE-MAP.md) for open questions and proposed
 acceptance scenarios. No implementation is dispatched by this document.

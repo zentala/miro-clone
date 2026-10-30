@@ -63,11 +63,16 @@ No secrets or external accounts are required.
 
 ## Portable product documents
 
-Only the six explicitly selected product documents under `.plan` are public:
-PURPOSE, VISION, ARCH, ROADMAP, FEATURE-MAP and ADR/0001-single-user-sqlite. The committed
-`.gitignore` defaults all other `.plan` material to private, including BACKLOG,
-STATE, archives, exports and operational notes. Never bulk-add `.plan` or force
-ignored files into the index. Publish only the explicit reviewed document list.
+Public plan selection comprises the six product documents (PURPOSE, VISION,
+ARCH, ROADMAP, FEATURE-MAP and ADR/0001-single-user-sqlite), the
+[epic index](.plan/epics/INDEX.md), and the exact four overview documents plus
+22 task records of the [personal-whiteboard plan](.plan/epics/E001-2026-10-30-personal-whiteboard/PLAN.md).
+The [empty-context handoff](.plan/epics/E001-2026-10-30-personal-whiteboard/HANDOFF.md)
+links the canonical task records; it does not authorize execution.
+The committed .gitignore enumerates each allowed file and ignores all other
+plan material, including unknown epics/tasks, BACKLOG, STATE, archives, exports
+and operational notes. Never bulk-add .plan or force ignored material into the
+index. Publish only the exact reviewed document list.
 
 ## Feature planning boundary
 
