@@ -47,9 +47,12 @@ The current layer model has no frames, lock state, images/cards, code blocks
 or record tables. Future components need model and migration alignment before
 implementation; no schema/API/editor change is made by this planning update.
 
-Common lock/unlock for frames, code and other objects is required. Effective
-inherited frame locks, mixed-selection refusal, mutation restrictions and
-history semantics are **PROPOSED**, not a settled shared-model contract.
+Common lock/unlock for frames, code and other objects is required.
+**ACCEPTED requirements:** a frame lock protects all contained descendants,
+including nested descendants; unlocking the frame preserves each element's
+individual lock. This is a required future behavior, not implemented code.
+Mixed-selection refusal, unlock gestures, mutation restrictions and history
+semantics remain **PROPOSED**; the wider shared-model contract is not settled.
 Code font size and line-number toggle are explicit requirements. Record tables
 need embedded and full-page views over the same data; rich-text tables are a
 separate capability. Editor/highlighter/grid-library selection remains open.

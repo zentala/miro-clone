@@ -30,18 +30,26 @@ in this fork. See [current architecture](ARCH.md#implemented-baseline).
 
 Frames, code blocks and other individual elements can be locked. Lock is a local editing protection, not authentication, encryption or access control.
 
-**PROPOSED default semantics — none of these details is settled:**
+**ACCEPTED requirements, confirmed by the owner on 2026-10-30:**
+- Locking a frame protects **all contained descendants**, including those in nested frames, through an effective inherited parent lock.
+- Unlocking that frame removes its inherited protection; elements with their own individual locks **remain individually locked**.
+
+These are accepted requirements, not implemented frame/lock behavior in this fork.
+
+**Other default semantics remain PROPOSED:**
 - A locked object remains visible and may be intentionally selected for inspection/unlock; ordinary editing gestures cannot move, resize, rotate, edit, delete or replace it.
 - Enforce the same rule through mouse, touch, keyboard, context menu and future API actions; disabling only toolbar buttons is insufficient.
 - Lock/unlock and persisted lock state participate in undo/redo and survive reload.
-- **PROPOSED inherited lock:** a locked frame protects its descendants as an effective inherited lock. Child-specific locks remain when the parent is unlocked. A locked child cannot bypass protection by reparenting or through a multi-selection transform.
+- **PROPOSED bypass rules:** a locked child cannot bypass protection by reparenting or through a multi-selection transform; the exact mutation policy remains to align.
 - A mixed locked/unlocked selection must not partially mutate without a clear rule; propose refusal of the whole geometry operation, with the reason visible.
 - Selecting through/around locked frames should remain possible so a background frame does not obstruct unrelated work.
 - Show an obvious lock indicator and an intentional unlock action. Long-press unlock is observed; provide a keyboard-accessible alternative rather than relying exclusively on a timed gesture.
 
 Proposed future acceptance scenarios cover move/resize/delete/text edit, mixed
 selection, locked parent/unlocked child, nested frames, unlock, undo/redo and
-save/reload. The expected results depend on aligning the semantics first.
+save/reload. Parent protection of all descendants and preservation of individual
+child locks have accepted expected results; all other detailed outcomes still
+depend on aligning the proposed semantics.
 Do not assume the upstream data model can be copied directly.
 
 ### Proposed common capabilities to evaluate
@@ -126,7 +134,7 @@ Acceptance of directions is distinct from ready implementation. Final estimates 
 | Epic direction | Scope / dependency | Importance | Points | Execution | Done |
 |---|---|---|---|---|---|
 | Lean local foundation | Accepted Docker slimming/legacy cleanup direction; measure build/runtime and preserve behavior | High | ? | Direction accepted; details pending | No |
-| Shared object model and editing protection | Common lock direction accepted; inherited locks, schema versions and detailed history rules PROPOSED | High | ? | Direction accepted; details pending | No |
+| Shared object model and editing protection | All-descendant parent protection and preserved individual child locks ACCEPTED; schema versions and detailed history/mutation rules PROPOSED | High | ? | Direction accepted; details pending | No |
 | Efficient assets | File storage, variants, viewport-aware loading, backup/restore | High | ? | Direction accepted; details pending | No |
 | Canvas navigation and frames | Grid, zoom/pan, nested frames, movement; depends on object relations | High | ? | Direction accepted; details pending | No |
 | Rich text and code | Ready editors, font controls, line numbers, persistent settings; depends on lock model | High | ? | Direction accepted; details pending | No |
@@ -135,7 +143,7 @@ Acceptance of directions is distinct from ready implementation. Final estimates 
 | Repeatable migration | Structural discovery can start independently; importer depends on actual object coverage | High | ? | Direction accepted; details pending | No |
 | Daily usability and recovery | Candidate search/grouping/alignment/shortcuts and portable export; select by actual use | Medium | ? | Proposed expansion | No |
 
-Next alignment questions: confirm inherited frame-lock semantics, choose the first essential rich-text controls, and confirm the first table slice. Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Product implementation remains undispatched.
+Next alignment questions: settle mixed-selection and unlock-gesture behavior, choose the first essential rich-text controls, and confirm the first table slice. Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Product implementation remains undispatched.
 
 ## Planning boundary
 

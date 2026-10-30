@@ -5,7 +5,8 @@
 ### Documentation
 
 - Add a feature map separating explicit requirements, observed reference UI and proposed additions; reference screenshots and raw boards remain private.
-- Record acceptance of epic directions while detailed behavior, estimates and execution order remain open. Add explicit code font-size, line-number and common object-lock requirements; inherited lock semantics remain proposed.
+- Record acceptance of epic directions while detailed behavior, estimates and execution order remain open. Add explicit code font-size, line-number and common object-lock requirements.
+- Record the owner-accepted requirements that frame locks protect all contained descendants and frame unlock preserves individual child locks. These are not implemented; mixed-selection, unlock gestures and other detailed behavior remain proposed.
 - Distinguish record-table views from rich-text tables and existing editor behavior from future candidates. No product feature or dependency is added.
 - Record the personal-whiteboard purpose, implemented local architecture, breaking backend change and proposed migration roadmap, with unimplemented requests marked explicitly.
 - Distinguish delivered features from planned image loading, extraction, frames, richer text, tables and code blocks.

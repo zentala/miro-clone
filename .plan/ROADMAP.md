@@ -31,7 +31,7 @@ Points use the existing relative scale; `?` means investigation is needed.
 | Durable assets and progressive image loading | ? | High | Direction accepted; storage/performance contract needs discovery | No |
 | Representative structural export and coverage inventory | ? | High | Direction accepted; source access needs separate authorization | No |
 | Large-board navigation and nested frames | ? | High | Direction accepted; existing 100-layer cap needs review | No |
-| Shared object behavior and lock/unlock | ? | High | Direction accepted; inherited locks and detailed mutation/history rules PROPOSED | No |
+| Shared object behavior and lock/unlock | ? | High | All-descendant parent protection and preserved individual child locks ACCEPTED; other mutation/history details PROPOSED | No |
 | Link/product cards and shared extraction boundary | ? | High | Direction accepted; inspect existing extraction capabilities first | No |
 | Repeatable importer, dry run and loss comparison | ? | High | Direction accepted; dependent on export/model discovery | No |
 | Full-page table view over the same underlying data | ? | Medium | Direction accepted; interaction and model need refinement | No |
@@ -59,8 +59,11 @@ Measure network traffic and browser memory; see [architecture](ARCH.md).
 - Text gains size, font choice, bold, italic and color without content loss.
 - Board and full-page record-table views edit the same data, not copied
   representations. A rich-text table extension is a distinct capability.
-- Common lock/unlock applies to code blocks, frames and other objects. Inherited
-  frame locks and mixed-selection behavior are PROPOSED, not settled.
+- Common lock/unlock applies to code blocks, frames and other objects.
+  **ACCEPTED:** a locked frame protects all contained descendants, including
+  nested descendants. Unlocking it preserves individually locked elements.
+  These requirements are not implemented. Mixed-selection, unlock gestures
+  and other detailed behavior remain **PROPOSED**.
 - Code blocks require font-size control and a line-number toggle in addition
   to lock/unlock; details are in the [feature map](FEATURE-MAP.md).
 - Code blocks preserve source/whitespace and gain library-based syntax

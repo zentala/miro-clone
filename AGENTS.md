@@ -73,8 +73,11 @@ ignored files into the index. Publish only the explicit reviewed document list.
 
 Epic directions are owner-accepted; detailed behavior/estimates and execution
 order await alignment in FEATURE-MAP and ROADMAP. Distinguish explicit requests
-from reference UI observations and PROPOSED additions. Inherited frame-lock
-semantics are PROPOSED. Screenshots/raw boards/private notes stay untracked;
+from reference UI observations and PROPOSED additions. ACCEPTED requirements:
+a frame lock protects all contained descendants; unlocking it preserves
+individual child locks. These are not implemented. Mixed-selection, unlock
+gestures and other detailed semantics remain PROPOSED.
+Screenshots/raw boards/private notes stay untracked;
 never copy them into product documentation or treat them as delivered UI.
 This map creates no second queue, new worker or implementation authorization.
 
