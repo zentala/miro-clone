@@ -1,5 +1,12 @@
 # Repository instructions
 
+Goal: a lightweight personal, self-hosted replacement for paid Miro; no auth,
+collaboration or required SaaS. Future scope follows a representative board migration.
+Read [purpose](.plan/PURPOSE.md), [vision](.plan/VISION.md),
+[architecture](.plan/ARCH.md), [proposed roadmap](.plan/ROADMAP.md) and the
+[SQLite decision](.plan/ADR/0001-single-user-sqlite.md). Future requests are
+not implemented capabilities or approval for real-account access.
+
 Read [DESIGN.md](DESIGN.md) before UI changes. Preserve the existing drawing
 editor and visual direction. This application is a single-user local workspace;
 active application paths must not require hosted identity or collaboration.
@@ -42,12 +49,21 @@ remain outside the focused automated flow; report their coverage separately.
   X-Forwarded-Proto `http`, X-Forwarded-Port `44123`, X-Forwarded-For `127.0.0.1`.
 - Accepted correction restores comparison with the actual incoming Host and
   validates the Request URL protocol as HTTP or HTTPS. Forwarded host headers
-  are not trusted. Reproduction-only logging has been removed. The author
-  runs `just check` exactly once on this corrected candidate, then freezes it;
-  its result is reported separately for independent acceptance.
+  are not trusted. Reproduction-only logging was removed. The single corrected
+  candidate check passed all six browser steps, including cleanup; independent
+  source review accepted the correction. That candidate's one-run restriction
+  is historical and does not prohibit checks for later accepted work.
 
 ## Persistence
 Node.js >=22.13 is required for built-in `node:sqlite`. Keep `data/miro.sqlite`
 and its WAL/SHM files out of Git. `MIRO_SQLITE_PATH`, when set, must be an
 absolute path; the acceptance test sets it to its own disposable database.
 No secrets or external accounts are required.
+
+## Portable product documents
+
+Only the five explicitly selected product documents under `.plan` are public:
+PURPOSE, VISION, ARCH, ROADMAP and ADR/0001-single-user-sqlite. The committed
+`.gitignore` defaults all other `.plan` material to private, including BACKLOG,
+STATE, archives, exports and operational notes. Never bulk-add `.plan` or force
+ignored files into the index. Publish only the explicit reviewed document list.

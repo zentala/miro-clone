@@ -39,3 +39,13 @@ next-env.d.ts
 /data/miro.sqlite
 /data/miro.sqlite-wal
 /data/miro.sqlite-shm
+
+# Publish only explicitly selected portable product documents.
+/.plan/*
+!/.plan/PURPOSE.md
+!/.plan/VISION.md
+!/.plan/ARCH.md
+!/.plan/ROADMAP.md
+!/.plan/ADR/
+/.plan/ADR/*
+!/.plan/ADR/0001-single-user-sqlite.md

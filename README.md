@@ -1,9 +1,40 @@
-# Miro Clone
+# Miro Clone — personal SQLite fork
 
-A single-user whiteboard with local SQLite persistence, based on the existing
-Miro drawing editor. Create boards, draw shapes and freehand strokes, edit text
-and notes, undo/redo, and export PNG images. No accounts, credentials, or hosted
-backend are required by the active application.
+This is [zentala/miro-clone](https://github.com/zentala/miro-clone), a personal,
+self-hosted fork of [jatin1510/miro-clone](https://github.com/jatin1510/miro-clone),
+originally built from the [Code with Antonio](https://www.youtube.com/@codewithantonio)
+whiteboard tutorial. The existing Next.js/React/SVG editor and drawing/UI
+libraries are retained. This fork replaces the active hosted backend with
+local SQLite for a single user; it is not an official Miro product or a promise
+of full Miro compatibility.
+
+## What changed from upstream
+
+| Area | Upstream | This fork |
+| --- | --- | --- |
+| Identity | Clerk users and organizations | One local workspace, no accounts/authentication |
+| Persistence | Convex board metadata and Liveblocks editor storage | Same-origin Next.js board API and server-side SQLite |
+| Collaboration | Liveblocks rooms/presence/history | Single-user editing and session-local undo/redo |
+| Operations | Hosted backend configuration | Node >=22.13, local database, optional container packaging |
+
+**Breaking architecture change:** hosted accounts, organization IDs, board
+records and room state are not automatically migrated. Existing hosted data
+cannot be opened by simply pointing the local API at the old backend. Multiple
+users, collaboration and concurrent editor tabs are unsupported. Legacy SDK
+packages/files remain, but active application paths require no Clerk, Convex
+or Liveblocks account or credentials. See the
+[architecture decision](.plan/ADR/0001-single-user-sqlite.md).
+
+The current editor supports boards, shapes, freehand strokes, basic text/notes,
+undo/redo, durable document saves and PNG export. Images, link/product cards,
+frames, rich text, code blocks, table views and migration tooling are future
+requirements, not delivered features. The current editor/validation cap is
+100 layers per board.
+
+Product documentation: [purpose](.plan/PURPOSE.md), [vision](.plan/VISION.md),
+[architecture](.plan/ARCH.md), [proposed roadmap](.plan/ROADMAP.md) and
+[changelog](CHANGELOG.md). Future functions follow migration of a representative
+board; proposed work is not approval to access or import a real account.
 
 ## Requirements
 
@@ -12,15 +43,18 @@ packages with `npm ci`. Existing drawing/UI libraries are retained.
 
 The standard Next.js commands remain `npm run dev`, `npm run build`, and
 `npm start`. Run the application only in a trusted local environment: it has
-no authentication or multi-user access boundary. This change does not include
-deployment or a managed runtime.
+no authentication or multi-user access boundary. Container packaging is available, but
+a built image does not establish deployment or a managed runtime.
 
 ## Local storage
 
 Board titles and documents are stored in `data/miro.sqlite`, relative to the
 application working directory. SQLite creates the directory/schema on first
 use and may create adjacent `-wal` and `-shm` files. All three are ignored by
-Git. Preserve the database when replacing source files. Do not delete it to
+Git. `MIRO_SQLITE_PATH` can select a different absolute database path. The
+container uses `/app/data/miro.sqlite` and persists `/app/data` as a volume.
+Preserve a consistent database backup and any uncheckpointed WAL; PNG export
+is not an editable board backup. Preserve the database when replacing source files. Do not delete it to
 reset an installation containing wanted boards.
 
 The editor shows Saving, Saved, or Save failed. Saves are serialized in edit
@@ -62,10 +96,8 @@ Critical manual verification, when running the app is authorized:
 6. Confirm a failed write remains visible and Retry save persists the latest
    document; verify deletion returns to the board list.
 
-## Original project
+## Legacy integrations
 
-Original implementation: [jatin1510/miro-clone](https://github.com/jatin1510/miro-clone),
-following the [Code with Antonio](https://www.youtube.com/@codewithantonio)
-whiteboard tutorial. Unused legacy hosted-service source remains in the
-repository; active routes do not use it. Removing that source and its packages
-requires a separately scoped cleanup.
+Unused hosted-service source and packages remain in the repository. Removing
+them requires a separately scoped usage review and cleanup; no dual-backend
+runtime mode is provided.
