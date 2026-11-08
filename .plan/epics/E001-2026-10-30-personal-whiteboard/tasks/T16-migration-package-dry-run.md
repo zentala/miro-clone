@@ -53,6 +53,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
+
 - [ ] Retain original records/assets, string IDs, geometry, parents/groups and exact URLs; document screen/world/relative-to-parent conversions.
 - [ ] Every input record is accounted for as supported, transformed, unknown or failed; images, connectors and frames have explicit loss entries.
 - [ ] A dry run validates the package and produces a human-readable loss report without opening or changing a destination board.

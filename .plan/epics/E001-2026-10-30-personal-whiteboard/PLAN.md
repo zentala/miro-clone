@@ -10,11 +10,8 @@ records, 155 indicative Fibonacci points. Estimates are scope estimates, not
 budgets. Execution is approved by the owner on 2026-11-08 and delivered by the
 sole PO/DM pair through Herdr; see [Execution route](#execution-route).
 
-Plan-content completeness is reviewed separately from runtime readiness:
-all records/acceptance/dependencies passed independent source review and are accepted;
-AO/runtime readiness is NOT_CHECKED, no executor is dispatched, no live source
-access or production activation is granted. Content review is not runtime
-admission. Do not operate retired orchestration/readiness machinery.
+Task records hold status and evidence. Real Miro account access and retiring
+the paid subscription remain owner decisions; deployment follows T21/T22.
 
 ## Problem and current state
 
@@ -236,7 +233,7 @@ evidence and may propose changes, which PO reviews at T01 acceptance.
    or a library outside the list returns to PO.
 8. Performance thresholds: T01 proposes them; PO accepts them with T01.
 
-## T01 baseline results (2026-11-08, pending independent review)
+## T01 baseline results (2026-11-08, accepted by PO)
 
 TLDR: the source baseline, shared-model boundary, workload and thresholds are
 in [ARCH](../../ARCH.md#source-baseline-e001-t01-2026-11-08); the PO decisions
@@ -261,6 +258,26 @@ new visual choices are proposed rows in [DESIGN](../../../DESIGN.md#decision-led
   None is fixed by T01; PO decides whether they join T03/T07/T10 or BACKLOG.
 - Proposed wording fix: the TLDR's second paragraph still says AO readiness is
   NOT_CHECKED and no executor is dispatched; Execution route supersedes it.
+  Applied by PO after T01 integration.
+
+### PO acceptance of T01 (2026-11-08)
+
+Independent verifier PASS on all five criteria. PO decisions:
+
+- Image processing: `@napi-rs/image` (MIT) accepted for T04/T06; `sharp` rejected
+  (LGPL-3.0 libvips binary fails decision 7). Installation re-checks the
+  licences of bundled native binaries.
+- The workload matrix (100/2000/10000 objects, three viewports, DPR 1/1.25/2,
+  seven zoom levels) is accepted as the measurement plan. T07 measures the
+  browser baseline first, commits the measurement script, and then proposes
+  numeric limits for PO acceptance.
+- Board title font: Inter (OFL).
+- Clarifications accepted: shrinking a frame does not reparent children; a lock
+  also blocks fill colour, z-order, text edits and deletion; shortcut Ctrl+Shift+L.
+- Verifier notes routed: F1 (cost table rounding in ARCH) and F2 (browser
+  measurements) to T07; F3 (Tiptap 2 vs 3) to T10 at installation; F4 applied.
+- Source defects routed: `z` moving the selection and camera-reset visibility to
+  T07; unsanitized stored text HTML to T10, with sanitizing import in T16/T17.
 
 ## Definition of Done
 

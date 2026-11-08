@@ -55,6 +55,9 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Before changing rendering, measure the browser baseline for the T01 workload matrix (100/2000/10000 objects, three viewports, DPR 1/1.25/2, seven zoom levels) with a committed measurement script; propose numeric limits for PO acceptance. Correct the rounding in the ARCH cost table (T01 verifier F1).
+- [ ] Plain `z` no longer moves the selection (`canvas.tsx:498-511`), and the camera-reset control appears whenever either camera coordinate is non-zero (`canvas.tsx:548`); browser tests cover both.
+
 - [ ] Pan/zoom about the intended anchor preserve world coordinates; pointer selection, dragging, resizing and export map correctly across zoom and DPR.
 - [ ] Render a subtle gray grid that supports navigation without becoming authored document content or changing exported geometry.
 - [ ] Replace both client and validator 100-layer constraints coherently with reviewed measured bounds and a visible refusal for excessive workloads.

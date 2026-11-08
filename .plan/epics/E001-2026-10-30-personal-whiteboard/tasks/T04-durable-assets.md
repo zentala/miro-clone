@@ -55,6 +55,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Any image decoding/inspection uses the PO-accepted `@napi-rs/image` (MIT), not `sharp`; no other processing library without PO acceptance.
+
 - [ ] Asset bytes live in durable application data storage, under the container's data volume; documents contain stable references, not repeated base64 image bodies.
 - [ ] Validate media type, size and canonical paths; reject traversal/unsafe serving and keep original bytes unchanged.
 - [ ] Coordinate temporary-file writes, rename, metadata publication and recovery so interrupted ingestion never exposes a successful reference to missing data.

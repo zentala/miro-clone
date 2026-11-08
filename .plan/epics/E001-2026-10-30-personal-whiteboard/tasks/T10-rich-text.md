@@ -54,6 +54,9 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Stored text HTML is sanitized before rendering (`text.tsx:61`), including legacy documents; a test with a script/event-handler payload proves nothing executes.
+- [ ] Before installing the editor, confirm the current maintained major (Tiptap 2 vs 3, T01 verifier F3) and its licence; bundle Inter (OFL) for board titles.
+
 - [ ] Font family/size, bold, italic and text color work through real editing controls without losing the user's text or triggering canvas shortcuts while typing.
 - [ ] Legacy text/notes open with a plain-text fallback; the versioned representation retains supported formatting through save/reload and undo/redo.
 - [ ] Sanitize pasted content without executable markup; unsupported formatting degrades visibly instead of disappearing.

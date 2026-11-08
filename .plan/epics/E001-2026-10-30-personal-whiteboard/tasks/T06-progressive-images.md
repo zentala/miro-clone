@@ -54,6 +54,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Generate variants with the PO-accepted `@napi-rs/image` (MIT); re-check bundled native binary licences at installation; `sharp` is rejected.
+
 - [ ] Generated variants preserve aspect ratio and never upscale beyond original pixels; originals remain byte-identical.
 - [ ] Visible images progress from gradient to preview to a variant selected from actual CSS display dimensions times DPR; zoom is not multiplied twice.
 - [ ] Off-screen culling, cancellation and bounded requests/cache apply during rapid pan/zoom. Immediate zoom jumps do not fetch every intermediate size in sequence.

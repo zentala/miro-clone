@@ -55,6 +55,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
+
 - [ ] A committed script imports into an explicitly new synthetic board; the same package/retry reuses mapping without duplicate objects or assets.
 - [ ] For types whose models/validators/renderers have actually been delivered, preserve parent/child geometry, accepted own/inherited locks, URLs and local assets through save/reload. Do not claim code, rich-text or record-table support before those models exist.
 - [ ] Unknown/unsupported records remain in the package/report, with exact source accounting; unsupported connectors or table variants are not silently dropped.
