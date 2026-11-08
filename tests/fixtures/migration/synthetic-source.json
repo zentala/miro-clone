@@ -1,0 +1,99 @@
+{
+  "description": "Synthetic Miro Web SDK v2 responses for a fictional board. Hand-generated test data: no real account, board, person or asset. IDs exceed Number.MAX_SAFE_INTEGER on purpose.",
+  "boardInfo": {
+    "id": "uXjVSynthetic0001=",
+    "createdAt": "2026-01-02T03:04:05.000Z",
+    "updatedAt": "2026-02-03T04:05:06.000Z",
+    "locale": "en"
+  },
+  "items": [
+    {
+      "id": "3458764517517852417", "type": "frame", "title": "Outer frame",
+      "x": 0, "y": 0, "width": 2000, "height": 1200, "rotation": 0,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null,
+      "childrenIds": ["3458764517517852418", "3458764517517852419", "3458764517517852420"],
+      "showContent": true, "style": { "fillColor": "#ffffff" }
+    },
+    {
+      "id": "3458764517517852418", "type": "frame", "title": "Inner frame",
+      "x": 500, "y": 400, "width": 600, "height": 400, "rotation": 0,
+      "origin": "center", "relativeTo": "parent_top_left", "parentId": "3458764517517852417",
+      "childrenIds": ["3458764517517852421"], "showContent": true
+    },
+    {
+      "id": "3458764517517852419", "type": "sticky_note",
+      "content": "<p>Read <a href=\"https://example.com/docs?a=1&amp;b=2#part\">the docs</a> and https://example.org/path_(x)</p>",
+      "shape": "square", "x": 150, "y": 160, "width": 199, "height": 228,
+      "origin": "center", "relativeTo": "parent_top_left", "parentId": "3458764517517852417",
+      "groupId": "3458764517517852430", "tagIds": ["3458764517517852440"],
+      "style": { "fillColor": "light_yellow", "textAlign": "center" }
+    },
+    {
+      "id": "3458764517517852420", "type": "image", "title": "Synthetic product photo",
+      "alt": "A gray placeholder rectangle",
+      "url": "https://images.example.test/synthetic/photo.png?size=original&token=SYNTHETIC",
+      "x": 1200, "y": 300, "width": 800, "height": 600, "rotation": 15,
+      "origin": "center", "relativeTo": "parent_top_left", "parentId": "3458764517517852417",
+      "groupId": "3458764517517852430"
+    },
+    {
+      "id": "3458764517517852421", "type": "preview",
+      "url": "https://shop.example.test/product/123?variant=blue&ref=board",
+      "x": 300, "y": 200, "width": 250, "height": 300,
+      "origin": "center", "relativeTo": "parent_top_left", "parentId": "3458764517517852418"
+    },
+    {
+      "id": "3458764517517852422", "type": "embed",
+      "url": "https://video.example.test/watch?v=SYNTHETIC",
+      "previewUrl": "https://video.example.test/thumb/SYNTHETIC.jpg", "mode": "inline",
+      "x": -1800, "y": -900, "width": 640, "height": 360,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null
+    },
+    {
+      "id": "3458764517517852423", "type": "text",
+      "content": "<p>Plain heading</p>", "linkedTo": "https://example.net/linked-object",
+      "x": -1500, "y": 800, "width": 300, "rotation": -30,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null,
+      "style": { "fontSize": 24 }
+    },
+    {
+      "id": "3458764517517852424", "type": "shape", "shape": "round_rectangle",
+      "content": "<p>Shape label</p>", "x": -1200, "y": 600, "width": 200, "height": 100,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null
+    },
+    {
+      "id": "3458764517517852425", "type": "card", "title": "Synthetic task",
+      "description": "Check https://tracker.example.test/issue/7 before import",
+      "x": -1000, "y": -600, "width": 320, "height": 94,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null
+    },
+    {
+      "id": "3458764517517852426", "type": "app_card", "title": "Synthetic app card",
+      "fields": [{ "value": "status", "tooltip": "Synthetic field" }], "status": "connected",
+      "x": -700, "y": -600, "width": 320, "height": 94,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null
+    },
+    {
+      "id": "3458764517517852427", "type": "connector", "shape": "curved",
+      "start": { "item": "3458764517517852419", "snapTo": "right" },
+      "end": { "item": "3458764517517852424", "position": { "x": 0, "y": 0.5 } },
+      "captions": [{ "content": "depends on" }], "style": { "strokeColor": "#1a1a1a" }
+    },
+    {
+      "id": "3458764517517852428", "type": "unsupported",
+      "x": 1600, "y": -1400, "width": 900, "height": 500,
+      "origin": "center", "relativeTo": "canvas_center", "parentId": null
+    },
+    {
+      "id": "3458764517517852429", "type": "future_widget",
+      "x": 1900, "y": 1500, "width": 100, "height": 100, "payload": { "opaque": [1, 2, 3] }
+    },
+    {
+      "id": "3458764517517852430", "type": "group",
+      "itemsIds": ["3458764517517852419", "3458764517517852420"]
+    },
+    {
+      "id": "3458764517517852440", "type": "tag", "title": "synthetic-tag", "color": "red"
+    }
+  ]
+}

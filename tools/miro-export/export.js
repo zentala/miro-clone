@@ -1,0 +1,226 @@
+/**
+ * Read-only structural export of a Miro board through the official Web SDK v2.
+ *
+ * It calls only `board.getInfo()` and `board.get()` (both `boards:read`) and
+ * never an item method. The result keeps every SDK record verbatim and adds
+ * IDs, geometry, relations, URLs, asset mapping, coverage and losses. Runs as a
+ * plain script in the Miro app iframe (`window.MiroExport`) and under Node tests.
+ */
+(function (root) {
+    'use strict';
+
+    const FORMAT = 'miro-clone.structural-export';
+    const FORMAT_VERSION = 1;
+    const EXPORTER = { name: 'miro-clone/tools/miro-export', version: '1.0.0' };
+    const REQUIRED_SCOPES = ['boards:read'];
+    const CAPABILITIES_CHECKED_ON = '2026-11-08';
+
+    // What an export can read per SDK type. rest: 'none' means no REST read route.
+    const CAPABILITIES = {
+        sticky_note: { status: 'supported', webSdk: 'read', rest: 'read', note: 'HTML content and style kept raw.' },
+        text: { status: 'supported', webSdk: 'read', rest: 'read', note: 'HTML content kept raw.' },
+        shape: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Shape kind, content and style kept raw.' },
+        card: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Title, description, fields kept raw.' },
+        app_card: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Owned by another app; fields kept raw.' },
+        image: { status: 'supported', webSdk: 'read', rest: 'read', note: 'URL and title mapped as an asset; bytes not included.' },
+        embed: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Embedded URL and preview URL kept.' },
+        preview: { status: 'supported', webSdk: 'read', rest: 'none', note: 'Link preview: Web SDK only; REST has no preview read.' },
+        frame: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Children linked by parentId/childrenIds, not nested.' },
+        connector: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Endpoints by item reference; no x/y; route points not exported.' },
+        group: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Membership via itemsIds and item groupId.' },
+        tag: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Board tag; items reference it via tagIds.' },
+        mindmap_node: { status: 'supported', webSdk: 'experimental', rest: 'none', note: 'Experimental SDK support only.' },
+        unsupported: { status: 'opaque', webSdk: 'position only', rest: 'none', note: 'Tables, code blocks, documents, kanban etc.: content not readable.' },
+    };
+    // Always listed in coverage, even at zero, so their handling is explicit.
+    const EXPLICIT_TYPES = ['image', 'preview', 'connector', 'frame', 'unsupported'];
+
+    const OTHER_FORMATS = [
+        { format: 'PDF/SVG export', structural: false, detail: 'Appearance only; no editable items, IDs or relations.' },
+        { format: 'CSV export', structural: false, detail: 'Text cells only; geometry, frames, connectors and images lost.' },
+        { format: 'Board backup (.rtb)', structural: false, detail: 'Opaque Miro restore format; not portable editable JSON.' },
+    ];
+
+    const COORDINATE_CONVENTION = {
+        unit: 'dp (board units as reported by the SDK)',
+        origin: 'x/y are the item center (origin "center"); rotation pivots on the center',
+        canvas_center: 'x/y measured from the board center point (0, 0)',
+        parent_top_left: 'x/y measured from the parent frame top-left corner',
+        parent_center: 'x/y measured from the parent center (experimental in the SDK)',
+        conversion: 'none: values are exported as read; normalization converts them to world coordinates',
+    };
+
+    // Read explicitly: SDK objects may expose these through prototype getters.
+    const KNOWN_FIELDS = ['id', 'type', 'x', 'y', 'width', 'height', 'rotation', 'origin', 'relativeTo',
+        'parentId', 'groupId', 'childrenIds', 'itemsIds', 'connectorIds', 'tagIds', 'linkedTo', 'content',
+        'title', 'description', 'url', 'previewUrl', 'alt', 'mode', 'shape', 'style', 'start', 'end',
+        'captions', 'fields', 'status', 'showContent', 'color', 'createdAt', 'createdBy', 'modifiedAt', 'modifiedBy'];
+
+    const URL_FIELDS = ['url', 'previewUrl', 'linkedTo'];
+    const TEXT_FIELDS = ['content', 'title', 'description'];
+    const HTTP_URL = /^https?:\/\//i;
+    const HREF = /href\s*=\s*(["'])(.*?)\1/gi;
+    const BARE_URL = /https?:\/\/[^\s"'<>]+/gi;
+
+    /** Copies data fields of an SDK object; functions are dropped, nothing is invoked. */
+    function cloneRecord(item) {
+        const data = Object.create(null);
+        const keys = new Set([...KNOWN_FIELDS, ...Object.keys(Object(item))]);
+        for (const key of keys) {
+            const value = item[key];
+            if (value !== undefined && typeof value !== 'function') data[key] = value;
+        }
+        return JSON.parse(JSON.stringify(data));
+    }
+
+    function geometryOf(raw) {
+        if (typeof raw.x !== 'number' || typeof raw.y !== 'number') return null;
+        const pick = key => (typeof raw[key] === 'number' ? raw[key] : null);
+        return {
+            x: raw.x, y: raw.y, width: pick('width'), height: pick('height'), rotation: pick('rotation'),
+            origin: raw.origin ?? null, relativeTo: raw.relativeTo ?? null,
+        };
+    }
+
+    function relationsOf(raw) {
+        const list = value => (Array.isArray(value) ? value.slice() : []);
+        return {
+            parentId: raw.parentId ?? null,
+            groupId: raw.groupId ?? null,
+            childrenIds: list(raw.childrenIds),
+            itemsIds: list(raw.itemsIds),
+            tagIds: list(raw.tagIds),
+            connectorStart: raw.start?.item ?? null,
+            connectorEnd: raw.end?.item ?? null,
+        };
+    }
+
+    /** Exact URLs (no normalization) from URL fields and links inside text/HTML. */
+    function urlsOf(raw) {
+        const found = [];
+        for (const field of URL_FIELDS) {
+            if (typeof raw[field] === 'string' && HTTP_URL.test(raw[field])) found.push({ field, url: raw[field] });
+        }
+        for (const field of TEXT_FIELDS) {
+            if (typeof raw[field] !== 'string') continue;
+            const seen = new Set();
+            for (const match of raw[field].matchAll(HREF)) seen.add(match[2]);
+            for (const match of raw[field].replace(HREF, '').matchAll(BARE_URL)) seen.add(match[0]);
+            for (const url of seen) if (HTTP_URL.test(url)) found.push({ field, url });
+        }
+        return found;
+    }
+
+    function capabilityOf(type) {
+        return typeof type === 'string' && Object.hasOwn(CAPABILITIES, type) ? CAPABILITIES[type] : null;
+    }
+
+    function loss(itemId, type, kind, detail) {
+        return { itemId, type, kind, detail };
+    }
+
+    function typeLosses(record) {
+        const { id, type, status } = record;
+        if (status === 'unknown') return [loss(id, type, 'unknown-type', 'Type not recognized; raw record retained for later handling.')];
+        if (status === 'opaque') return [loss(id, type, 'opaque-content', 'SDK exposes position only; content must come from another source or be recreated.')];
+        if (type === 'image') return [loss(id, type, 'asset-not-retrieved', 'Image bytes are not in this export; asset entry maps the item to its URL and retrieval method.')];
+        if (type === 'connector') return [loss(id, type, 'connector-route', 'Only endpoints, shape, captions and style as read; rendered route points are not exported.')];
+        if (type === 'preview') return [loss(id, type, 'preview-metadata', 'Only the URL and geometry are exported; Miro-rendered title/thumbnail are not.')];
+        return [];
+    }
+
+    function failedRecord(item, index, reason) {
+        let raw;
+        try { raw = cloneRecord(item); } catch { raw = null; }
+        return { id: null, sourceIndex: index, type: raw?.type ?? null, status: 'failed', reason, raw };
+    }
+
+    function buildRecord(item, index, seenIds) {
+        if (item === null || typeof item !== 'object') return failedRecord(item, index, 'Record is not an object.');
+        const raw = cloneRecord(item);
+        if (typeof raw.id !== 'string' || raw.id === '') return failedRecord(item, index, 'ID is not a nonempty string; exact ID cannot be guaranteed.');
+        if (typeof raw.type !== 'string' || raw.type === '') return failedRecord(item, index, `Record ${raw.id} has no type.`);
+        if (seenIds.has(raw.id)) return failedRecord(item, index, `Duplicate ID ${raw.id}.`);
+        seenIds.add(raw.id);
+        return {
+            id: raw.id, sourceIndex: index, type: raw.type,
+            status: capabilityOf(raw.type)?.status ?? 'unknown',
+            geometry: geometryOf(raw), relations: relationsOf(raw), urls: urlsOf(raw),
+            assetIds: raw.type === 'image' ? [`miro-image-${raw.id}`] : [], raw,
+        };
+    }
+
+    function assetFor(record) {
+        return {
+            assetId: record.assetIds[0], itemId: record.id, kind: 'image',
+            url: record.raw.url ?? null, title: record.raw.title ?? null, alt: record.raw.alt ?? null,
+            retrieval: 'Image.getFile("original") under boards:read', retrieved: false,
+        };
+    }
+
+    function danglingLosses(records) {
+        const ids = new Set(records.filter(record => record.id).map(record => record.id));
+        const out = [];
+        for (const record of records) {
+            if (!record.relations) continue;
+            const { parentId, groupId, childrenIds, itemsIds, tagIds, connectorStart, connectorEnd } = record.relations;
+            const refs = [parentId, groupId, connectorStart, connectorEnd, ...childrenIds, ...itemsIds, ...tagIds];
+            for (const ref of refs) {
+                if (ref !== null && !ids.has(ref)) out.push(loss(record.id, record.type, 'dangling-reference', `References ${ref}, which is not in the export.`));
+            }
+        }
+        return out;
+    }
+
+    function coverageOf(records) {
+        const byStatus = { supported: 0, opaque: 0, unknown: 0, failed: 0 };
+        const byType = Object.create(null);
+        for (const type of EXPLICIT_TYPES) byType[type] = { count: 0, ...CAPABILITIES[type] };
+        for (const record of records) {
+            byStatus[record.status] += 1;
+            const key = record.type ?? '(missing)';
+            byType[key] ??= { count: 0, ...(capabilityOf(key) ?? { status: record.status, webSdk: 'unknown', rest: 'unknown', note: 'Not in the capability table.' }) };
+            byType[key].count += 1;
+        }
+        return { total: records.length, byStatus, byType };
+    }
+
+    /** Builds the export package from data already read from the SDK. Pure. */
+    function buildPackage(boardInfo, items, exportedAt) {
+        if (!Array.isArray(items)) throw new TypeError('board.get() must return an array');
+        const seenIds = new Set();
+        const records = items.map((item, index) => buildRecord(item, index, seenIds));
+        const losses = [loss(null, null, 'paint-order-unverified', 'Records keep board.get() order, which the SDK does not document as z-order.')];
+        for (const record of records) {
+            if (record.status === 'failed') losses.push(loss(null, record.type, 'failed-record', `Source index ${record.sourceIndex}: ${record.reason}`));
+            else losses.push(...typeLosses(record));
+        }
+        losses.push(...danglingLosses(records));
+        return {
+            format: FORMAT, formatVersion: FORMAT_VERSION, exporter: EXPORTER, exportedAt,
+            source: { api: 'miro-web-sdk-v2', scopes: REQUIRED_SCOPES, board: cloneRecord(boardInfo ?? {}) },
+            coordinateConvention: COORDINATE_CONVENTION,
+            records,
+            assets: records.filter(record => record.type === 'image' && record.status === 'supported').map(assetFor),
+            coverage: coverageOf(records),
+            losses,
+            context: { capabilitiesCheckedOn: CAPABILITIES_CHECKED_ON, capabilities: CAPABILITIES, otherFormats: OTHER_FORMATS },
+        };
+    }
+
+    /** Reads the board with boards:read only and returns the export package. */
+    async function exportBoard(board, now = () => new Date().toISOString()) {
+        const boardInfo = await board.getInfo();
+        const items = await board.get();
+        return buildPackage(boardInfo, items, now());
+    }
+
+    function fileNameFor(exportPackage) {
+        const boardId = String(exportPackage.source.board.id ?? 'board').replace(/[^\w-]+/g, '_');
+        return `miro-export-${boardId}-${exportPackage.exportedAt.replace(/[:.]/g, '-')}.json`;
+    }
+
+    const api = { FORMAT, FORMAT_VERSION, REQUIRED_SCOPES, CAPABILITIES, OTHER_FORMATS, buildPackage, exportBoard, fileNameFor };
+    if (typeof module === 'object' && module.exports) module.exports = api;
+    else root.MiroExport = api;
+})(typeof globalThis === 'object' ? globalThis : this);

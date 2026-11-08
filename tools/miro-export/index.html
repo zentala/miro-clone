@@ -1,0 +1,72 @@
+<!doctype html>
+<!--
+  Miro Web SDK v2 app entry (sdkUri). Needs only the boards:read scope.
+  Without ?panel it registers the toolbar icon; with ?panel it is the export panel.
+  It reads the board and downloads JSON; it never creates, changes or removes items.
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Read-only board export</title>
+    <script src="https://miro.com/app/static/sdk/v2/miro.js"></script>
+    <script src="export.js"></script>
+    <style>
+        body { margin: 0; padding: 16px; font: 14px/1.4 system-ui, sans-serif; color: #0f172a; background: #fff; }
+        h1 { font-size: 16px; margin: 0 0 8px; }
+        button { height: 40px; padding: 0 16px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        button:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+        textarea { box-sizing: border-box; width: 100%; height: 240px; margin-top: 8px; font: 12px ui-monospace, monospace; }
+    </style>
+</head>
+<body>
+    <main id="panel" hidden>
+        <h1>Structural board export</h1>
+        <p>Reads this board with <code>boards:read</code>. Nothing on the board changes.</p>
+        <button id="run" type="button">Export board JSON</button>
+        <p id="status" role="status"></p>
+        <label for="output">Exported JSON (copy if the download is blocked)</label>
+        <textarea id="output" readonly></textarea>
+    </main>
+    <script>
+        (function () {
+            'use strict';
+            if (!new URLSearchParams(location.search).has('panel')) {
+                miro.board.ui.on('icon:click', () => miro.board.ui.openPanel({ url: 'index.html?panel=1' }));
+                return;
+            }
+            const panel = document.getElementById('panel');
+            const run = document.getElementById('run');
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+            panel.hidden = false;
+
+            function download(name, text) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+                link.download = name;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(link.href), 0);
+            }
+
+            run.addEventListener('click', async () => {
+                run.disabled = true;
+                status.textContent = 'Reading board…';
+                try {
+                    const result = await MiroExport.exportBoard(miro.board);
+                    const text = JSON.stringify(result, null, 2);
+                    output.value = text;
+                    download(MiroExport.fileNameFor(result), text);
+                    const { total, byStatus } = result.coverage;
+                    status.textContent = `Exported ${total} records (${byStatus.opaque} opaque, ${byStatus.unknown} unknown, ${byStatus.failed} failed); ${result.losses.length} loss entries.`;
+                } catch (error) {
+                    status.textContent = `Export failed: ${error && error.message ? error.message : error}`;
+                } finally {
+                    run.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

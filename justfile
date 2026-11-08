@@ -4,3 +4,4 @@ check:
     npm run lint
     npm run build
     node --test --test-concurrency=1 tests/critical-editor.test.cjs
+    node --test --test-concurrency=1 tests/miro-export.test.cjs
