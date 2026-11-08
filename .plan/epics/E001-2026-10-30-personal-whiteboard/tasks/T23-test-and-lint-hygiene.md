@@ -45,6 +45,7 @@ findings (T15 verifier F2; T03 test file at 341 lines).
 - [ ] `just container-check` builds the image once (T02 verifier F2) and removes the
       intermediate build-stage images it created, leaving foreign images untouched (T02 F3).
 - [ ] Both Dockerfile stages pin a Node 22 minor of at least 22.18 (for example `node:22.23-bookworm-slim`), matching `engines`; `just container-check` reports the Node version (T16 verifier note).
+- [ ] `just container-check` serializes itself with `flock` on a lock file under the system temp or repo `.plan/` directory, because parallel runs on the shared podman store failed twice on 2026-11-08 (`layer not known`, `ERR_CONNECTION_RESET`); a waiting run prints that it waits.
 - [ ] No new dependencies.
 
 ## Independent verification
