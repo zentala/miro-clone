@@ -103,6 +103,18 @@ Independently reviewed partial value may be delivered through the existing
 infrastructure owner under separate accepted scope, without phase-wide
 barriers. Neither partial nor full production activation is authorized now.
 
+## Resume after the 2026-11-08 pause
+
+Owner paused execution on 2026-11-08 after the tasks in flight. Done on that
+day: T01, T02, T03, T15, T16 (plus T24/T04/T07 if their records say done).
+A task whose record is not done keeps its branch and worktree under
+`.plan/worktrees/`; read its record and the DM report before continuing it.
+Ready next, in order: T18; T23 after T07 integration; then T05, T10, T19
+(integrate T05 -> T10 -> T19). Library choices, defaults and routed findings
+are in PLAN, "PO acceptance of T01". Concurrency: at most 5 implementers or
+verifiers for this epic, 13 working agents on mITX in total. Owner decisions
+still open: real Miro board access, retiring the paid subscription.
+
 ## Canonical task links and sizes
 
 This is a read map, not a second task-state queue. All current task records say
