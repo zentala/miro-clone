@@ -5,7 +5,7 @@
 `tools/miro-export` is a minimal Miro Web SDK v2 app that reads one board with
 the `boards:read` scope and downloads a JSON package. It keeps every SDK record
 verbatim and adds exact string IDs, geometry with its coordinate convention,
-parent/group/connector relations, exact URLs, an image asset map, coverage and
+parent/group/connector relations, link URLs, an image asset map, coverage and
 explicit losses. It never writes to the board. It has run only on synthetic
 fixtures; real-board fidelity is NOT_CHECKED until separately authorized access
 exists. Normalization, dry run and import are later steps (E001-T16, T17).
@@ -79,6 +79,12 @@ Record status:
 
 `raw` holds every data field the SDK returned (functions dropped, nothing
 invoked). No record is dropped: `coverage.total` equals the number of items read.
+
+`urls` lists link targets. URL fields (`url`, `previewUrl`, `linkedTo`) are
+copied as read. Links inside `content`, `title` and `description` are taken
+from `href` attributes and bare `http(s)` text, with HTML entities decoded
+(`&amp;` becomes `&`); a bare URL loses trailing sentence punctuation, quotes
+and unbalanced closing brackets. `raw` keeps the original text unchanged.
 
 ## Coordinate convention
 

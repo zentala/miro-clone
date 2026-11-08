@@ -92,7 +92,8 @@ test('keeps exact URLs and maps image assets', () => {
     const urls = id => byId(pkg, id).urls.map(entry => entry.url);
     assert.deepEqual(urls('3458764517517852421'), ['https://shop.example.test/product/123?variant=blue&ref=board']);
     assert.deepEqual(urls('3458764517517852422'), ['https://video.example.test/watch?v=SYNTHETIC', 'https://video.example.test/thumb/SYNTHETIC.jpg']);
-    assert.deepEqual(urls('3458764517517852419'), ['https://example.com/docs?a=1&amp;b=2#part', 'https://example.org/path_(x)']);
+    assert.deepEqual(urls('3458764517517852419'), ['https://example.com/docs?a=1&b=2#part', 'https://example.org/path_(x)']);
+    assert.match(byId(pkg, '3458764517517852419').raw.content, /docs\?a=1&amp;b=2#part/, 'raw HTML stays verbatim');
     assert.deepEqual(urls('3458764517517852423'), ['https://example.net/linked-object']);
     assert.deepEqual(urls('3458764517517852425'), ['https://tracker.example.test/issue/7']);
     assert.deepEqual(pkg.assets, [{
@@ -101,6 +102,20 @@ test('keeps exact URLs and maps image assets', () => {
         retrieval: 'Image.getFile("original") under boards:read', retrieved: false,
     }]);
     assert.deepEqual(byId(pkg, '3458764517517852420').assetIds, ['miro-image-3458764517517852420']);
+});
+
+test('decodes HTML entities in links and trims sentence punctuation from bare URLs', () => {
+    const content = '<p><a href="https://a.test/p?x=1&amp;y=2&#38;z=3&#x26;w=4">link</a> See https://x.test/a. '
+        + 'Also (https://x.test/b), https://x.test/c; https://x.test/d!? and https://w.test/wiki/Foo_(bar). '
+        + '&quot;https://x.test/e&quot; https://x.test/f?a=1&amp;b=2. [https://x.test/g] https://x.test/h&lt;b&gt;</p>';
+    const item = { id: 'u1', type: 'sticky_note', x: 0, y: 0, content, description: "Plain 'https://x.test/i'!" };
+    const [record] = MiroExport.buildPackage({}, [item], EXPORTED_AT).records;
+    assert.deepEqual(record.urls.filter(entry => entry.field === 'content').map(entry => entry.url), [
+        'https://a.test/p?x=1&y=2&z=3&w=4', 'https://x.test/a', 'https://x.test/b', 'https://x.test/c', 'https://x.test/d',
+        'https://w.test/wiki/Foo_(bar)', 'https://x.test/e', 'https://x.test/f?a=1&b=2', 'https://x.test/g', 'https://x.test/h',
+    ]);
+    assert.deepEqual(record.urls.filter(entry => entry.field === 'description').map(entry => entry.url), ['https://x.test/i']);
+    assert.equal(record.raw.content, content, 'raw content stays verbatim');
 });
 
 test('accounts for every record and reports opaque, unknown and type losses', () => {
