@@ -105,15 +105,22 @@ barriers. Neither partial nor full production activation is authorized now.
 
 ## Resume after the 2026-11-08 pause
 
-Owner paused execution on 2026-11-08 after the tasks in flight. Done on that
-day: T01, T02, T03, T15, T16 (plus T24/T04/T07 if their records say done).
-A task whose record is not done keeps its branch and worktree under
-`.plan/worktrees/`; read its record and the DM report before continuing it.
-Ready next, in order: T18; T25 (fast redraw, after T07); T23 after T07 integration; then T05, T10, T19
-(integrate T05 -> T10 -> T19). Library choices, defaults and routed findings
-are in PLAN, "PO acceptance of T01". Concurrency: at most 5 implementers or
-verifiers for this epic, 13 working agents on mITX in total. Owner decisions
-still open: real Miro board access, retiring the paid subscription.
+Owner paused execution on 2026-11-08 after the tasks in flight. Done that day,
+independently verified and on main: T01, T02, T03, T04, T07, T15, T16, T24
+(53 of 166 points). No task is in progress and no implementer worktree holds
+unintegrated work from that day.
+
+Ready next (all dependencies done), in this order:
+1. T18 backup/restore, and T23 test/lint hygiene (window before T05/T10/T19).
+2. T25 fast redraw (High; undo/drag about 210 ms at 2000 objects today).
+3. T05 image paste/upload, then T10 rich text and T19 record tables; they share
+   model/store/canvas files, so integrate T05 -> T10 -> T19.
+Then T06, T08, T09, T11, T12, T13 as their dependencies close.
+
+Library choices, defaults and routed findings are in PLAN, "PO acceptance of
+T01". Concurrency: at most 5 implementers or verifiers for this epic, 13 working
+agents on mITX in total; run `just container-check` one at a time. Owner
+decisions still open: real Miro board access, retiring the paid subscription.
 
 ## Canonical task links and sizes
 
