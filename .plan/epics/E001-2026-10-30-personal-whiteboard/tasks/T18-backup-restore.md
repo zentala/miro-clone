@@ -12,7 +12,7 @@ importance: "High"
 effort: "medium"
 role: "implementer"
 executor: "unassigned"
-write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets/**"]
+write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets.ts"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(backup): [E001-T18] coordinate SQLite and asset backup with verified restore"
