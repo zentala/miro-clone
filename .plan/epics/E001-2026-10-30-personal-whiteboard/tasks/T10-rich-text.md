@@ -54,6 +54,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] No `next/font/google` import remains: every font (Inter, Kalam, Source Serif 4, JetBrains Mono) loads from local files, so `just build` and the image build need no font download (observed retries on 2026-11-08).
+
 - [ ] Stored text HTML is sanitized before rendering (`text.tsx:61`), including legacy documents; a test with a script/event-handler payload proves nothing executes.
 - [ ] Before installing the editor, confirm the current maintained major (Tiptap 2 vs 3, T01 verifier F3) and its licence; bundle Inter (OFL) for board titles.
 
