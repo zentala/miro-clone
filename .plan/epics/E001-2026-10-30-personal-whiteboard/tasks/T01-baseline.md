@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T01"
 title: "Establish source baseline, design decisions and workload"
-status: "pending"
+status: "done"
 priority: "high"
 type: "improvement"
 dependencies: []
@@ -11,18 +11,18 @@ points: 5
 importance: "High"
 effort: "medium"
 role: "implementer"
-executor: "unassigned"
+executor: "t01-impl (Herdr w2G:p3, claude)"
 write_set: ["DESIGN.md", ".plan/ARCH.md", ".plan/FEATURE-MAP.md", ".plan/epics/E001-2026-10-30-personal-whiteboard/PLAN.md", ".plan/epics/E001-2026-10-30-personal-whiteboard/HANDOFF.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["git diff --check"]
 commit: "docs(plan): [E001-T01] establish source baseline, design decisions and workload"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 1
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["7c06a69"]
+verification_evidence: ["git diff --check exit 0 (implementer and verifier)", "independent verifier t01-verify: PASS 5/5 criteria, 35 path:line citations checked, synthetic store-cost measurement reproduced (~30 ms/MiB)"]
+evidence: ["PO po-miro accepted 2026-11-08: @napi-rs/image (MIT) over sharp; workload matrix accepted as measurement plan, numeric thresholds set by T07 after browser measurement; Inter font; frame/lock clarifications 1-3 accepted", "Verifier findings: F1 Low/1p -> T07, F2 Medium/2p -> T07 entry criterion, F3 Low/1p -> T10, F4 Low/1p -> PO"]
 ---
 # E001-T01: Establish source baseline, design decisions and workload
 
@@ -75,8 +75,7 @@ documentation-only output does not require an unchanged app build or prove behav
 
 No external data prerequisite for this task. Decisions needing owner alignment hold only dependent behavior; source discovery continues. Runtime availability and dependency choices are not proven by this plan.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS and accepted by PO; integrated as 7c06a69. Points estimate scope, not a numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
