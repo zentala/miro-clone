@@ -9,6 +9,15 @@ export type Camera = {
     y: number;
 };
 
+/** Relation and protection fields shared by every layer type (document schema v2). */
+export type ObjectRelations = {
+    /** Containing object; absent means the layer sits at the board root. */
+    parentId?: string;
+    /** The layer's own lock bit. Effective protection also inherits from every ancestor. */
+    locked?: boolean;
+};
+
+/** Stored numeric values; append new types only, never renumber. */
 export enum LayerType {
     Rectangle,
     Ellipse,
@@ -17,7 +26,7 @@ export enum LayerType {
     Note,
 }
 
-export type RectangleLayer = {
+export type RectangleLayer = ObjectRelations & {
     type: LayerType.Rectangle;
     x: number;
     y: number;
@@ -27,7 +36,7 @@ export type RectangleLayer = {
     value?: string;
 };
 
-export type EllipseLayer = {
+export type EllipseLayer = ObjectRelations & {
     type: LayerType.Ellipse;
     x: number;
     y: number;
@@ -37,7 +46,7 @@ export type EllipseLayer = {
     value?: string;
 };
 
-export type PathLayer = {
+export type PathLayer = ObjectRelations & {
     type: LayerType.Path;
     x: number;
     y: number;
@@ -48,7 +57,7 @@ export type PathLayer = {
     value?: string;
 };
 
-export type TextLayer = {
+export type TextLayer = ObjectRelations & {
     type: LayerType.Text;
     x: number;
     y: number;
@@ -58,7 +67,7 @@ export type TextLayer = {
     value?: string;
 };
 
-export type NoteLayer = {
+export type NoteLayer = ObjectRelations & {
     type: LayerType.Note;
     x: number;
     y: number;

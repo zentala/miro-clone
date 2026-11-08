@@ -6,6 +6,7 @@ check:
     node --test --test-concurrency=1 tests/critical-editor.test.cjs
     node --test --test-concurrency=1 tests/miro-export.test.cjs
     node --test --test-concurrency=1 tests/packaging.test.cjs
+    node --test --test-concurrency=1 tests/document-model.test.cjs
 
 # Disposable podman containers with synthetic data: packaging checks, then the
 # critical browser workflow against a container of a temporary image.

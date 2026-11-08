@@ -16,8 +16,9 @@ Dashboard/editor -> /api/boards and /api/boards/[boardId]
 ```
 
 Node.js >=22.13 supplies built-in `node:sqlite`. SQLite stores board ID, title,
-creation/update timestamps and a JSON document containing ordered layer IDs and
-layer records. Supported layer types are rectangle, ellipse, freehand path,
+creation/update timestamps and a JSON document containing a schema version,
+ordered layer IDs and layer records (see
+[document schema versions](#document-schema-versions-e001-t03)). Supported layer types are rectangle, ellipse, freehand path,
 text and note. Both editor and validation currently cap boards at 100 layers.
 Concurrent editing tabs are unsupported; there is no revision conflict protocol.
 
@@ -135,6 +136,47 @@ Recommended boundary, all within existing files:
    requires it.
 6. Rendering: replace the `layer-preview.tsx` switch with a type registry and
    subscribe per layer instead of rebuilding a `Map` per call.
+
+## Document schema versions (E001-T03)
+
+TLDR: board documents carry `schemaVersion`; unversioned rows are version 1 and
+are upgraded in memory on read. Version 2 adds optional `parentId` and an own
+`locked` bit per layer. Newer versions are refused and never overwritten. No
+SQL table or column changed.
+
+- **Field name.** `schemaVersion`, not the `version` proposed above, so a later
+  revision or conflict counter cannot be confused with the schema.
+- **Upgrade path.** `lib/document-migrations.ts` holds one pure step per version
+  (v1 -> v2 only adds the field). `lib/boards.ts` upgrades on every read and
+  writes v2 only on the next accepted save; opening a board never rewrites it.
+  Unversioned submissions from an old client are upgraded, not refused.
+- **Validation boundary.** `lib/document-version.ts` validates the current
+  version once for server and store. Error codes separate `duplicate-id`,
+  `missing-reference` (paint order, record or parent), `cycle` (including
+  self-parent), `unsupported-record` (unknown layer type), `unsupported-version`
+  and `invalid-schema`. PATCH returns 400 with the code; the last accepted
+  document stays stored.
+- **Unreadable stored rows.** GET and every PATCH (title included) of a row this
+  version cannot read return 409 with the code; title, payload text and
+  `updated_at` stay byte-identical. The list keeps the row with `document: null`
+  and `documentError`. DELETE still works.
+- **Relations.** Layer keys remain the stable IDs; `layerIds` stays global paint
+  order; coordinates stay absolute. Any existing layer may be a parent until
+  T08 restricts parent kinds. `isEffectivelyLocked` walks every ancestor;
+  inherited protection is computed, never written into a child's own bit.
+  Enforcing locks on mutations is T09.
+- **Store.** `BoardStore.mutate` runs the shared relation check before history
+  and save; a violating mutation rolls back and throws. Deleting a parent moves
+  its children up one level with unchanged geometry. T08 may replace this with
+  an accepted frame-delete policy.
+- **Rollback.** The pre-version app (commit `81211c9`) accepts v2 documents
+  because its validator ignores unknown fields and returns them unchanged, so it
+  saves `schemaVersion`, parents and lock bits back intact; it does not enforce
+  them. Restoring a pre-upgrade database copy reopens with identical content.
+  Both are tested on synthetic copies in `tests/document-model.test.cjs`.
+- **Next version.** A new layer type or field bumps `CURRENT_SCHEMA_VERSION`,
+  adds an upgrade step and extends the type registry, so an older app refuses
+  the document instead of dropping the unknown record.
 
 ## Representative workload and proposed thresholds
 

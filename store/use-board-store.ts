@@ -1,5 +1,6 @@
 import type { Board, BoardDocument } from "../types/board";
 import type { Color, Layer } from "../types/canvas";
+import { assertRelations } from "../lib/document-version";
 
 export type Presence = {
     selection: string[]; cursor: { x: number; y: number } | null;
@@ -17,7 +18,16 @@ class LayerMap {
     get size() { return this.document.layerIds.length; }
     get(id: string) { const layer = this.document.layers[id]; return layer ? new LocalObject(layer) : undefined; }
     set(id: string, layer: LocalObject) { this.document.layers[id] = layer.value; }
-    delete(id: string) { delete this.document.layers[id]; }
+    delete(id: string) {
+        const parentId = this.document.layers[id]?.parentId;
+        delete this.document.layers[id];
+        // Children keep their absolute geometry and move up one level instead of referencing a missing parent.
+        for (const layer of Object.values(this.document.layers)) {
+            if (layer.parentId !== id) continue;
+            if (parentId === undefined) delete layer.parentId;
+            else layer.parentId = parentId;
+        }
+    }
     toImmutable(): ReadonlyMap<string, Layer> { return new Map(Object.entries(this.document.layers)); }
 }
 class LayerList {
@@ -72,12 +82,17 @@ export class BoardStore {
         const context: MutationContext = { storage: this.storage, self: { presence: this.presence }, setMyPresence: values => Object.assign(this.presence, values) };
         if (this.depth) return callback(context);
         const before = structuredClone(this.document);
-        let result: T;
+        let result: T, changed: boolean;
         this.depth++;
-        try { result = callback(context); }
+        try {
+            result = callback(context);
+            changed = JSON.stringify(before) !== JSON.stringify(this.document);
+            // One relation boundary for every mutation route: never save a missing parent or a cycle.
+            if (changed) assertRelations(this.document);
+        }
         catch (error) { this.document = before; throw error; }
         finally { this.depth--; }
-        if (JSON.stringify(before) !== JSON.stringify(this.document)) {
+        if (changed) {
             if (!this.paused || !this.group) {
                 this.past.push(before);
                 if (this.past.length > 100) this.past.shift();
