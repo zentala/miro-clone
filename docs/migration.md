@@ -8,7 +8,9 @@ verbatim and adds exact string IDs, geometry with its coordinate convention,
 parent/group/connector relations, link URLs, an image asset map, coverage and
 explicit losses. It never writes to the board. It has run only on synthetic
 fixtures; real-board fidelity is NOT_CHECKED until separately authorized access
-exists. Normalization, dry run and import are later steps (E001-T16, T17).
+exists. `just migration-dry-run <export.json>` normalizes a package and prints a
+loss report without touching any board (E001-T16, see
+[Normalization and dry run](#normalization-and-dry-run)). Import is E001-T17.
 
 ## Pipeline position
 
@@ -97,8 +99,8 @@ Values are exported as read; no conversion happens here.
 - `relativeTo: "parent_center"`: experimental in the SDK; kept as read.
 - Connectors have no `x`/`y`; `geometry` is `null` and endpoints are item IDs.
 
-T16 converts to absolute world coordinates using `parentId` and parent geometry.
-The axis direction on a real board is NOT_CHECKED.
+Normalization (below) converts these to absolute world coordinates using
+`parentId` and parent geometry. The axis direction on a real board is NOT_CHECKED.
 
 ## Capability comparison (checked 2026-11-08)
 
@@ -165,3 +167,82 @@ losses, empty/null/error inputs, malformed records and determinism.
 NOT_CHECKED: a real Miro board; the panel inside the Miro iframe (including
 downloads); SDK object shapes on a live board; REST rows marked "not
 reverified"; axis direction.
+
+## Normalization and dry run
+
+```sh
+just migration-dry-run path/to/miro-export.json                    # report only
+just migration-dry-run path/to/miro-export.json --out package.json # also write the package
+```
+
+`scripts/migration/dry-run.mjs` normalizes one export (`lib/migration/normalize.ts`)
+and prints the report (`lib/migration/report.ts`). It opens no database, board or
+network connection. `--out` writes a new file only; it refuses an existing file and
+the input path. Exit codes: 0 valid, 1 errors (report printed), 2 unusable input.
+
+### Package format (`miro-clone.migration-package`, version 1)
+
+Types live in `types/migration.ts`. One item per export record, in record order:
+
+| Field | Content |
+| --- | --- |
+| `sourceId`, `targetId` | Exact Miro ID string; target ID `miro-<sourceId>` (null when failed) |
+| `status` | `failed` on an error below; `unknown` for opaque and unrecognized types (raw kept, still mapped); `transformed` after a coordinate conversion or an assumed `relativeTo`; else `supported` |
+| `kind` | Portable kind: note, text, shape, card, image, embed, link-preview, frame, connector, group, tag, mindmap-node; null when unknown. Never coerced into the editor's five layers: a `round_rectangle` stays that shape |
+| `editor` | Whether today's editor can show the kind, or which task plans it |
+| `sourceGeometry`, `world` | Geometry as exported, and absolute world geometry |
+| `relations`, `urls`, `assetIds` | Parents, groups, tags, connector ends; exact URLs; asset references |
+| `markup` | Fields holding markup, flagged `requiresSanitization`; never rendered, rewritten or sanitized here, and the report prints field names only |
+| `transforms` | Each change made to the record, such as a coordinate conversion |
+| `raw` | The source record verbatim, so every record stays recoverable |
+
+The package also holds `mapping` (sorted source-to-target IDs), `assets`
+(`referenced`/`orphan`), `errors`, `losses` (export plus normalization),
+`coverage` (statuses sum to the record count), `sanitization` and `fidelity`.
+Normalizing the same export again gives an identical package; target IDs do not
+depend on record order.
+
+### Coordinates: screen, world, relative to parent
+
+| Space | Definition |
+| --- | --- |
+| Miro source | Item center; `canvas_center`, `parent_top_left` or `parent_center` |
+| World | Absolute board units, x right, y down, origin at the Miro board center. `left`/`top` = center minus half the size; the editor stores these as layer `x`/`y` |
+| Screen | Editor screen point = world point + camera offset (`lib/utils.ts`; no zoom yet). Normalization never produces screen coordinates |
+
+Conversions: `canvas_center` world center = (x, y); `parent_top_left` world
+center = parent world top-left + (x, y); `parent_center` world center = parent
+world center + (x, y). A missing `relativeTo` is assumed `canvas_center` without
+a parent and `parent_top_left` with one, and recorded as a transform.
+
+Every package and report states its assumptions as losses: Miro y grows
+downward like the editor's SVG, so nothing is flipped (`axis-direction-unverified`,
+NOT_CHECKED on a real board); REST rows for groups and tags stay unverified
+(`rest-coverage-unverified`); a rotated parent is ignored (`parent-rotation-ignored`).
+
+### Errors
+
+Each error names the record, its position and the fix; raw data stays in the
+item. Codes: `export-failed` (exporter marked it failed), `duplicate-id` (a later
+record reuses an ID; the first keeps it), `parent-cycle`, `missing-parent`,
+`parent-unresolved` (the parent failed or has no size), `missing-asset` (image
+without an asset URL), `invalid-geometry` and `coverage-mismatch` (the export's
+total differs from its record count).
+
+### Normalization losses
+
+| Kind | When |
+| --- | --- |
+| `editor-support` | The kind has no editor layer yet (frames, images, connectors, cards, previews, embeds, groups, tags, other shapes) |
+| `requires-sanitization` | A string field holds tags or character references; sanitize at import (E001-T17) with the E001-T10 sanitizer |
+| `rotation-unsupported` | The item is rotated; the editor has no rotation |
+| `parent-rotation-ignored` | A rotated parent was ignored during conversion |
+| `orphan-asset` | An asset entry belongs to no record |
+
+### Fidelity
+
+`fidelity.realSource` is always `NOT_CHECKED`: nothing has been imported or
+compared with a source board. The tests compare world boxes and frame containment
+with hand-calculated values for the synthetic fixture (conversion math only); the
+package marks that `NOT_PERFORMED_HERE`, so a real dry run never claims it.
+NOT_CHECKED: a real export, axis direction, rendering of normalized items (E001-T17).

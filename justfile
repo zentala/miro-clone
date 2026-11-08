@@ -7,6 +7,7 @@ check:
     node --test --test-concurrency=1 tests/miro-export.test.cjs
     node --test --test-concurrency=1 tests/packaging.test.cjs
     node --test --test-concurrency=1 tests/document-model.test.cjs
+    node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
 
 # Disposable podman containers with synthetic data: packaging checks, then the
 # critical browser workflow against a container of a temporary image.
@@ -21,3 +22,7 @@ container-check:
     # The first keep-id start of a new image prepares id-mapped layers (~30 s); do it outside the test's readiness wait.
     podman run --rm --userns=keep-id:uid=1000,gid=1000 "$tag" true
     MIRO_TEST_IMAGE="$tag" node --test --test-concurrency=1 tests/critical-editor.test.cjs
+
+# Validate a structural Miro export and print its loss report; changes no board.
+migration-dry-run export *args:
+    node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migration/dry-run.mjs "{{export}}" {{args}}
