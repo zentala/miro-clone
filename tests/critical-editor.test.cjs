@@ -355,6 +355,44 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         const listed = await (await fetch(`${origin}/api/boards`)).json();
         assert.equal(listed.find(board => board.id === 'future').documentError.code, 'unsupported-version');
     });
+    await step('asset upload is validated, stored beside SQLite, referenced by ID and served after restart', async () => {
+        const { Transformer } = require('@napi-rs/image');
+        const pixels = Buffer.alloc(30 * 20 * 4);
+        for (let i = 0; i < pixels.length; i += 4) pixels.set([i % 256, 90, 200, 255], i);
+        const png = await Transformer.fromRgbaPixels(pixels, 30, 20).png();
+        const upload = (body, type, headers = { Origin: origin }) => fetch(`${origin}/api/assets`, {
+            method: 'POST', headers: { ...headers, 'Content-Type': type }, body, signal: AbortSignal.timeout(deadline) });
+        assert.equal((await upload(png, 'image/png', { Origin: 'https://untrusted.invalid' })).status, 403);
+        assert.equal((await upload(png, 'image/jpeg')).status, 415);
+        assert.equal((await upload(Buffer.alloc(50 * 1024 * 1024 + 1), 'image/png')).status, 413);
+        const created = await upload(png, 'image/png');
+        assert.equal(created.status, 201);
+        const asset = await created.json();
+        assert.equal((await upload(png, 'image/png')).status, 200, 'Same bytes are stored once');
+        const stored = join(databasePath, '..', 'assets', asset.id.slice(0, 2), asset.id);
+        assert.deepEqual(await readFile(stored), png, 'Original sits in the data root beside SQLite');
+        for (const id of ['..%2F..%2Fsynthetic.sqlite', '..%2Fdata%2Fmiro.sqlite', asset.id.toUpperCase()]) {
+            assert.equal((await fetch(`${origin}/api/assets/${id}`)).status, 400, id);
+        }
+        const document = { schemaVersion: 2, layerIds: ['picture'], layers: { picture: { type: 0, x: 40, y: 40, width: 30, height: 20, fill: { r: 0, g: 0, b: 0 }, assetId: asset.id } } };
+        const patch = async (id, body) => (await fetch(`${origin}/api/boards/${id}`, { method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(deadline) }));
+        const board = await (await fetch(`${origin}/api/boards`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Asset board' }) })).json();
+        const dangling = structuredClone(document); dangling.layers.picture.assetId = 'f'.repeat(64);
+        assert.equal((await patch(board.id, { document: dangling })).status, 400, 'Unknown asset references are refused');
+        assert.equal((await patch(board.id, { document })).status, 200);
+        await stop(app);
+        app = await startApp();
+        const served = await fetch(`${origin}/api/assets/${asset.id}`);
+        assert.equal(served.status, 200);
+        assert.equal(served.headers.get('content-type'), 'image/png');
+        assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
+        assert.deepEqual(Buffer.from(await served.arrayBuffer()), png, 'Same bytes after restart');
+        assert.deepEqual((await (await fetch(`${origin}/api/boards/${board.id}`)).json()).document, document);
+        const report = await (await fetch(`${origin}/api/assets`)).json();
+        assert.deepEqual(report, { referenced: [{ id: asset.id, boards: [board.id] }], unused: [], missing: [], unregistered: [], deletable: [], danglingReferences: [], unscannedBoards: [] });
+        const decoded = await evaluate(`(async () => { const image = new Image(); image.src = '/api/assets/${asset.id}'; await image.decode(); return [image.naturalWidth, image.naturalHeight]; })()`);
+        assert.deepEqual(decoded, [30, 20], 'The browser decodes the served original');
+    });
     assert.deepEqual(exceptions, [], 'No uncaught browser exceptions');
     assert.deepEqual(networkFailures, [], 'No failed browser requests');
 });

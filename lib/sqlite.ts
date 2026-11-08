@@ -5,12 +5,16 @@ import { dirname, isAbsolute, join } from "node:path";
 type Statement = { get(...args: unknown[]): unknown; all(...args: unknown[]): unknown[]; run(...args: unknown[]): unknown };
 type Database = { exec(sql: string): void; prepare(sql: string): Statement };
 let database: Database | undefined;
+/** The SQLite file; its directory is the data root that also holds `assets/`. */
+export function getDatabasePath(): string {
+    const configuredPath = process.env.MIRO_SQLITE_PATH;
+    if (configuredPath && !isAbsolute(configuredPath)) throw new Error("MIRO_SQLITE_PATH must be absolute");
+    return configuredPath || join(process.cwd(), "data", "miro.sqlite");
+}
 export function getDatabase(): Database {
     if (database) return database;
     const { DatabaseSync } = require("node:sqlite") as { DatabaseSync: new (path: string) => Database };
-    const configuredPath = process.env.MIRO_SQLITE_PATH;
-    if (configuredPath && !isAbsolute(configuredPath)) throw new Error("MIRO_SQLITE_PATH must be absolute");
-    const databasePath = configuredPath || join(process.cwd(), "data", "miro.sqlite");
+    const databasePath = getDatabasePath();
     mkdirSync(dirname(databasePath), { recursive: true });
     const db = new DatabaseSync(databasePath);
     db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
@@ -18,6 +22,13 @@ export function getDatabase(): Database {
             id TEXT PRIMARY KEY, title TEXT NOT NULL,
             created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
             document TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS assets (
+            id TEXT PRIMARY KEY CHECK (length(id) = 64),
+            media_type TEXT NOT NULL,
+            byte_size INTEGER NOT NULL CHECK (byte_size > 0),
+            width INTEGER NOT NULL, height INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
         )`);
     database = db;
     return db;

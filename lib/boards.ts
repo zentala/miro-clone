@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase } from "./sqlite";
-import { Board, UnreadableBoard, validateTitle } from "../types/board";
+import { Board, BoardDocument, UnreadableBoard, validateTitle } from "../types/board";
 import { createEmptyDocument, DocumentError } from "./document-version";
 import { upgradeDocument } from "./document-migrations";
 
@@ -51,10 +51,35 @@ export function createBoard(title: unknown) {
     getDatabase().prepare("INSERT INTO boards VALUES (?, ?, ?, ?, ?)").run(id, validateTitle(title), now, now, JSON.stringify(createEmptyDocument()));
     return getBoard(id)!;
 }
+/**
+ * Asset IDs a document references through layer `assetId` fields. Reads raw
+ * parsed JSON of any schema version; a non-string value is returned as-is so
+ * callers can refuse it.
+ */
+export function assetReferences(document: unknown): unknown[] {
+    const layers = (document as { layers?: unknown } | null)?.layers;
+    if (!layers || typeof layers !== "object") return [];
+    return Object.values(layers as Record<string, unknown>)
+        .map(layer => (layer as { assetId?: unknown } | null)?.assetId)
+        .filter(assetId => assetId !== undefined);
+}
+/** Refuses saves that reference assets without published metadata; file health is the asset report's job. */
+function assertAssetReferences(document: BoardDocument) {
+    const lookup = getDatabase().prepare("SELECT 1 FROM assets WHERE id = ?");
+    for (const assetId of assetReferences(document)) {
+        if (typeof assetId !== "string") throw new DocumentError("invalid-schema", "Asset IDs must be strings");
+        if (!lookup.get(assetId)) throw new DocumentError("missing-reference", `Asset ${assetId} is not stored`);
+    }
+}
+function encodeDocument(input: unknown) {
+    const document = upgradeDocument(input);
+    assertAssetReferences(document);
+    return JSON.stringify(document);
+}
 export function updateBoard(id: string, input: { title?: unknown; document?: unknown }) {
     // Validate before any write; independent field updates never overwrite the other field.
     const title = input.title === undefined ? undefined : validateTitle(input.title);
-    const document = input.document === undefined ? undefined : JSON.stringify(upgradeDocument(input.document));
+    const document = input.document === undefined ? undefined : encodeDocument(input.document);
     const row = selectRow(id);
     if (!row) return null;
     // Refuse every write to a row whose stored payload this version cannot read.

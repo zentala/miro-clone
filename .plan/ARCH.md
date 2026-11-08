@@ -308,3 +308,74 @@ private exports and all operational/account material out of public history.
 
 See [the architecture decision](ADR/0001-single-user-sqlite.md) and
 [proposed roadmap](ROADMAP.md).
+
+## Durable assets (E001-T04)
+
+TLDR: original images are stored as files beside the SQLite database and
+registered in an `assets` table; documents reference them by ID only. The ID
+is the SHA-256 of the original bytes. Ingestion publishes metadata only after
+the file is durably in place, and nothing deletes stored data automatically.
+
+- **Location.** The data root is the directory of the SQLite file
+  (`data/` by default, `/app/data` in the container volume). Originals live at
+  `assets/<first two hex chars>/<id>`, temporary writes at
+  `assets/.incoming/<uuid>.part`. Bytes are stored unchanged (no EXIF
+  rotation or re-encoding). `/data/assets/` is ignored by Git.
+- **Table.** `assets(id, media_type, byte_size, width, height, created_at)`,
+  created with `CREATE TABLE IF NOT EXISTS` beside `boards`; no board column
+  changed. The SHA-256 ID makes uploads idempotent and lets the report verify
+  file integrity.
+- **Validation.** PNG, JPEG and WebP only, up to 50 MiB. Magic bytes must
+  match the declared `Content-Type`, and `@napi-rs/image` (MIT) must decode
+  the content as the same format; its memory limit refuses decompression
+  bombs. GIF is refused because the bundled decoder build has no GIF codec;
+  SVG is refused as active content. An asset ID must be 64 lowercase hex
+  characters; the file path is derived only from it, so traversal is refused
+  (400) before any filesystem access.
+- **API.** `POST /api/assets` takes the raw bytes (same-origin guard as the
+  board routes) and answers 201 (stored) or 200 (same bytes already stored);
+  400 empty, 413 too large, 415 wrong or unsupported type, 422 undecodable.
+  `GET /api/assets/<id>` serves the original with its stored type, `nosniff`,
+  a sandbox CSP and an immutable cache header; 404 unknown, 500
+  `data-missing` when the row exists but the file is gone or has the wrong
+  size. `GET /api/assets` returns the read-only consistency report.
+- **Document references.** A layer refers to an asset through an `assetId`
+  string. `lib/boards.ts` refuses a save whose `assetId` has no metadata row
+  (400 `missing-reference`), so a stored document never names unpublished
+  data. No layer type uses the field yet: T05 adds the image layer, declares
+  the field in the layer types and bumps the schema version as the document
+  schema section requires.
+
+### Ingestion order and recovery
+
+1. Validate and decode in memory; nothing is written for a refused upload.
+2. Write `assets/.incoming/<uuid>.part`, fsync, rename to the canonical path,
+   fsync the directory. A failed call removes only its own temp file.
+3. Insert the metadata row. This is the publication point: the API returns
+   the ID only after it, and saves accept the ID only after it.
+
+| Interruption | State left | Report entry | Recovery |
+| --- | --- | --- | --- |
+| Before rename (crash, full disk) | Temp file only | `deletable` | Delete the listed `.part` files by hand; they were never published |
+| After rename, before the row | Intact file, no row | `unregistered` (`intact: true`) | Upload the same original again; it registers the existing file |
+| File lost or damaged later (disk fault, database restored without files) | Row, no valid file | `missing` with the referencing boards | Restore the file from a backup taken with the database (T18), or upload the same original again; serving returns 500 `data-missing` until then |
+| Edited outside the app | Board names an unregistered ID | `danglingReferences` | Upload the original, or restore the matching database copy |
+
+**Unused is not deletable.** `unused` lists registered, intact assets that no
+stored board references. They stay: an open editor's undo history, a later
+import or an older backup may still need them, and removing one would turn
+those references into missing data. Only `deletable` entries (temp files that
+were never published) are safe to remove, and only by hand. Any future orphan
+cleanup needs a committed script, a fresh backup of database and assets, and
+its own approval. The report hashes every file, so its cost grows with the
+total asset size (not measured).
+
+**Container.** The Dockerfile needs no change: assets follow
+`MIRO_SQLITE_PATH` into the `/app/data` volume, and the standalone trace
+copies `@napi-rs/image` with its Linux x64 glibc binary (22 MB). The image
+measured 309,854,801 bytes in `just container-check` (2026-11-08), up from
+about 267 MB.
+
+**Backup.** Database and asset files must be copied together; a database copy
+newer than its asset copy shows up as `missing`. Coordinated backup and
+restore belong to T18.

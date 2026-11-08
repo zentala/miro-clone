@@ -8,6 +8,7 @@ check:
     node --test --test-concurrency=1 tests/packaging.test.cjs
     node --test --test-concurrency=1 tests/document-model.test.cjs
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
+    node --test --test-concurrency=1 tests/assets.test.cjs
 
 # Disposable podman containers with synthetic data: packaging checks, then the
 # critical browser workflow against a container of a temporary image.

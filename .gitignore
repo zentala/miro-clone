@@ -39,6 +39,7 @@ next-env.d.ts
 /data/miro.sqlite
 /data/miro.sqlite-wal
 /data/miro.sqlite-shm
+/data/assets/
 
 # Publish only explicitly selected portable product documents.
 /.plan/*
