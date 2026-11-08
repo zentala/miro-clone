@@ -76,7 +76,6 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 - Axis direction of Miro Web SDK coordinates was not confirmed on a live board; normalization must state its assumption and report it as a loss/uncertainty until real-source evidence exists.
 - Miro REST rows for groups and tags were marked "not reverified" in the T15 capability table; confirm or keep them as explicit unknowns.
-- Text extracted from source HTML must be sanitized before it reaches board content (T01 finding, routed to T10/T16/T17).
 
 ## Known gating and evidence
 
