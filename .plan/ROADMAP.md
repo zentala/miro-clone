@@ -21,7 +21,7 @@ resumes. On resume, the next agent reads the task records (status/evidence),
 [the resume list in HANDOFF](epics/E001-2026-10-30-personal-whiteboard/HANDOFF.md#resume-after-the-2026-11-08-pause)
 and starts in this order:
 
-1. T18 (backup/restore; needs T04).
+1. T18 (backup/restore; needs T04), and T25 (fast redraw) once T07 is integrated.
 2. T23 (test/lint hygiene) in the window after T07 integration.
 3. T05, then T10 and T19 (share model/store/canvas files with T07; integrate T05 -> T10 -> T19).
 4. Then T06, T08, T09, T11, T12, T13 as their dependencies close.

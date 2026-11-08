@@ -109,7 +109,7 @@ Owner paused execution on 2026-11-08 after the tasks in flight. Done on that
 day: T01, T02, T03, T15, T16 (plus T24/T04/T07 if their records say done).
 A task whose record is not done keeps its branch and worktree under
 `.plan/worktrees/`; read its record and the DM report before continuing it.
-Ready next, in order: T18; T23 after T07 integration; then T05, T10, T19
+Ready next, in order: T18; T25 (fast redraw, after T07); T23 after T07 integration; then T05, T10, T19
 (integrate T05 -> T10 -> T19). Library choices, defaults and routed findings
 are in PLAN, "PO acceptance of T01". Concurrency: at most 5 implementers or
 verifiers for this epic, 13 working agents on mITX in total. Owner decisions
@@ -145,6 +145,7 @@ pending/No; only the integrator updates them after independent acceptance.
 | [E001-T21](tasks/T21-acceptance-migration-rehearsal.md): Independently accept the integrated board and rehearse migration | 5 | High | E001-T02, E001-T06, E001-T08, E001-T09, E001-T10, E001-T11, E001-T12, E001-T14, E001-T17, E001-T18, E001-T20 | No |
 | [E001-T22](tasks/T22-release-deployment-acceptance.md): Coordinate release and independently accept intended HTTPS service | 5 | High | E001-T21 | No |
 | [E001-T23](tasks/T23-test-and-lint-hygiene.md): Split the editor browser test and lint tools/ and tests/ (added by PO 2026-11-08) | 3 | Medium | E001-T02, E001-T03 | No |
+| [E001-T25](tasks/T25-incremental-redraw.md): Redraw only changed layers and split the canvas component (added by PO 2026-11-08) | 5 | High | E001-T07 | No |
 | [E001-T24](tasks/T24-legacy-remnant-cleanup.md): Remove hosted-SDK remnants, unused packages and unused public assets (added by PO 2026-11-08) | 3 | Medium | E001-T02 | No |
 
 ## Boundaries for a future dispatched executor

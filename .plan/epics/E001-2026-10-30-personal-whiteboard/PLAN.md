@@ -280,6 +280,10 @@ Independent verifier PASS on all five criteria. PO decisions:
   editor browser test, lint `tools/` and `tests/`; epic total 158 points.
 - Added [E001-T24](tasks/T24-legacy-remnant-cleanup.md) (3 points, Medium) from the
   T02 report: hosted-SDK remnants, unused packages and public assets; total 161.
+- T07 capacity limit: 5000 objects per board, accepted by PO 2026-11-08. Added
+  [E001-T25](tasks/T25-incremental-redraw.md) (5 points, High) to redraw only
+  changed layers (undo/drag ≤ 100 ms at 2000 objects) and split `canvas.tsx`;
+  total 166.
 - Libraries pre-approved by PO (2026-11-08), installed only by the owning task
   after a short report of exact version, licence and bundle size: Tiptap
   (current maintained major, open-source extensions only; no Pro/cloud) for
