@@ -52,6 +52,9 @@ const ACTIONS: Record<ErrorCode, string> = {
     "coverage-mismatch": "The export file is truncated or edited; export the board again.",
 };
 
+/** Kinds placed on the board; without a numeric position they cannot be imported. */
+const POSITIONED = new Set<PortableKind>(["note", "text", "shape", "card", "image", "embed", "link-preview", "frame", "mindmap-node"]);
+
 const MARKUP = /<\/?[a-z!?][^>]*>|&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);/i;
 const NOT_TEXT = new Set(["id", "type", "url", "previewUrl", "linkedTo", "origin", "relativeTo", "parentId", "groupId"]);
 
@@ -131,11 +134,13 @@ function settle(item: MigrationItem, record: ExportRecord, ctx: Context, assets:
     }
     const resolved = resolveWorld(item, ctx);
     if (resolved.problem) return fail(item, ctx, resolved.problem);
+    if (!resolved.world && item.kind !== null && POSITIONED.has(item.kind)) {
+        return fail(item, ctx, { code: "invalid-geometry", message: `A ${item.kind} needs numeric x/y, but the export has no geometry for it.` });
+    }
     item.world = resolved.world;
     item.transforms.push(...resolved.transforms);
-    if (resolved.parentRotation) {
-        ctx.losses.push(loss(item, "parent-rotation-ignored", `Parent is rotated ${resolved.parentRotation}°; the conversion ignored it.`));
-    }
+    const ancestor = resolved.rotatedAncestor;
+    if (ancestor) ctx.losses.push(loss(item, "parent-rotation-ignored", `Ancestor ${ancestor.id} is rotated ${ancestor.rotation}°; the conversion ignored it.`));
     if (item.kind === "image" && !hasAsset(item, assets)) {
         return fail(item, ctx, { code: "missing-asset", message: `Image ${item.sourceId} has no asset entry with a URL.` });
     }
@@ -160,10 +165,14 @@ export function normalizeExport(input: unknown): MigrationPackage {
     const source = checkSource(input);
     const items = source.records.map(toItem);
     const byId = new Map<string, MigrationItem>();
+    const failedIds = new Map<string, number>();
     items.forEach((item, index) => {
-        if (item.sourceId !== null && source.records[index].status !== "failed" && !byId.has(item.sourceId)) byId.set(item.sourceId, item);
+        if (item.sourceId === null) return;
+        if (source.records[index].status === "failed") {
+            if (!failedIds.has(item.sourceId)) failedIds.set(item.sourceId, index);
+        } else if (!byId.has(item.sourceId)) byId.set(item.sourceId, item);
     });
-    const ctx: Context = { ...createGeometryIndex(byId), items, errors: [], losses: [] };
+    const ctx: Context = { ...createGeometryIndex(byId, failedIds), items, errors: [], losses: [] };
     const assetsById = new Map(source.assets.map(asset => [String(asset.assetId), asset]));
     items.forEach((item, index) => settle(item, source.records[index], ctx, assetsById));
     const total = source.coverage?.total;

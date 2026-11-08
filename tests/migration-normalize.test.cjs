@@ -123,7 +123,7 @@ test('parent cycles, duplicate IDs, missing parents and missing assets give acti
     assert.match(errors['missing-parent:d'].message, /gone is not in the package/);
     assert.match(errors['missing-asset:img'].message, /no asset entry/);
     assert.equal(errors['duplicate-id:e'].sourceIndex, 8);
-    assert.match(errors['export-failed:null'].message, /index 7|no type/);
+    assert.match(errors['export-failed:nul'].message, /Record nul has no type/);
     assert.ok(errors['coverage-mismatch:null'], 'a record added after export is detected');
     for (const error of pkg.errors) assert.ok(error.action.length > 20, `${error.code} needs an action`);
     assert.equal(pkg.valid, false);
@@ -135,6 +135,29 @@ test('parent cycles, duplicate IDs, missing parents and missing assets give acti
         assert.ok(entry.raw, 'failed records keep their raw data');
     }
     assert.match(formatReport(pkg), /\[parent-cycle\] item a \(source index 0\)[^\n]*\n    fix: Clear parentId/);
+});
+
+test('positioned kinds without numeric geometry fail; failed parents give parent-unresolved', () => {
+    const items = [{ id: 't', type: 'text', x: '5', y: 0, content: 'x' }, { id: 'g', type: 'group', itemsIds: [] },
+        { id: 'p', x: 0, y: 0, width: 10, height: 10 }, { id: 'c', type: 'sticky_note', x: 1, y: 1, relativeTo: 'parent_top_left', parentId: 'p' }];
+    const pkg = normalizeExport(exportOf(items));
+    const error = id => pkg.errors.find(entry => entry.itemId === id);
+    assert.equal(item(pkg, 't').status, 'failed');
+    assert.match(error('t').message, /text needs numeric x\/y/);
+    assert.equal(error('t').code, 'invalid-geometry');
+    assert.equal(item(pkg, 'g').status, 'supported', 'groups have no position by design');
+    assert.equal(error('p').code, 'export-failed');
+    assert.equal(error('c').code, 'parent-unresolved');
+    assert.match(error('c').message, /Parent p failed in the export \(source index 2\)/);
+});
+
+test('a rotated frame is reported for every descendant whose position ignored it', () => {
+    const frame = (id, parentId, rotation = 0) => ({ id, type: 'frame', x: 50, y: 50, width: 100, height: 100, rotation,
+        origin: 'center', relativeTo: parentId ? 'parent_top_left' : 'canvas_center', parentId });
+    const pkg = normalizeExport(exportOf([frame('r', null, 30), frame('c', 'r'), frame('g', 'c'), frame('s', null)]));
+    const ignored = pkg.losses.filter(entry => entry.kind === 'parent-rotation-ignored');
+    assert.deepEqual(ignored.map(entry => entry.itemId), ['c', 'g']);
+    for (const entry of ignored) assert.match(entry.detail, /Ancestor r is rotated 30°/);
 });
 
 test('invalid packages are refused before any processing', () => {

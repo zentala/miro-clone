@@ -11,7 +11,7 @@
 
     const FORMAT = 'miro-clone.structural-export';
     const FORMAT_VERSION = 1;
-    const EXPORTER = { name: 'miro-clone/tools/miro-export', version: '1.0.0' };
+    const EXPORTER = { name: 'miro-clone/tools/miro-export', version: '1.1.0' };
     const REQUIRED_SCOPES = ['boards:read'];
     const CAPABILITIES_CHECKED_ON = '2026-11-08';
 
@@ -76,10 +76,12 @@
         return [];
     }
 
+    /** A failed record keeps an exact (nonempty string) ID so children can still name their parent. */
     function failedRecord(item, index, reason) {
         let raw;
         try { raw = cloneRecord(item); } catch { raw = null; }
-        return { id: null, sourceIndex: index, type: raw?.type ?? null, status: 'failed', reason, raw };
+        const id = typeof raw?.id === 'string' && raw.id !== '' ? raw.id : null;
+        return { id, sourceIndex: index, type: raw?.type ?? null, status: 'failed', reason, raw };
     }
 
     function buildRecord(item, index, seenIds) {
@@ -137,7 +139,7 @@
         const records = items.map((item, index) => buildRecord(item, index, seenIds));
         const losses = [loss(null, null, 'paint-order-unverified', 'Records keep board.get() order, which the SDK does not document as z-order.')];
         for (const record of records) {
-            if (record.status === 'failed') losses.push(loss(null, record.type, 'failed-record', `Source index ${record.sourceIndex}: ${record.reason}`));
+            if (record.status === 'failed') losses.push(loss(record.id, record.type, 'failed-record', `Source index ${record.sourceIndex}: ${record.reason}`));
             else losses.push(...typeLosses(record));
         }
         losses.push(...danglingLosses(records));

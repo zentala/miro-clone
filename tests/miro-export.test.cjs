@@ -227,3 +227,21 @@ test('generated 2,000-item board: complete, deterministic, getter-backed SDK obj
     assert.ok(!JSON.stringify(first).includes('must not be called'));
     assert.equal(MiroExport.fileNameFor(first), 'miro-export-generated-2026-11-08T12-00-00-000Z.json');
 });
+
+test('failed records keep an exact string ID, so children still find their parent', () => {
+    const items = [{ id: 'p', x: 0, y: 0 }, { id: 'c', type: 'text', x: 1, y: 1, parentId: 'p' }, { id: 7, type: 'text', x: 0, y: 0 }];
+    const pkg = MiroExport.buildPackage({}, items, EXPORTED_AT);
+    assert.deepEqual(pkg.records.map(record => [record.id, record.status]), [['p', 'failed'], ['c', 'supported'], [null, 'failed']]);
+    assert.deepEqual(pkg.losses.filter(entry => entry.kind === 'failed-record').map(entry => entry.itemId), ['p', null]);
+    assert.equal(pkg.losses.filter(entry => entry.kind === 'dangling-reference').length, 0, 'a failed parent is still in the export');
+});
+
+test('no exporter module references a board write API', () => {
+    const dir = join(__dirname, '../tools/miro-export');
+    const modules = require('node:fs').readdirSync(dir).filter(file => file.endsWith('.js'));
+    assert.deepEqual(modules.sort(), ['capabilities.js', 'export.js', 'urls.js']);
+    for (const file of modules) {
+        const used = [...readFileSync(join(dir, file), 'utf8').matchAll(/\bboard\.(\w+)\s*\(/g)].map(match => match[1]);
+        assert.deepEqual(used.filter(name => !READ_METHODS.has(name)), [], `${file} uses board methods outside the read set`);
+    }
+});

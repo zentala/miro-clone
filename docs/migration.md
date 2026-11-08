@@ -77,7 +77,8 @@ Record status:
 - `unknown`: a type the exporter does not know; raw record retained.
 - `failed`: non-string or empty ID, missing type, duplicate ID or a non-object;
   raw data retained with the reason. A numeric ID is refused because Miro IDs
-  exceed `Number.MAX_SAFE_INTEGER` and an exact ID cannot be guaranteed.
+  exceed `Number.MAX_SAFE_INTEGER` and an exact ID cannot be guaranteed. A failed
+  record keeps its ID when it is a nonempty string, so children can name it.
 
 `raw` holds every data field the SDK returned (functions dropped, nothing
 invoked). No record is dropped: `coverage.total` equals the number of items read.
@@ -218,15 +219,16 @@ a parent and `parent_top_left` with one, and recorded as a transform.
 Every package and report states its assumptions as losses: Miro y grows
 downward like the editor's SVG, so nothing is flipped (`axis-direction-unverified`,
 NOT_CHECKED on a real board); REST rows for groups and tags stay unverified
-(`rest-coverage-unverified`); a rotated parent is ignored (`parent-rotation-ignored`).
+(`rest-coverage-unverified`); a rotated ancestor is ignored (`parent-rotation-ignored` on every descendant).
 
 ### Errors
 
 Each error names the record, its position and the fix; raw data stays in the
 item. Codes: `export-failed` (exporter marked it failed), `duplicate-id` (a later
 record reuses an ID; the first keeps it), `parent-cycle`, `missing-parent`,
-`parent-unresolved` (the parent failed or has no size), `missing-asset` (image
-without an asset URL), `invalid-geometry` and `coverage-mismatch` (the export's
+`parent-unresolved` (the parent failed, also in the export, or has no size),
+`missing-asset` (image without an asset URL), `invalid-geometry` (non-numeric
+values, or a placed kind such as text without x/y) and `coverage-mismatch` (the export's
 total differs from its record count).
 
 ### Normalization losses
@@ -236,7 +238,7 @@ total differs from its record count).
 | `editor-support` | The kind has no editor layer yet (frames, images, connectors, cards, previews, embeds, groups, tags, other shapes) |
 | `requires-sanitization` | A string field holds tags or character references; sanitize at import (E001-T17) with the E001-T10 sanitizer |
 | `rotation-unsupported` | The item is rotated; the editor has no rotation |
-| `parent-rotation-ignored` | A rotated parent was ignored during conversion |
+| `parent-rotation-ignored` | A rotated ancestor was ignored when converting this item's position |
 | `orphan-asset` | An asset entry belongs to no record |
 
 ### Fidelity
