@@ -6,8 +6,9 @@ Complete one personal self-hosted Miro replacement, from the existing SVG/SQLite
 board through image/link-heavy representative migration to an independently
 accepted owner-approved HTTPS service. Direction: serves [PURPOSE](../../PURPOSE.md)
 and [VISION](../../VISION.md), not full Miro parity. One umbrella epic, 22 pending
-records, 155 indicative Fibonacci points; selected route AO because total >40.
-Estimates are scope estimates, not budgets. No product execution is authorized.
+records, 155 indicative Fibonacci points. Estimates are scope estimates, not
+budgets. Execution is approved by the owner on 2026-11-08 and delivered by the
+sole PO/DM pair through Herdr; see [Execution route](#execution-route).
 
 Plan-content completeness is reviewed separately from runtime readiness:
 all records/acceptance/dependencies passed independent source review and are accepted;
@@ -137,8 +138,8 @@ Do not claim rich-text, code or table import before their models exist. Full
 T21 acceptance still requires all required features, including rich text/code
 and both table views. First useful migration is not full epic completion.
 
-Maximum four active agents INCLUDING coordinator and foreign workers; subtract
-occupied slots. Serialize overlapping store/types/canvas/lockfile/test/docs
+Concurrency follows [Execution route](#execution-route) (superseding the
+earlier four-agent cap). Serialize overlapping store/types/canvas/lockfile/test/docs
 writes even for independent DAG nodes. Largest phase is 40 points; none >70.
 No numeric time/token allowance or budget_minutes field is invented.
 
@@ -185,15 +186,53 @@ corrected-candidate exit 0 separately, as root AGENTS records. Missing evidence
 is NOT_CHECKED. Never substitute server-only calls for UI, fixtures for external
 integration, a raw port for deployment or a later PASS for erased failures.
 
-## Agent Orchestrator Ready
+## Execution route
 
-Selected route AO, based on the full 155-point umbrella; NOT RUN.
-Runtime readiness/admission: NOT_CHECKED. No executor/profile capability,
-external-owner uptake or runtime admission has been checked by operating AO.
-No retired readiness/checksum/manifest workflow, daemon, new lease/gate or
-worker is operated/required here. Content contracts are not dispatch proof.
-Existing DM retains delivery ownership. Any later permitted execution needs
-explicit release and an actually supported host mechanism; do not infer it.
+Owner decision, 2026-11-08 (OpenAgents channel): "miro-clone ma zaplanowane
+epics, dzialaj nad nimi, mozesz odpalic kilka rownolegle" — execute E001 and
+run independent tasks in parallel. This supersedes "no product execution is
+authorized" above for app-repository work.
+
+- AO is retired. The sole PO (scope, decisions, acceptance) and the sole DM
+  (dispatch, independent verification, integration, push) deliver through
+  visible Herdr tabs in the miro-clone workspace. Implementers work in
+  worktrees created with `wt-add`; merges go directly to `main` after
+  independent review and a passing `just check`.
+- Order: T01 first, then each task as soon as its own dependencies are
+  accepted (phase 2: T02, T03, T15 in parallel; then onward per records).
+- Concurrency: the owner raised the mITX machine cap to 13 working agents
+  (Harness request HR-0123). This epic uses at most 5 implementers/verifiers
+  at once and checks the machine total before each start. Overlapping writes
+  to schema/store/canvas/lockfile/test gate/shared docs stay serialized.
+- Still outside this approval (see private DECIDE.md): reading a real Miro
+  account/board, retiring the paid Miro subscription. Deployment to the
+  internal service (T22) follows the standing PO mandate after T21 acceptance.
+
+## PO decisions on open defaults (2026-11-08)
+
+Decided by PO under the standing in-scope mandate; reversible; T01 records the
+evidence and may propose changes, which PO reviews at T01 acceptance.
+
+1. Frame resize changes only the boundary; children keep their geometry.
+2. A mixed locked/unlocked selection refuses the whole geometry operation and
+   shows why. A locked child cannot be reparented or moved by a multi-selection
+   transform; dropping into a locked frame is refused.
+3. Lock/unlock: an explicit toggle in the object toolbar and context menu.
+   Long-press unlock stays a later candidate. Lock changes are ordinary
+   undo/redo history entries.
+4. First rich-text controls: font family, size, bold, italic, text colour;
+   formatting applies to the selected text range; notes and standalone text
+   share one toolbar. Alignment, lists, links and highlight come later.
+5. Fonts: a small set bundled locally (sans, serif, monospace, one handwriting
+   style) under OFL/Apache licences; no runtime font CDN. T01 names families.
+6. First table slice: editable rows; text, number, date and single-choice
+   columns; persistent order; full-page view returning to the same viewport.
+7. Libraries: T01 proposes candidates per capability (editor, highlighter,
+   table grid, image processing). Criteria: maintained, permissive licence
+   (MIT/Apache-2.0/BSD/ISC; OFL for fonts), lazy-loaded, no hosted service.
+   A task may install only libraries PO accepted in its task record; copyleft
+   or a library outside the list returns to PO.
+8. Performance thresholds: T01 proposes them; PO accepts them with T01.
 
 ## Definition of Done
 

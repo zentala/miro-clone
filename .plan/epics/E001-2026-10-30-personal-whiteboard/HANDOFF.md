@@ -3,10 +3,11 @@
 ## Outcome and controlling sources
 
 Repository owner: zentala/miro-clone, existing main branch. Work only in this
-repository or its authorized worktree. This handoff is the entrypoint for later
-execution, not permission to start now. One umbrella epic, E001, 22 task records,
-155 indicative points; AO selected from full size >40, NOT RUN. Runtime readiness
-is NOT_CHECKED; all task statuses pending, completion No, executor unassigned.
+repository or its authorized worktree. This handoff is the entrypoint for
+execution, which the owner approved on 2026-11-08 (see PLAN, Execution route):
+the sole PO/DM pair delivers through visible Herdr; AO is retired. One umbrella
+epic, E001, 22 task records, 155 indicative points. PO decisions on open
+defaults are in PLAN, "PO decisions on open defaults (2026-11-08)".
 
 Read [root AGENTS](../../../AGENTS.md), [PURPOSE](../../PURPOSE.md),
 [VISION](../../VISION.md), [ARCH](../../ARCH.md),
@@ -77,8 +78,9 @@ external waits must not hold independent synthetic/model work.
 
 Phase-internal order: T09 before T11; T13 before T14; T17 before T21. Other edges
 are explicit in dependencies, including T05/T07 before T06. Maximum phase 40
-points (<70). All agent slots include root/coordinator and foreign work; cap
-four total, never four per parent. No workers start from this handoff.
+points (<70). Concurrency: at most 5 implementers/verifiers for this epic and
+no more than 13 working agents on mITX in total (owner, HR-0123); DM checks
+`herdr agent list` before each start.
 
 Early value: T01-T03 stabilize baseline/packaging; T04/T05/T07 make image-heavy
 authoring usable; T06 improves loading when its own dependencies finish.

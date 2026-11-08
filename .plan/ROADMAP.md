@@ -2,9 +2,9 @@
 
 Status: epic directions accepted by the owner on 2026-10-30. The
 [canonical umbrella plan](epics/E001-2026-10-30-personal-whiteboard/PLAN.md)
-now breaks them into 22 pending tasks with 155 indicative points. Full size >40
-selects AO; execution is not dispatched and runtime readiness is NOT_CHECKED.
-No real source access, product change or production activation is authorized.
+breaks them into 22 tasks with 155 indicative points. On 2026-11-08 the owner
+approved execution with parallel work; the sole PO/DM pair delivers through
+Herdr (AO retired). Real Miro account access is still not authorized.
 
 The [feature map](FEATURE-MAP.md) separates requirements, observed reference UI
 and additional PROPOSED candidates. Detailed defaults/library choices remain
