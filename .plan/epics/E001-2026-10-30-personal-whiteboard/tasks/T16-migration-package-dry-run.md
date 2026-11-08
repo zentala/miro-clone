@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T16"
 title: "Normalize structural packages and report dry-run losses"
-status: "pending"
+status: "in-progress"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T15"]
@@ -11,13 +11,13 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t16-impl (Herdr w2G, claude)"
 write_set: ["types/migration.ts", "lib/migration/normalize.ts", "lib/migration/report.ts", "scripts/migration/dry-run.mjs", "tests/migration-normalize.test.cjs", "tests/fixtures/migration/synthetic-source.json", "docs/migration.md", "justfile"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T16] normalize structural packages and report dry-run losses"
 completion: "No"
-execution: "not-dispatched"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 3
 completed_at: null
 commits: []
@@ -53,7 +53,7 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
-- [ ] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
+- [ ] Records carrying text markup are flagged in the package and loss report as requiring sanitization at import; T16 renders nothing and adds no sanitizer (sanitizing happens in T17 with the T10 sanitizer).
 
 - [ ] Retain original records/assets, string IDs, geometry, parents/groups and exact URLs; document screen/world/relative-to-parent conversions.
 - [ ] Every input record is accounted for as supported, transformed, unknown or failed; images, connectors and frames have explicit loss entries.
