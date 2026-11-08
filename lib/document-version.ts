@@ -86,7 +86,7 @@ export function validateDocument(value: unknown): BoardDocument {
     }
     const { layerIds, layers } = value;
     if (!Array.isArray(layerIds) || !isRecord(layers)) fail("invalid-schema", "Document needs layerIds and layers");
-    if (layerIds.length > MAX_LAYERS) fail("invalid-schema", `Boards hold at most ${MAX_LAYERS} layers`);
+    if (layerIds.length > MAX_LAYERS) fail("invalid-schema", `Boards hold at most ${MAX_LAYERS} objects`);
     const ordered = new Set<string>();
     for (const id of layerIds) {
         if (typeof id !== "string" || !id) fail("invalid-schema", "Layer IDs must be non-empty strings");

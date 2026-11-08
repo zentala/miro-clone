@@ -35,6 +35,7 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
     if (!data) return <InfoSkeleton />;
 
     return (
+        <>
         <div className="absolute top-2 left-2 bg-white rounded-md px-1.5 h-12 flex items-center shadow-md">
             <Hint label="Go to boards" side="bottom" sideOffset={10}>
                 <Button asChild className="px-2" variant="board">
@@ -47,7 +48,7 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                         />
                         <span
                             className={cn(
-                                "font-semibold text-xl ml-2 text-black",
+                                "hidden sm:inline font-semibold text-xl ml-2 text-black",
                                 font.className
                             )}
                         >
@@ -60,10 +61,10 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
             <Hint label="Edit title" side="bottom" sideOffset={10}>
                 <Button
                     variant="board"
-                    className="text-base font-normal px-2 italic"
+                    className="text-base font-normal px-2 italic max-w-[7rem] sm:max-w-xs"
                     onClick={() => onOpen(data.id, data.title)}
                 >
-                    {data.title}
+                    <span className="truncate min-w-0">{data.title}</span>
                 </Button>
             </Hint>
             <TabSeparator />
@@ -73,7 +74,6 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                 </Button>
             </Hint>
             <span role="status" className="px-2 text-xs">{store.status}</span>
-            {store.notice && <span role="alert" className="px-2 text-xs text-destructive">{store.notice}</span>}
             {store.status === "Save failed" && <Button variant="board" onClick={store.save}>Retry save</Button>}
             <TabSeparator />
             <Actions
@@ -92,6 +92,16 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                 </div>
             </Actions>
         </div>
+        {/* Own panel below the fixed-height Info bar, so a long reason wraps instead of widening the bar. */}
+        {store.notice && (
+            <p
+                role="alert"
+                className="absolute top-16 left-2 max-w-[min(24rem,calc(100vw-1rem))] bg-white rounded-md px-3 py-2 shadow-md text-xs text-destructive"
+            >
+                {store.notice}
+            </p>
+        )}
+        </>
     );
 };
 

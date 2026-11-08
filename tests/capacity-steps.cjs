@@ -41,7 +41,7 @@ async function capacitySteps(context) {
         assert.equal(await alert(), '');
         await session.click('button[aria-label="Rectangle (Ctrl+R)"]');
         await session.clickAt({ x: 700, y: 120 });
-        await until('capacity refusal shown', async () => (await alert()).includes(`at most ${MAX_LAYERS.toLocaleString('en-US')} objects`));
+        await until('capacity refusal shown', async () => (await alert()).includes(`at most ${MAX_LAYERS} objects`));
         await session.clickAt({ x: ANCHOR.x + 50, y: ANCHOR.y + 50 });
         await session.key('d', 2);
         await h.frames();
@@ -49,6 +49,26 @@ async function capacitySteps(context) {
         assert.equal(await h.patches(), 0, 'Refused edits send nothing');
         assert.equal(read('full').layerIds.length, MAX_LAYERS);
         assert.equal(await h.evaluate('document.querySelector("[data-board-layers]").childElementCount'), MAX_LAYERS);
+        // The reason wraps in its own panel below the Info bar; nothing leaves a 390 px viewport.
+        // Deselect first: the selection toolbar is centred on the selection and is checked separately.
+        await session.clickAt({ x: 1000, y: 120 });
+        await until('selection cleared', async () => !(await h.evaluate('!!document.querySelector("svg.lucide-copy")')));
+        assert.ok((await alert()).includes('This board is full'), 'The reason stays until the next change');
+        const layout = () => h.evaluate(`(() => {
+            const box = element => { const r = element.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+            return { width: document.documentElement.scrollWidth, bar: box(document.querySelector('[role=status]').parentElement),
+                alert: box(document.querySelector('[role=alert]')), menu: box(document.querySelector('svg.lucide-menu').closest('button')) };
+        })()`);
+        for (const [width, height] of [[390, 844], [1440, 900]]) {
+            await session.page('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+            await h.frames();
+            const { width: pageWidth, bar, alert: notice, menu } = await layout();
+            assert.ok(pageWidth <= width, `No horizontal overflow at ${width} px: ${pageWidth}`);
+            assert.ok(notice.top >= bar.bottom, `Reason sits below the Info bar at ${width} px`);
+            assert.ok(notice.left >= 0 && notice.right <= width, `Reason fits the viewport at ${width} px`);
+            assert.ok(menu.right <= width, `Menu button stays on screen at ${width} px`);
+        }
+        await session.page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
     });
 
     await step('the server refuses documents above the limit; such stored boards show a readable page', async () => {
@@ -58,12 +78,12 @@ async function capacitySteps(context) {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document: over }),
         });
         assert.equal(response.status, 400);
-        assert.equal((await response.json()).error, `Boards hold at most ${MAX_LAYERS} layers`);
+        assert.equal((await response.json()).error, `Boards hold at most ${MAX_LAYERS} objects`);
         assert.deepEqual(read('navigation'), before, 'Refused save leaves the stored board unchanged');
         insertBoard(databasePath, 'over', 'Over-limit board', over);
         await session.page('Page.navigate', { url: `${origin}/board/over` });
         await until('readable over-limit page', async () => (await alert()).includes('cannot open this board'));
-        assert.ok((await alert()).includes(`at most ${MAX_LAYERS} layers`));
+        assert.ok((await alert()).includes(`at most ${MAX_LAYERS} objects`));
         assert.ok(await h.evaluate('!!document.querySelector("a[href=\'/\']")'), 'Way back to the board list');
         insertBoard(databasePath, 'future', 'Future board', { schemaVersion: 99, layerIds: [], layers: {} });
         await session.page('Page.navigate', { url: `${origin}/board/future` });

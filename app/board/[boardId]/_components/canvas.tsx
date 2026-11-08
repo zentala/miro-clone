@@ -52,7 +52,7 @@ import { exportBoardPng } from "./export-png";
 import { useBoardCamera } from "./use-board-camera";
 
 const SELECTION_NET_THRESHOLD = 5;
-const CAPACITY_NOTICE = `This board is full: it can hold at most ${MAX_LAYERS.toLocaleString("en-US")} objects.`;
+const CAPACITY_NOTICE = `This board is full: it can hold at most ${MAX_LAYERS} objects.`;
 const MOVE_OFFSET = 5;
 
 interface CanvasProps {
