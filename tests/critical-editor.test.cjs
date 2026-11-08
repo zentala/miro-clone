@@ -11,6 +11,8 @@ const { setTimeout: delay } = require('node:timers/promises');
 const { DatabaseSync } = require('node:sqlite');
 
 const root = resolve(__dirname, '..');
+// Optional: MIRO_TEST_IMAGE runs the same flow against disposable podman containers of that image.
+const containerImage = process.env.MIRO_TEST_IMAGE;
 const deadline = 15000;
 async function until(description, predicate, timeout = deadline) {
     const end = Date.now() + timeout;
@@ -87,10 +89,11 @@ class CDP extends EventEmitter {
 
 test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable reload/restart', { timeout: 120000 }, async t => {
     const owned = await mkdtemp(join(tmpdir(), 'miro-critical-'));
-    const databasePath = join(owned, 'synthetic.sqlite');
+    const databasePath = containerImage ? join(owned, 'data', 'miro.sqlite') : join(owned, 'synthetic.sqlite');
     const profile = join(owned, 'chromium-profile');
     const downloads = join(owned, 'downloads');
     await mkdir(profile); await mkdir(downloads);
+    if (containerImage) await mkdir(join(owned, 'data'));
     const processes = [];
     let cdp;
     t.after(async () => {
@@ -104,8 +107,24 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
     });
     const port = await unusedPort();
     const origin = `http://127.0.0.1:${port}`;
+    const containers = [];
+    async function removeContainers() {
+        for (const name of containers.splice(0)) {
+            const removal = child('podman', ['rm', '--force', '--ignore', name], {});
+            await until(`removal of container ${name}`, () => removal.closed, 30000);
+        }
+    }
+    if (containerImage) t.after(removeContainers);
+    // Each start replaces the container on the same /app/data mount, published on loopback only.
+    // keep-id maps the image's node user to the host user so this test can read the mounted SQLite.
+    async function containerApp() {
+        await removeContainers();
+        containers.push(`miro-critical-${port}-${Date.now()}`);
+        return child('podman', ['run', '--rm', '--name', containers[0], '--userns=keep-id:uid=1000,gid=1000',
+            '--publish', `127.0.0.1:${port}:3000`, '--volume', `${join(owned, 'data')}:/app/data:Z`, containerImage], {});
+    }
     async function startApp() {
-        const record = child(process.execPath, [join(root, 'node_modules/next/dist/bin/next'), 'start', root, '--hostname', '127.0.0.1', '--port', String(port)], {
+        const record = containerImage ? await containerApp() : child(process.execPath, [join(root, 'node_modules/next/dist/bin/next'), 'start', root, '--hostname', '127.0.0.1', '--port', String(port)], {
             cwd: root,
             env: { ...process.env, NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1', MIRO_SQLITE_PATH: databasePath },
         });

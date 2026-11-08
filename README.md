@@ -94,11 +94,12 @@ includes that build. `just check` also runs `tests/packaging.test.cjs`: it
 confirms no hosted SDK remains in the manifest, lockfile, source or build
 output, then copies the standalone bundle the way the container does and
 checks pages, JS, the self-hosted font, `public/` images, SQLite writes and a
-Chromium render of a saved stroke. `just container-check` adds a disposable
-container run (podman by default, `MIRO_CONTAINER_RUNTIME` selects another):
-it builds a temporary image, checks the non-root user, writes synthetic data
-to a temporary `/app/data` mount, replaces the container and checks the data
-survived, then removes the containers and image. The test requires the existing `/usr/bin/chromium-browser`
+Chromium render of a saved stroke. `just container-check` needs podman. It
+builds a temporary image, checks the non-root user, writes synthetic data to a
+temporary `/app/data` mount, replaces the container and checks the data
+survived. It then runs the six critical browser steps against loopback-only
+containers of that image (`MIRO_TEST_IMAGE` selects the image), restarting by
+container replacement, and removes the containers and image. The test requires the existing `/usr/bin/chromium-browser`
 and Node.js 22. It uses only Node builtins, including the test runner and CDP
 communication over WebSocket. No browser-testing packages are installed.
 
