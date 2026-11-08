@@ -12,7 +12,7 @@ importance: "Medium"
 effort: "small"
 role: "implementer"
 executor: "unassigned"
-write_set: ["tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md"]
+write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "test(editor): [E001-T23] split the editor browser test and lint tools and tests"
@@ -42,6 +42,8 @@ findings (T15 verifier F2; T03 test file at 341 lines).
 - [ ] `just lint` (and so `just check`) covers `tools/` and `tests/`; existing
       warnings are listed, not silenced.
 - [ ] AGENTS.md "Verification" names every test file `just check` runs, including `tests/packaging.test.cjs`, and describes `just container-check`.
+- [ ] `just container-check` builds the image once (T02 verifier F2) and removes the
+      intermediate build-stage images it created, leaving foreign images untouched (T02 F3).
 - [ ] No new dependencies.
 
 ## Independent verification

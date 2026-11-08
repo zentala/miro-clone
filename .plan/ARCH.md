@@ -27,15 +27,20 @@ consistent database backup, including uncheckpointed WAL as needed; no automated
 backup/restore workflow is delivered here. PNG export uses the existing SVG
 scene and `html-to-image`; it is not an editable board backup.
 
-Active routes do not depend on Clerk, Convex or Liveblocks. Their unused source
-and packages remain in the repository. The former Liveblocks auth endpoint
-returns HTTP 410. The local API checks incoming Origin against validated request
+Clerk, Convex and Liveblocks source and packages were removed in E001-T02; the
+former Liveblocks auth endpoint remains only as an HTTP 410 stub. Remaining
+remnants (env keys, orphan helpers, unused packages and public assets) belong
+to E001-T24. The local API checks incoming Origin against validated request
 protocol and incoming Host for mutating browser requests; it does not trust
 forwarded host headers. This is not authentication or a multi-user boundary.
 
-The Dockerfile retains `next start` and the full locked dependency tree on
-Node 22, runs as non-root, binds inside the container to `0.0.0.0:3000`, and uses
-`/app/data` for SQLite persistence. The image build is separate from deployment;
+Since E001-T02 the Dockerfile builds on Node 22 and ships only the traced Next.js
+standalone server (`node server.js`, image about 267 MB instead of 912 MB). Next
+image optimization is off (`images.unoptimized`), because image processing
+belongs to `@napi-rs/image` in T04/T06. The container runs as non-root, binds
+inside to `0.0.0.0:3000` and keeps SQLite in the `/app/data` volume, which
+survives container replacement. `just container-check` runs the six UI steps
+against a disposable container. The image build is separate from deployment;
 this repository does not establish a running service or public endpoint.
 
 ## Source baseline (E001-T01, 2026-11-08)
