@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Removed
+
+- Remove the unused Clerk, Convex and Liveblocks packages, the `convex/` backend, the Liveblocks config and room, and the hosted dashboard and presence components; no active route imported them. `/api/liveblocks-auth` still answers `POST` with 410 Gone.
+
+### Changed
+
+- Build the container from the traced Next.js standalone server. The image shrinks from 911,639,759 to 267,128,909 bytes (podman, `node:22-bookworm-slim` base of 232,441,831 bytes); it still runs as `node` and keeps SQLite under `/app/data`.
+- Disable Next.js image optimization, which needs the native `sharp` package in standalone mode; local images are served unchanged.
+
+### Tests
+
+- Add `tests/packaging.test.cjs` to `just check` (hosted SDKs absent; standalone bundle serves pages, assets, fonts and SQLite) and `just container-check` (disposable non-root container, data mount and replacement).
+
 ### Documentation
 
 - Add one source-grounded personal-whiteboard execution plan with 22 pending taskmd records, dependencies, acceptance, proposed write sets and 155 indicative points. AO is selected by total scope but not run; runtime readiness remains NOT_CHECKED.

@@ -20,9 +20,9 @@ of full Miro compatibility.
 **Breaking architecture change:** hosted accounts, organization IDs, board
 records and room state are not automatically migrated. Existing hosted data
 cannot be opened by simply pointing the local API at the old backend. Multiple
-users, collaboration and concurrent editor tabs are unsupported. Legacy SDK
-packages/files remain, but active application paths require no Clerk, Convex
-or Liveblocks account or credentials. See the
+users, collaboration and concurrent editor tabs are unsupported. The Clerk,
+Convex and Liveblocks packages and source files have been removed; the
+application needs no hosted account or credentials. See the
 [architecture decision](.plan/ADR/0001-single-user-sqlite.md).
 
 The current editor supports boards, shapes, freehand strokes, basic text/notes,
@@ -43,8 +43,25 @@ packages with `npm ci`. Existing drawing/UI libraries are retained.
 
 The standard Next.js commands remain `npm run dev`, `npm run build`, and
 `npm start`. Run the application only in a trusted local environment: it has
-no authentication or multi-user access boundary. Container packaging is available, but
-a built image does not establish deployment or a managed runtime.
+no authentication or multi-user access boundary.
+
+## Container
+
+The `Dockerfile` builds the app and runs the traced Next.js standalone server
+(`node server.js`) on Node 22 as the non-root `node` user, listening on port
+3000 inside the container. It ships only the traced runtime files, static
+assets and `public/`, not the full dependency tree. Mount a volume or host
+directory at `/app/data` to keep the SQLite database across container
+replacement:
+
+```sh
+podman build -t miro-clone .
+podman run -p 127.0.0.1:3000:3000 -v miro-data:/app/data miro-clone
+```
+
+Image optimization is disabled (`images.unoptimized`) because the standalone
+server would need the native `sharp` package; local images are served as-is.
+A built image does not establish deployment or a managed runtime.
 
 ## Local storage
 
@@ -73,7 +90,15 @@ node --test --test-concurrency=1 tests/critical-editor.test.cjs
 ```
 
 The direct test command needs a current build (`npm run build`); `just check`
-includes that build. The test requires the existing `/usr/bin/chromium-browser`
+includes that build. `just check` also runs `tests/packaging.test.cjs`: it
+confirms no hosted SDK remains in the manifest, lockfile, source or build
+output, then copies the standalone bundle the way the container does and
+checks pages, JS, the self-hosted font, `public/` images, SQLite writes and a
+Chromium render of a saved stroke. `just container-check` adds a disposable
+container run (podman by default, `MIRO_CONTAINER_RUNTIME` selects another):
+it builds a temporary image, checks the non-root user, writes synthetic data
+to a temporary `/app/data` mount, replaces the container and checks the data
+survived, then removes the containers and image. The test requires the existing `/usr/bin/chromium-browser`
 and Node.js 22. It uses only Node builtins, including the test runner and CDP
 communication over WebSocket. No browser-testing packages are installed.
 
@@ -96,8 +121,9 @@ Critical manual verification, when running the app is authorized:
 6. Confirm a failed write remains visible and Retry save persists the latest
    document; verify deletion returns to the board list.
 
-## Legacy integrations
+## Retired integrations
 
-Unused hosted-service source and packages remain in the repository. Removing
-them requires a separately scoped usage review and cleanup; no dual-backend
-runtime mode is provided.
+Clerk, Convex and Liveblocks code and packages were removed after an import
+trace showed no active route used them. The former collaboration endpoint
+`/api/liveblocks-auth` stays as a stub: `POST` returns HTTP 410 Gone and other
+methods return 405. No dual-backend runtime mode is provided.
