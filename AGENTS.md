@@ -56,7 +56,8 @@ remain outside the focused automated flow; report their coverage separately.
   is historical and does not prohibit checks for later accepted work.
 
 ## Persistence
-Node.js >=22.13 is required for built-in `node:sqlite`. Keep `data/miro.sqlite`
+Node.js >=22.18 is required for built-in `node:sqlite` and default TypeScript
+type stripping (migration scripts run `.ts` modules directly). Keep `data/miro.sqlite`
 and its WAL/SHM files out of Git. `MIRO_SQLITE_PATH`, when set, must be an
 absolute path; the acceptance test sets it to its own disposable database.
 No secrets or external accounts are required.

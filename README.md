@@ -15,7 +15,7 @@ of full Miro compatibility.
 | Identity | Clerk users and organizations | One local workspace, no accounts/authentication |
 | Persistence | Convex board metadata and Liveblocks editor storage | Same-origin Next.js board API and server-side SQLite |
 | Collaboration | Liveblocks rooms/presence/history | Single-user editing and session-local undo/redo |
-| Operations | Hosted backend configuration | Node >=22.13, local database, optional container packaging |
+| Operations | Hosted backend configuration | Node >=22.18, local database, optional container packaging |
 
 **Breaking architecture change:** hosted accounts, organization IDs, board
 records and room state are not automatically migrated. Existing hosted data
@@ -38,7 +38,8 @@ board; proposed work is not approval to access or import a real account.
 
 ## Requirements
 
-Node.js 22.13 or newer (built-in `node:sqlite`) and npm. Install the locked
+Node.js 22.18 or newer (built-in `node:sqlite`, and default TypeScript type
+stripping for the migration scripts) and npm. Install the locked
 packages with `npm ci`. Existing drawing/UI libraries are retained.
 
 The standard Next.js commands remain `npm run dev`, `npm run build`, and
