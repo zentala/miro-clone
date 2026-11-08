@@ -10,7 +10,11 @@ import { LayerType, type Layer } from "../types/canvas";
 export const CURRENT_SCHEMA_VERSION = 2;
 /** Documents saved before explicit versioning have no schemaVersion field. */
 export const LEGACY_SCHEMA_VERSION = 1;
-const MAX_LAYERS = 100;
+/**
+ * Most layers one board may hold; the editor and the server enforce the same bound.
+ * Set from the T07 browser measurement (ARCH.md, "Measured browser capacity").
+ */
+export const MAX_LAYERS = 5000;
 const MAX_PATH_POINTS = 100000;
 const SUPPORTED_LAYER_TYPES = new Set<number>([
     LayerType.Rectangle, LayerType.Ellipse, LayerType.Path, LayerType.Text, LayerType.Note,

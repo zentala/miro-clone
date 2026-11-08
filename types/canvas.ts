@@ -4,9 +4,11 @@ export type Color = {
     b: number;
 };
 
+/** View state only, never saved: screen = world * zoom + (x, y). */
 export type Camera = {
     x: number;
     y: number;
+    zoom: number;
 };
 
 /** Relation and protection fields shared by every layer type (document schema v2). */

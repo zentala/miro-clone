@@ -55,3 +55,21 @@ change or product edit follows from these corrections.
   sources unchanged; `npm ci` restored the dependencies; later copies got their own install.
 - Rule since then (PO): never delete directories that contain symlinks; make test copies with `cp -a`
   without symlinking node_modules or other shared directories.
+
+## 2026-11-08 — E001-T07 findings during baseline measurement
+
+- Baseline A (unchanged code): 2000/10000-object boards are refused at read (HTTP 409,
+  `invalid-schema`); a 100-object drag sends 20 full-document saves (609 KiB).
+- Baseline B (only both 100-layer caps raised, renderer unchanged): 2000 objects pan at
+  about 1 s per frame. Cause: `useStorage` built a full layer `Map` per call, once per
+  layer component (quadratic), and every cursor move re-rendered all layers. 10000 objects
+  did not finish one measurement case in 14 minutes; the run was stopped.
+- Store work per edit was about 50 ms at 2000 objects (deep clone plus two full-document
+  `JSON.stringify` per mutation). T07 replaced it with copy-on-write history.
+- Drag on a large board landed further than the pointer: the translate offset came from
+  render state, so pointer moves that arrived before a re-render repeated an offset.
+  Fixed with a synchronously updated ref; the 2000-object browser step caught it.
+- A plain SVG grid `<rect>` would have made an existing critical-test check
+  (`svg.querySelector("rect")`) pass trivially, so the grid is a CSS background.
+- Interrupted measurement runs leave Chromium singleton symlinks in their temp profile;
+  they were unlinked before removing the directory (2026-11-08 rule).

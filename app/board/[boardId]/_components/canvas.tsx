@@ -13,7 +13,6 @@ import { nanoid } from "nanoid";
 import {
     CanvasState,
     CanvasMode,
-    Camera,
     Color,
     LayerType,
     Point,
@@ -36,7 +35,9 @@ import {
     penPointsToPathLayer,
     pointerEventToCanvasPoint,
     resizeBounds,
+    isDefaultCamera,
 } from "@/lib/utils";
+import { MAX_LAYERS } from "@/lib/document-version";
 import { LocalObject as LiveObject } from "@/store/use-board-store";
 import { useLocalBoard } from "@/hooks/use-local-board";
 import { LayerPreview } from "./layer-preview";
@@ -45,11 +46,13 @@ import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
 import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { ResetCamera } from "./reset-camera";
+import { ZoomControls } from "./zoom-controls";
+import { gridBackground } from "./board-grid";
+import { exportBoardPng } from "./export-png";
+import { useBoardCamera } from "./use-board-camera";
 
-import { toPng } from "html-to-image";
-
-const MAX_LAYERS = 100;
 const SELECTION_NET_THRESHOLD = 5;
+const CAPACITY_NOTICE = `This board is full: it can hold at most ${MAX_LAYERS.toLocaleString("en-US")} objects.`;
 const MOVE_OFFSET = 5;
 
 interface CanvasProps {
@@ -65,11 +68,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         mode: CanvasMode.None,
     });
 
-    const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 });
-
-    const resetCamera = useCallback(() => {
-        setCamera({ x: 0, y: 0 });
-    }, []);
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const store = useLocalBoard();
+    const { camera, zoomIn, zoomOut, resetZoom, resetCamera } = useBoardCamera(svgRef);
 
     const [lastUsedColor, setLastUsedColor] = useState<Color>({
         r: 255,
@@ -94,6 +95,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         ) => {
             const liveLayers = storage.get("layers");
             if (liveLayers.size >= MAX_LAYERS) {
+                store.refuse(CAPACITY_NOTICE);
+                setCanvasState({ mode: CanvasMode.None });
                 return;
             }
 
@@ -117,15 +120,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         [lastUsedColor]
     );
 
+    // Last applied drag point, updated synchronously: on large boards several pointer
+    // moves can arrive before React re-renders, and render state would repeat an offset.
+    const translatePointRef = useRef<Point | null>(null);
+
     const translateSelectedLayers = useMutation(
         ({ storage, self }, point: Point) => {
             if (canvasState.mode !== CanvasMode.Translating) {
                 return;
             }
 
+            const from = translatePointRef.current ?? canvasState.current;
+            translatePointRef.current = point;
             const offset = {
-                x: point.x - canvasState.current.x,
-                y: point.y - canvasState.current.y,
+                x: point.x - from.x,
+                y: point.y - from.y,
             };
 
             const liveLayers = storage.get("layers");
@@ -205,11 +214,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const liveLayers = storage.get("layers");
             const { pencilDraft } = self.presence;
 
-            if (
-                pencilDraft == null ||
-                pencilDraft.length < 2 ||
-                liveLayers.size >= MAX_LAYERS
-            ) {
+            if (pencilDraft == null || pencilDraft.length < 2) {
+                setMyPresence({ pencilDraft: null });
+                return;
+            }
+            if (liveLayers.size >= MAX_LAYERS) {
+                store.refuse(CAPACITY_NOTICE);
                 setMyPresence({ pencilDraft: null });
                 return;
             }
@@ -274,15 +284,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         },
         [history]
     );
-
-    const onWheel = useCallback((e: React.WheelEvent) => {
-        setCamera((camera) => {
-            return {
-                x: camera.x - e.deltaX,
-                y: camera.y - e.deltaY,
-            };
-        });
-    }, []);
 
     const onPointerMove = useMutation(
         ({ setMyPresence }, e: React.PointerEvent) => {
@@ -383,6 +384,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 setMyPresence({ selection: [layerId] }, { addToHistory: true });
             }
 
+            translatePointRef.current = point;
             setCanvasState({ mode: CanvasMode.Translating, current: point });
         },
         [setCanvasState, history, camera, canvasState.mode]
@@ -395,6 +397,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         const layersIdsToCopy = self.presence.selection;
 
         if (liveLayerIds.length + layersIdsToCopy.length > MAX_LAYERS) {
+            store.refuse(CAPACITY_NOTICE);
             return;
         }
 
@@ -446,41 +449,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         [canvasState, history]
     );
 
-    const svgRef = useRef<SVGSVGElement | null>(null);
-    const store = useLocalBoard();
     const data = store.board;
 
     const exportAsPng = () => {
         if (svgRef.current && layerIds.length > 0) {
-            const bbox = svgRef.current.getBBox();
-            const svgClone = svgRef.current.cloneNode(true) as SVGSVGElement;
-
-            svgClone.setAttribute("width", Math.max(1, bbox.width).toString());
-            svgClone.setAttribute("height", Math.max(1, bbox.height).toString());
-            svgClone.setAttribute(
-                "viewBox",
-                `${bbox.x} ${bbox.y} ${Math.max(1, bbox.width)} ${Math.max(1, bbox.height)}`
-            );
-
-            svgClone.querySelectorAll("[data-editor-overlay]").forEach(node => node.remove());
-            document.body.appendChild(svgClone);
-
-            toPng(svgClone as unknown as HTMLElement)
-                .then((dataUrl) => {
-                    const link = document.createElement("a");
-                    link.href = dataUrl;
-                    link.download = `${data?.title || "download"}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    document.body.removeChild(svgClone);
-                })
-                .catch((error) => {
-                    console.error("Error exporting SVG to PNG", error);
-                    document.body.removeChild(svgClone);
-                });
+            void exportBoardPng(svgRef.current, `${data?.title || "download"}.png`);
         }
     };
+
+    // Layer components are memoized; a stable handler keeps panning and zooming from re-rendering every layer.
+    const layerPointerDownRef = useRef(onLayerPointerDown);
+    layerPointerDownRef.current = onLayerPointerDown;
+    const onStableLayerPointerDown = useCallback(
+        (e: React.PointerEvent, layerId: string) => layerPointerDownRef.current(e, layerId),
+        []
+    );
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
@@ -502,8 +485,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         } else {
                             history.undo();
                         }
-                        break;
                     }
+                    break;
                 }
                 case "ArrowUp":
                     offset = { x: 0, y: -MOVE_OFFSET };
@@ -534,7 +517,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }, [history, duplicateLayers, moveSelectedLayers, canvasState.mode]);
 
     return (
-        <main className="h-full w-full relative bg-neutral-100 touch-none">
+        <main
+            className="h-full w-full relative bg-neutral-100 touch-none"
+            style={gridBackground(camera)}
+        >
             <Info boardId={boardId} exportAsPng={exportAsPng} />
 
             <Toolbar
@@ -545,9 +531,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 undo={history.undo}
                 redo={history.redo}
             />
-            {camera.x != 0 && camera.y != 0 && (
-                <ResetCamera resetCamera={resetCamera} />
-            )}
+            <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                {!isDefaultCamera(camera) && (
+                    <ResetCamera resetCamera={resetCamera} />
+                )}
+                <ZoomControls
+                    zoom={camera.zoom}
+                    onZoomIn={zoomIn}
+                    onZoomOut={zoomOut}
+                    onResetZoom={resetZoom}
+                />
+            </div>
             <SelectionTools
                 onDuplicate={duplicateLayers}
                 camera={camera}
@@ -557,33 +551,33 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             <svg
                 ref={svgRef}
                 className="h-[100vh] w-[100vw]"
-                onWheel={onWheel}
                 onPointerMove={onPointerMove}
                 onPointerLeave={onPointerLeave}
                 onPointerUp={onPointerUp}
                 onPointerDown={onPointerDown}
             >
                 <g
-                    style={{
-                        transform: `translate(${camera.x}px, ${camera.y}px)`,
-                    }}
+                    data-board-camera="true"
+                    transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}
                 >
-                    {layerIds.map((layerId) => {
-                        return (
+                    <g data-board-layers="true">
+                        {layerIds.map((layerId) => (
                             <LayerPreview
                                 key={layerId}
                                 id={layerId}
-                                onLayerPointerDown={onLayerPointerDown}
+                                onLayerPointerDown={onStableLayerPointerDown}
                             />
-                        );
-                    })}
+                        ))}
+                    </g>
                     <g data-editor-overlay="true"><SelectionBox
                         onResizeHandlePointerDown={onResizeHandlePointerDown}
+                        zoom={camera.zoom}
                     /></g>
                     {canvasState.mode === CanvasMode.SelectionNet &&
                         canvasState.current && (
                             <rect
                                 className="fill-blue-500/5 stroke-blue-500 stroke-1"
+                                vectorEffect="non-scaling-stroke"
                                 x={Math.min(
                                     canvasState.origin.x,
                                     canvasState.current.x

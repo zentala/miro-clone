@@ -15,14 +15,51 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+/** Zoom steps of the zoom buttons; wheel and pinch zoom continuously between the ends. */
+export const ZOOM_LEVELS = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+export const MIN_ZOOM = ZOOM_LEVELS[0];
+export const MAX_ZOOM = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+export const DEFAULT_CAMERA: Camera = { x: 0, y: 0, zoom: 1 };
+
+/** World coordinates keep two decimals, so zoomed input does not store long fractions. */
+const roundCoordinate = (value: number) => Math.round(value * 100) / 100;
+
+export function screenToWorld(point: Point, camera: Camera): Point {
+    return {
+        x: roundCoordinate((point.x - camera.x) / camera.zoom),
+        y: roundCoordinate((point.y - camera.y) / camera.zoom),
+    };
+}
+
 export function pointerEventToCanvasPoint(
-    e: React.PointerEvent,
+    e: { clientX: number; clientY: number },
     camera: Camera
 ) {
-    return {
-        x: Math.round(e.clientX - camera.x),
-        y: Math.round(e.clientY - camera.y),
-    };
+    return screenToWorld({ x: e.clientX, y: e.clientY }, camera);
+}
+
+export function clampZoom(zoom: number) {
+    return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+/** Changes zoom while the world point under the screen `anchor` stays under it. */
+export function zoomCameraAt(camera: Camera, anchor: Point, zoom: number): Camera {
+    const next = clampZoom(zoom);
+    const worldX = (anchor.x - camera.x) / camera.zoom;
+    const worldY = (anchor.y - camera.y) / camera.zoom;
+    return { x: anchor.x - worldX * next, y: anchor.y - worldY * next, zoom: next };
+}
+
+/** The next zoom button step above (direction 1) or below (direction -1) the current zoom. */
+export function nextZoomLevel(zoom: number, direction: 1 | -1) {
+    const candidates = direction > 0
+        ? ZOOM_LEVELS.filter(level => level > zoom + 1e-9)
+        : ZOOM_LEVELS.filter(level => level < zoom - 1e-9).reverse();
+    return candidates[0] ?? zoom;
+}
+
+export function isDefaultCamera(camera: Camera) {
+    return camera.x === 0 && camera.y === 0 && camera.zoom === 1;
 }
 
 export function colorToCss(color: Color) {

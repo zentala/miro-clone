@@ -20,7 +20,8 @@ stripping, which the migration scripts use (E001-T16). SQLite stores board ID, t
 creation/update timestamps and a JSON document containing a schema version,
 ordered layer IDs and layer records (see
 [document schema versions](#document-schema-versions-e001-t03)). Supported layer types are rectangle, ellipse, freehand path,
-text and note. Both editor and validation currently cap boards at 100 layers.
+text and note. Editor and validation share one limit, `MAX_LAYERS` = 5,000 layers
+(measured in E001-T07, see [measured browser capacity](#measured-browser-capacity-e001-t07)).
 Concurrent editing tabs are unsupported; there is no revision conflict protocol.
 
 The default database is `data/miro.sqlite` relative to the working directory;
@@ -92,12 +93,16 @@ A scratch script (not committed) built synthetic documents and timed one
 mutation's work as the store does it: clone, two stringify calls for the
 change check, clone and stringify for the save body.
 
+History counts 101 snapshots (100 past entries plus the current document);
+sizes are rounded to one decimal (T01 verifier F1 corrected the 1000-point row
+in E001-T07: 285 MiB / 101 = 2.82 MiB).
+
 | Document | JSON size | 100-step history (JSON equivalent) | Per mutation |
 | --- | ---: | ---: | ---: |
 | 100 rectangles | 12.8 KiB | 1.3 MiB | 0.33 ms |
 | 100 notes | 15.7 KiB | 1.6 MiB | 0.38 ms |
 | 100 paths × 200 points | 576.8 KiB | 56.9 MiB | 17.6 ms |
-| 100 paths × 1000 points | 2.9 MiB | 285 MiB | 101 ms |
+| 100 paths × 1000 points | 2.8 MiB | 285 MiB | 101 ms |
 | 1000 notes (over cap) | 158.9 KiB | 15.7 MiB | 2.8 ms |
 | 5000 notes (over cap) | 803.1 KiB | 79.2 MiB | 16.5 ms |
 
@@ -178,6 +183,73 @@ SQL table or column changed.
 - **Next version.** A new layer type or field bumps `CURRENT_SCHEMA_VERSION`,
   adds an upgrade step and extends the type registry, so an older app refuses
   the document instead of dropping the unknown record.
+
+## Measured browser capacity (E001-T07)
+
+TLDR: measured in a real browser before and after the change. The old renderer
+could not use 2,000 objects (about 1 s per frame); after T07, 2,000 objects open in
+about 0.5 s and pan at one frame (16.7 ms) at every zoom, and an edit costs 5–7 ms
+of store work. Proposed limit for PO: 5,000 objects. Edits still re-render every
+layer (about 0.2 s at 2,000), which misses the 100 ms undo target.
+
+Script: `tests/capacity/measure-capacity.cjs` (`just measure-capacity`), generated
+seeded boards of today's five layer types (`tests/lib/synthetic-board.cjs`;
+notes 35 %, text 25 %, rectangles 15 %, ellipses 10 %, paths 15 % with 50–200
+points). No images, frames, cards, code or tables exist yet, so W2/W3 here cover
+object count only. Headless Chromium on mITX (i5-12600K class, Fedora 44), Node
+v22.22.3, production build, loopback server. Frame times come from
+`requestAnimationFrame` (16.7 ms = one 60 Hz frame); key move "sync" is the store
+work inside the key handler, "frame" is until the next painted frame.
+
+Before (2026-11-08, zoom did not exist, so only zoom 1):
+
+| Run | Objects | Result |
+| --- | ---: | --- |
+| A, unchanged | 100 | Opens in 0.06–0.3 s; pan p95 16.7 ms; store work 2–4 ms; one drag = 20 saves, 609 KiB |
+| A, unchanged | 2,000 / 10,000 | Refused at read: HTTP 409 `invalid-schema` (100-layer cap) |
+| B, both caps raised only | 2,000 | Opens 1.0–1.6 s; pan p95 0.8–2.3 s; store work 48–104 ms; one drag = 20 saves, 13.9 MiB |
+| B, both caps raised only | 10,000 | No case finished in 14 min at 1920×1080, DPR 2; stopped |
+
+After (all three viewports × DPR 1/1.25/2 for 100 and 2,000; seven zoom levels):
+
+| Objects | Viewports × DPR | First view | Store work | Edit/undo to frame | Saves per drag | Pan p95, zoom 0.05–4 |
+| ---: | --- | ---: | ---: | ---: | --- | --- |
+| 100 | all 9 | 0.07–0.18 s | 0.5–0.7 ms | 21–32 ms | 1 (30 KiB) | 16.7 ms everywhere |
+| 2,000 | all 9 | 0.43–0.52 s | 5–15 ms | 210–360 ms | 1 (710 KiB) | 16.7 ms everywhere |
+| 5,000 | 1920×1080, DPR 2 | 1.2 s | 12.7 ms | 0.54 s | 1 (1.6 MiB) | 33 ms (50 ms at 0.05) |
+| 10,000 | 1920×1080, DPR 2 | 2.2 s | 26 ms | 1.1 s | 1 (3.3 MiB) | 33–67 ms; heap 539 MiB |
+
+Against the proposed thresholds at W2 (2,000, 1920×1080, DPR 2): first view
+0.43 s (≤ 2 s, met), pan p95 16.8 ms (≤ 33 ms, met), saves per gesture 1 (met),
+store work 6 ms (≤ 8 ms, met), undo to rendered result 216 ms (≤ 100 ms, **not
+met**), save body 710 KiB (≤ 1 MiB, met). Image metrics wait for T04/T06.
+
+PROPOSED limit (PO decides): 5,000 objects. W2 fits with 2.5× headroom; at
+5,000 the board still opens in 1.2 s and pans at about 33 ms, while 10,000 misses
+the first-view and pan targets and edits take over a second. Undo and drag
+frames above 100 ms remain until layers subscribe individually (recommended
+boundary item 6) — the next step, not part of T07.
+
+What changed to get there:
+- `useStorage` builds one layer map per store change instead of one per layer
+  component (was quadratic); cursor-only presence no longer re-renders the board;
+  layer components get a stable pointer handler, so pan and zoom skip them.
+- `BoardStore` edits are copy-on-write: a mutation copies only the layers it
+  writes, history entries share untouched layers, and the change check compares
+  only written layers (replaces the double `JSON.stringify`, recommended item 5).
+- Changes during a drag or resize are saved once, when the gesture ends.
+
+## Camera, zoom and grid (E001-T07)
+
+The camera `{ x, y, zoom }` is view state only: never saved, never in history.
+Screen = world × zoom + (x, y). Plain wheel pans; Ctrl/⌘ + wheel or a trackpad
+pinch zooms about the pointer; the zoom panel steps through 5–400 % about the
+viewport centre. Pointer input maps through `screenToWorld` and keeps world
+coordinates to two decimals. Selection handles and outlines keep their screen
+size. The dot grid is a CSS background of the workspace, outside the SVG, so it
+can be neither saved, hit nor exported. PNG export uses the layers' world bounds
+and drops the camera transform: pan and zoom never change the image (size still
+follows the viewport and device pixel ratio, as before).
 
 ## Representative workload and proposed thresholds
 

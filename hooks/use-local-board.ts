@@ -8,9 +8,18 @@ export function useLocalBoard(): BoardStore {
     if (!context) throw new Error("LocalBoardProvider is required");
     return context.store;
 }
+/** One layer map per store change, shared by every layer component instead of one copy per component. */
+const layerMaps = new WeakMap<BoardStore, { version: number; layers: ReadonlyMap<string, Layer> }>();
 export function useStorage<T>(selector: (root: { layers: ReadonlyMap<string, Layer>; layerIds: readonly string[] }) => T, _equality?: unknown): T {
-    const store = useLocalBoard();
-    return selector({ layers: new Map(Object.entries(store.document.layers)), layerIds: store.document.layerIds });
+    const context = useContext(LocalBoardContext);
+    if (!context) throw new Error("LocalBoardProvider is required");
+    const { store, version } = context;
+    let cached = layerMaps.get(store);
+    if (!cached || cached.version !== version) {
+        cached = { version, layers: new Map(Object.entries(store.document.layers)) };
+        layerMaps.set(store, cached);
+    }
+    return selector({ layers: cached.layers, layerIds: store.document.layerIds });
 }
 export function useSelf<T>(selector: (self: { presence: Presence }) => T): T {
     return selector({ presence: useLocalBoard().presence });

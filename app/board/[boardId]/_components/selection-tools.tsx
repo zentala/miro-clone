@@ -85,8 +85,8 @@ export const SelectionTools = memo(
             return null;
         }
 
-        const x = selectionBounds.width / 2 + selectionBounds.x + camera.x;
-        const y = selectionBounds.y + camera.y;
+        const x = (selectionBounds.width / 2 + selectionBounds.x) * camera.zoom + camera.x;
+        const y = selectionBounds.y * camera.zoom + camera.y;
 
         return (
             <div

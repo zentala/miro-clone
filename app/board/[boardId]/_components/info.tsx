@@ -73,6 +73,7 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                 </Button>
             </Hint>
             <span role="status" className="px-2 text-xs">{store.status}</span>
+            {store.notice && <span role="alert" className="px-2 text-xs text-destructive">{store.notice}</span>}
             {store.status === "Save failed" && <Button variant="board" onClick={store.save}>Retry save</Button>}
             <TabSeparator />
             <Actions

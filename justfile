@@ -9,6 +9,14 @@ check:
     node --test --test-concurrency=1 tests/document-model.test.cjs
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
     node --test --test-concurrency=1 tests/assets.test.cjs
+    node --test --test-concurrency=1 tests/board-store.test.cjs
+    node --test --test-concurrency=1 tests/navigation-capacity.test.cjs
+
+# Browser capacity measurement for the T01 workload matrix (slow; not part of check).
+# Example: just measure-capacity --workloads=2000 --viewports=1920x1080 --dprs=2
+measure-capacity *args:
+    npm run build
+    node tests/capacity/measure-capacity.cjs {{args}}
 
 # Disposable podman containers with synthetic data: packaging checks, then the
 # critical browser workflow against a container of a temporary image.

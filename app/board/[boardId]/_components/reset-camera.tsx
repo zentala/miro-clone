@@ -14,11 +14,11 @@ export const ResetCamera = ({ resetCamera }: ResetCameraProps) => {
     return (
         <Hint label="Reset Camera" side="left">
             <div
-                className="absolute bottom-2 right-2 bg-white rounded-md px-1.5 h-12 w-12 flex items-center justify-center shadow-md cursor-pointer"
+                className="bg-white rounded-md px-1.5 h-12 w-12 flex items-center justify-center shadow-md cursor-pointer"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                <Button variant="board" size="icon" onClick={resetCamera}>
+                <Button aria-label="Reset camera" variant="board" size="icon" onClick={resetCamera}>
                     {isHovered ? (
                         <LocateFixed size={30} />
                     ) : (
