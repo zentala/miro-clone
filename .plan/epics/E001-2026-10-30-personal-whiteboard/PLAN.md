@@ -280,6 +280,16 @@ Independent verifier PASS on all five criteria. PO decisions:
   editor browser test, lint `tools/` and `tests/`; epic total 158 points.
 - Added [E001-T24](tasks/T24-legacy-remnant-cleanup.md) (3 points, Medium) from the
   T02 report: hosted-SDK remnants, unused packages and public assets; total 161.
+- Libraries pre-approved by PO (2026-11-08), installed only by the owning task
+  after a short report of exact version, licence and bundle size: Tiptap
+  (current maintained major, open-source extensions only; no Pro/cloud) for
+  T10; TanStack Table v8, plus TanStack Virtual only when measured row counts
+  need it, for T19; CodeMirror 6 with per-language packages for T11. Legacy
+  HTML is converted through the Tiptap schema; DOMPurify (Apache-2.0 option)
+  is allowed only if the schema path cannot sanitize. A different package, a
+  non-permissive licence or a bundle over twice the T01 estimate returns to PO.
+- Write order: T10 and T19 start after T07 is integrated (shared
+  types/store/canvas files); T23 runs between T07 integration and T10/T19.
 - Source defects routed: `z` moving the selection and camera-reset visibility to
   T07; unsanitized stored text HTML to T10, with sanitizing import in T16/T17.
 

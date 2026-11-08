@@ -192,7 +192,7 @@ Acceptance of directions is distinct from ready implementation. Final estimates 
 | Repeatable migration | Structural discovery can start independently; importer depends on actual object coverage | High | ? | Direction accepted; details pending | No |
 | Daily usability and recovery | Candidate search/grouping/alignment/shortcuts and portable export; select by actual use | Medium | ? | Proposed expansion | No |
 
-PO settled mixed selection, unlock gestures, first rich-text controls, fonts and the first table slice on 2026-11-08 (section above). Still open for PO: the `sharp` licence question, Poppins, the three T01 clarifications and the proposed thresholds. Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Product implementation remains undispatched.
+PO settled mixed selection, unlock gestures, first rich-text controls, fonts and the first table slice on 2026-11-08 (section above). PO settled the remaining T01 items on 2026-11-08 (`@napi-rs/image`, Inter, the three clarifications, the measurement plan) and pre-approved the library candidates; see the E001 PLAN, "PO acceptance of T01". Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Execution is under way in E001.
 
 ## Planning boundary
 
