@@ -189,7 +189,7 @@ SQL table or column changed.
 TLDR: measured in a real browser before and after the change. The old renderer
 could not use 2,000 objects (about 1 s per frame); after T07, 2,000 objects open in
 about 0.5 s and pan at one frame (16.7 ms) at every zoom, and an edit costs 5–7 ms
-of store work. Proposed limit for PO: 5,000 objects. Edits still re-render every
+of store work. Limit: 5,000 objects, accepted by PO. Edits still re-render every
 layer (about 0.2 s at 2,000), which misses the 100 ms undo target.
 
 Script: `tests/capacity/measure-capacity.cjs` (`just measure-capacity`), generated
@@ -224,11 +224,11 @@ Against the proposed thresholds at W2 (2,000, 1920×1080, DPR 2): first view
 store work 6 ms (≤ 8 ms, met), undo to rendered result 216 ms (≤ 100 ms, **not
 met**), save body 710 KiB (≤ 1 MiB, met). Image metrics wait for T04/T06.
 
-PROPOSED limit (PO decides): 5,000 objects. W2 fits with 2.5× headroom; at
+Limit: 5,000 objects, accepted by PO on 2026-11-08 (`0996b6f`). W2 fits with 2.5× headroom; at
 5,000 the board still opens in 1.2 s and pans at about 33 ms, while 10,000 misses
 the first-view and pan targets and edits take over a second. Undo and drag
 frames above 100 ms remain until layers subscribe individually (recommended
-boundary item 6) — the next step, not part of T07.
+boundary item 6), planned as E001-T25.
 
 What changed to get there:
 - `useStorage` builds one layer map per store change instead of one per layer
