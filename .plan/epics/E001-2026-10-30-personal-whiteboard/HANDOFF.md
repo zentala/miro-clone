@@ -33,6 +33,12 @@ duplicate and z-order live in canvas/selection-tools; preserve rather than
 rebuild them. lib/utils.ts:32 and canvas onWheel currently support translation,
 not a completed zoom model. Client and validator both cap at 100 layers.
 
+T01 baseline (read before T03, T07, T08, T09, T10, T11, T19 or T05/T06):
+[source table, measured costs, recommended model boundary and workload](../../ARCH.md#source-baseline-e001-t01-2026-11-08);
+[PO decisions with source evidence, library candidates and fonts](../../FEATURE-MAP.md#po-decisions-on-defaults-and-t01-evidence-2026-11-08);
+proposed visual rows in [DESIGN](../../../DESIGN.md#decision-ledger). Library
+candidates are proposals; install only what PO accepted in the task record.
+
 Existing Node >=22.13 built-in SQLite creates the database at an absolute
 MIRO_SQLITE_PATH override or data/miro.sqlite. Runtime WAL/SHM and later assets
 must persist consistently. Dockerfile currently runs non-root Node 22 with

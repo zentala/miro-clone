@@ -109,6 +109,8 @@ and history exceptions remain proposed. T01/T09 resolve them while preserving
 the two accepted inheritance/individual-lock requirements. First table fields,
 fonts, editors/highlighters/grid/image libraries, variant sizes and performance
 thresholds remain choices. No dependency is silently selected/installed.
+PO decided these defaults on 2026-11-08 (section below); T01 results record
+their source evidence and the proposals still open for PO.
 
 ### Dependencies, phases and milestones
 
@@ -233,6 +235,32 @@ evidence and may propose changes, which PO reviews at T01 acceptance.
    A task may install only libraries PO accepted in its task record; copyleft
    or a library outside the list returns to PO.
 8. Performance thresholds: T01 proposes them; PO accepts them with T01.
+
+## T01 baseline results (2026-11-08, pending independent review)
+
+TLDR: the source baseline, shared-model boundary, workload and thresholds are
+in [ARCH](../../ARCH.md#source-baseline-e001-t01-2026-11-08); the PO decisions
+with source evidence, library candidates and font families are in
+[FEATURE-MAP](../../FEATURE-MAP.md#po-decisions-on-defaults-and-t01-evidence-2026-11-08);
+new visual choices are proposed rows in [DESIGN](../../../DESIGN.md#decision-ledger).
+
+- Shared versioned-object extension recommended over per-component patches:
+  one lock/relation guard in `BoardStore.mutate` instead of 12 separate
+  mutation entry points; absolute coordinates kept; saves coalesced per gesture.
+- Measured: per-mutation store work grows with document size (0.33 ms at 100
+  rectangles, 16.5 ms at 5000 notes, 101 ms at 100 long freehand paths), and a
+  drag sends one full-document save per pointer move. T03/T07 must fix both.
+  Browser baselines are NOT_CHECKED; T07 captures them first.
+- Open for PO at T01 acceptance: `sharp` (LGPL-3.0 libvips binary) versus the
+  permissive `@napi-rs/image`; proposed thresholds; Poppins versus Inter; three
+  clarifications to decisions 1–3 (no reparent on frame shrink, lock also
+  blocks fill/z-order/text/delete, Ctrl+Shift+L shortcut).
+- Source defects seen by reading, not reproduced: plain `z` moves the
+  selection (`canvas.tsx:498-511`); reset-camera visibility uses `&&`
+  (`canvas.tsx:548`); stored text HTML is rendered unsanitized (`text.tsx:61`).
+  None is fixed by T01; PO decides whether they join T03/T07/T10 or BACKLOG.
+- Proposed wording fix: the TLDR's second paragraph still says AO readiness is
+  NOT_CHECKED and no executor is dispatched; Execution route supersedes it.
 
 ## Definition of Done
 

@@ -127,6 +127,55 @@ schema versions/forward migrations, portable editable board export/reimport,
 broader recovery behavior, extended keyboard/accessibility coverage,
 large-board search, asset deduplication and deliberate orphan cleanup. Any cleanup of real data requires its own safe script and scope. No recurring job, browser service or integration is authorized solely by this map.
 
+## PO decisions on defaults and T01 evidence (2026-11-08)
+
+TLDR: PO decided eight open defaults in
+[the E001 plan](epics/E001-2026-10-30-personal-whiteboard/PLAN.md#po-decisions-on-open-defaults-2026-11-08).
+T01 records the source each decision lands on and proposes three
+clarifications. The two accepted lock requirements above are unchanged.
+
+| # | PO decision | Current source it changes | T01 proposal |
+| --- | --- | --- | --- |
+| 1 | Frame resize moves only the boundary | Resize updates one layer's own bounds (`lib/utils.ts:60-84`, `canvas.tsx:244-262`); no parent relation exists (`types/canvas.ts:20-69`) | Children left outside a shrunk frame stay its children until moved; no automatic reparent on resize |
+| 2 | Mixed locked/unlocked selection refuses the whole geometry operation, with a reason; no reparent or multi-transform of a locked child; drop into a locked frame refused | Translate, keyboard move and delete loop over every selected ID with no check (`canvas.tsx:132-140`, `:434-442`, `hooks/use-delete-layers.ts:11-19`) | Apply the same refusal to delete, fill, z-order and text edits of effectively locked items, since a lock blocks editing; read-only actions (select, copy, export) stay allowed; duplicate makes unlocked copies |
+| 3 | Explicit toggle in object toolbar and context menu; long-press later; lock changes are history entries | Toolbar panel exists (`selection-tools.tsx:91-150`); no context menu exists; every changing mutation already becomes a history entry (`store/use-board-store.ts:80-85`) | Add the context menu as part of T09; add a keyboard shortcut (proposed Ctrl+Shift+L) as the accessible route |
+| 4 | First rich text: family, size, bold, italic, colour on the selected range; one toolbar for notes and text | Text and notes store contentEditable HTML and derive size from box size (`text.tsx:20-27`, `:61`; `note.tsx:20-27`, `:63`) | Store structured editor JSON, keep a plain-text fallback, upgrade old HTML `value` once at decode |
+| 5 | Local OFL/Apache fonts: sans, serif, monospace, handwriting; no runtime CDN | Inter, Kalam and Poppins load through `next/font/google` (`app/layout.tsx:7`, `text.tsx:8`, `info.tsx:21`), downloaded at build time | Families below; switch to local font files so builds need no network |
+| 6 | First table slice: rows; text/number/date/single-choice; persistent order; full-page view back to same viewport | No table type (`types/canvas.ts:12-18`); camera is component state, lost on navigation (`canvas.tsx:68`) | Keep camera in the URL or session state so the full-page view can return to it |
+| 7 | Library candidates judged by maintenance, permissive licence, lazy loading, no hosted service | Current dependencies `package.json:11-46` | Table below |
+| 8 | T01 proposes thresholds; PO accepts with T01 | No measurement exists | [Proposed thresholds](ARCH.md#representative-workload-and-proposed-thresholds) |
+
+### Library candidates (PROPOSED, nothing installed)
+
+Sizes are approximate minified+gzip figures from public package data, not
+measured in this build; each installing task measures the real bundle delta.
+Licences must be rechecked against the exact version at install.
+
+| Capability | Recommended | Licence | Approx. size | Alternatives | Fit with PLAN point 7 |
+| --- | --- | --- | --- | --- | --- |
+| Rich text | Tiptap 2 core + StarterKit, TextStyle, Color, FontFamily (open-source extensions only) on ProseMirror | MIT | ~100 KB | Lexical (MIT, ~40 KB core plus plugins, more custom toolbar work) | Meets; lazy-load on first edit; Tiptap Pro/cloud extensions excluded |
+| Code editing and highlighting | CodeMirror 6 (`@codemirror/view`, `state`, `language`, per-language packages); static blocks via `@lezer/highlight` with the same grammars | MIT | ~120 KB editor + ~10–30 KB per language | Prism via `prism-react-renderer` (MIT, ~15 KB) for display only; Shiki (MIT) rejected as heavier for this use | Meets; editor mounted only while editing; built-in line-number extension and font-size theme |
+| Record table grid | TanStack Table v8 (headless) + existing Radix/Tailwind; TanStack Virtual when rows need it | MIT | ~15 KB + ~5 KB | AG Grid Community (MIT, ~300 KB) | Meets; headless keeps DESIGN.md controls |
+| Pasted HTML sanitizing | DOMPurify, only where raw HTML must be rendered | Apache-2.0 or MPL-2.0 (use Apache-2.0) | ~8 KB | Rely on editor schema parsing alone | Meets |
+| Image variants (server) | **Returns to PO:** `sharp` is Apache-2.0 but ships prebuilt libvips under LGPL-3.0 | Apache-2.0 + LGPL-3.0 binary | 0 KB client; ~30–40 MB install | `@napi-rs/image` (MIT, native, smaller community); browser canvas resize at paste time (no dependency, does not cover server-side import) | `sharp` fails the permissive-only rule as written; permissive default is `@napi-rs/image` for server variants plus metadata colours for placeholders |
+| Image placeholder | Average/dominant colours from the variant step | — | 0 KB | ThumbHash (MIT, ~1 KB) | Meets |
+
+Zoom, pan, grid and frames need no new library: SVG transforms and an SVG
+pattern on the existing canvas (`canvas.tsx:557-569`) are enough.
+
+### Font families (PROPOSED)
+
+| Role | Family | Licence | Note |
+| --- | --- | --- | --- |
+| Sans (UI and default text) | Inter | OFL-1.1 | Already the UI font (`app/layout.tsx:7`) |
+| Handwriting | Kalam | OFL-1.1 | Already the authored-text font (`text.tsx:8`) |
+| Serif | Source Serif 4 | OFL-1.1 | New |
+| Monospace (code) | JetBrains Mono | OFL-1.1 | New |
+
+Poppins (`info.tsx:21`, board title chrome) either joins this local set or is
+replaced by Inter; DESIGN.md records it as an open choice. Imported Miro fonts
+outside the set map to the nearest role and appear in the loss report.
+
 ## Wider epic directions and dependencies
 
 Acceptance of directions is distinct from ready implementation. Final estimates remain unknown until bounded tasks are refined; earlier 65 points do not cover expanded work. Importance values in the table remain proposals for alignment. Every future task carries Importance and Points and existing independent review/check requirements. Do not invent a total or dispatch route while scope is unknown.
@@ -143,7 +192,7 @@ Acceptance of directions is distinct from ready implementation. Final estimates 
 | Repeatable migration | Structural discovery can start independently; importer depends on actual object coverage | High | ? | Direction accepted; details pending | No |
 | Daily usability and recovery | Candidate search/grouping/alignment/shortcuts and portable export; select by actual use | Medium | ? | Proposed expansion | No |
 
-Next alignment questions: settle mixed-selection and unlock-gesture behavior, choose the first essential rich-text controls, and confirm the first table slice. Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Product implementation remains undispatched.
+PO settled mixed selection, unlock gestures, first rich-text controls, fonts and the first table slice on 2026-11-08 (section above). Still open for PO: the `sharp` licence question, Poppins, the three T01 clarifications and the proposed thresholds. Source exporters and the shared object model can be planned without treating every observed toolbar icon as a requirement. Product implementation remains undispatched.
 
 ## Planning boundary
 
