@@ -15,57 +15,15 @@
     const REQUIRED_SCOPES = ['boards:read'];
     const CAPABILITIES_CHECKED_ON = '2026-11-08';
 
-    // What an export can read per SDK type. rest: 'none' means no REST read route.
-    const CAPABILITIES = {
-        sticky_note: { status: 'supported', webSdk: 'read', rest: 'read', note: 'HTML content and style kept raw.' },
-        text: { status: 'supported', webSdk: 'read', rest: 'read', note: 'HTML content kept raw.' },
-        shape: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Shape kind, content and style kept raw.' },
-        card: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Title, description, fields kept raw.' },
-        app_card: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Owned by another app; fields kept raw.' },
-        image: { status: 'supported', webSdk: 'read', rest: 'read', note: 'URL and title mapped as an asset; bytes not included.' },
-        embed: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Embedded URL and preview URL kept.' },
-        preview: { status: 'supported', webSdk: 'read', rest: 'none', note: 'Link preview: Web SDK only; REST has no preview read.' },
-        frame: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Children linked by parentId/childrenIds, not nested.' },
-        connector: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Endpoints by item reference; no x/y; route points not exported.' },
-        group: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Membership via itemsIds and item groupId.' },
-        tag: { status: 'supported', webSdk: 'read', rest: 'read', note: 'Board tag; items reference it via tagIds.' },
-        mindmap_node: { status: 'supported', webSdk: 'experimental', rest: 'none', note: 'Experimental SDK support only.' },
-        unsupported: { status: 'opaque', webSdk: 'position only', rest: 'none', note: 'Tables, code blocks, documents, kanban etc.: content not readable.' },
-    };
-    // Always listed in coverage, even at zero, so their handling is explicit.
-    const EXPLICIT_TYPES = ['image', 'preview', 'connector', 'frame', 'unsupported'];
-
-    const OTHER_FORMATS = [
-        { format: 'PDF/SVG export', structural: false, detail: 'Appearance only; no editable items, IDs or relations.' },
-        { format: 'CSV export', structural: false, detail: 'Text cells only; geometry, frames, connectors and images lost.' },
-        { format: 'Board backup (.rtb)', structural: false, detail: 'Opaque Miro restore format; not portable editable JSON.' },
-    ];
-
-    const COORDINATE_CONVENTION = {
-        unit: 'dp (board units as reported by the SDK)',
-        origin: 'x/y are the item center (origin "center"); rotation pivots on the center',
-        canvas_center: 'x/y measured from the board center point (0, 0)',
-        parent_top_left: 'x/y measured from the parent frame top-left corner',
-        parent_center: 'x/y measured from the parent center (experimental in the SDK)',
-        conversion: 'none: values are exported as read; normalization converts them to world coordinates',
-    };
+    const load = (file, name) => (typeof module === 'object' && module.exports ? require(file) : root[name]);
+    const { CAPABILITIES, EXPLICIT_TYPES, OTHER_FORMATS, COORDINATE_CONVENTION } = load('./capabilities.js', 'MiroExportCapabilities');
+    const { urlsOf } = load('./urls.js', 'MiroExportUrls');
 
     // Read explicitly: SDK objects may expose these through prototype getters.
     const KNOWN_FIELDS = ['id', 'type', 'x', 'y', 'width', 'height', 'rotation', 'origin', 'relativeTo',
         'parentId', 'groupId', 'childrenIds', 'itemsIds', 'connectorIds', 'tagIds', 'linkedTo', 'content',
         'title', 'description', 'url', 'previewUrl', 'alt', 'mode', 'shape', 'style', 'start', 'end',
         'captions', 'fields', 'status', 'showContent', 'color', 'createdAt', 'createdBy', 'modifiedAt', 'modifiedBy'];
-
-    const URL_FIELDS = ['url', 'previewUrl', 'linkedTo'];
-    const TEXT_FIELDS = ['content', 'title', 'description'];
-    const HTTP_URL = /^https?:\/\//i;
-    const HREF = /href\s*=\s*(["'])(.*?)\1/gi;
-    const TAG = /<[^>]*>/g;
-    const BARE_URL = /https?:\/\/[^\s"'<>]+/gi;
-    const ENTITY = /&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi;
-    const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
-    const TRAILING = '.,;:!?"\'';
-    const CLOSERS = { ')': '(', ']': '[', '}': '{' };
 
     /** Copies data fields of an SDK object; functions are dropped, nothing is invoked. */
     function cloneRecord(item) {
@@ -98,46 +56,6 @@
             connectorStart: raw.start?.item ?? null,
             connectorEnd: raw.end?.item ?? null,
         };
-    }
-
-    /** Decodes HTML character references; unknown names stay as written. */
-    function decodeEntities(text) {
-        return text.replace(ENTITY, (whole, name) => {
-            if (name[0] !== '#') return NAMED_ENTITIES[name.toLowerCase()] ?? whole;
-            const code = name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
-            return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
-        });
-    }
-
-    const count = (text, char) => text.split(char).length - 1;
-
-    /** Drops sentence punctuation, quotes and unbalanced closing brackets after a bare URL. */
-    function trimTrailing(url) {
-        let end = url.length;
-        const unbalanced = last => CLOSERS[last] && count(url.slice(0, end), last) > count(url.slice(0, end), CLOSERS[last]);
-        while (end > 0 && (TRAILING.includes(url[end - 1]) || unbalanced(url[end - 1]))) end -= 1;
-        return url.slice(0, end);
-    }
-
-    /** Link targets inside HTML/plain text: decoded hrefs plus trimmed bare URLs. */
-    function textUrls(text) {
-        const seen = new Set();
-        for (const match of text.matchAll(HREF)) seen.add(decodeEntities(match[2]).trim());
-        const visible = decodeEntities(text.replace(TAG, ' '));
-        for (const match of visible.matchAll(BARE_URL)) seen.add(trimTrailing(match[0]));
-        return [...seen].filter(url => HTTP_URL.test(url));
-    }
-
-    /** URLs from URL fields (exact) and links inside text/HTML fields. Raw records are not changed. */
-    function urlsOf(raw) {
-        const found = [];
-        for (const field of URL_FIELDS) {
-            if (typeof raw[field] === 'string' && HTTP_URL.test(raw[field])) found.push({ field, url: raw[field] });
-        }
-        for (const field of TEXT_FIELDS) {
-            if (typeof raw[field] === 'string') for (const url of textUrls(raw[field])) found.push({ field, url });
-        }
-        return found;
     }
 
     function capabilityOf(type) {
