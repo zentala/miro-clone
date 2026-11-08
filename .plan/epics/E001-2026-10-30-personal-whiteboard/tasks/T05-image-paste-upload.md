@@ -12,7 +12,7 @@ importance: "High"
 effort: "large"
 role: "implementer"
 executor: "unassigned"
-write_set: ["types/canvas.ts", "types/board.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md"]
+write_set: ["types/canvas.ts", "types/board.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId, "lib/same-origin.ts", "app/api/boards/**"]/_components/canvas.tsx", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T05] paste, upload and render image layers"
@@ -53,6 +53,8 @@ permissions when dispatched. Add no foreign-repository paths. Serialize overlapp
 writes to schema/store/canvas, package lockfiles, test gate and shared documents.
 
 ## Acceptance criteria
+
+- [ ] Every mutating API route (boards and assets) uses the single same-origin guard in `lib/same-origin.ts`; the two copies in the board routes are removed and their tests still pass (T04 review N2).
 
 - [ ] GIF (including animated) is accepted: original bytes stored through the T04 asset store, dimensions read from the GIF header without a decoder, rendered as the original file. T04's GIF refusal is lifted here (PO, 2026-11-08).
 

@@ -12,7 +12,7 @@ importance: "High"
 effort: "medium"
 role: "implementer"
 executor: "unassigned"
-write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md"]
+write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets/**"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(backup): [E001-T18] coordinate SQLite and asset backup with verified restore"
@@ -53,6 +53,8 @@ permissions when dispatched. Add no foreign-repository paths. Serialize overlapp
 writes to schema/store/canvas, package lockfiles, test gate and shared documents.
 
 ## Acceptance criteria
+
+- [ ] After the asset rename, fsync the parent `assets/` directory so a published file survives power loss (T04 review N3); covered by a test that checks the call order.
 
 - [ ] Reuse the owning backup procedure/pattern rather than create a new service; database and referenced asset files form one recoverable snapshot.
 - [ ] Repeated unchanged input does not create a redundant copy; retention behavior follows the existing backup contract when configured.
