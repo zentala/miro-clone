@@ -44,6 +44,7 @@ findings (T15 verifier F2; T03 test file at 341 lines).
 - [ ] AGENTS.md "Verification" names every test file `just check` runs, including `tests/packaging.test.cjs`, and describes `just container-check`.
 - [ ] `just container-check` builds the image once (T02 verifier F2) and removes the
       intermediate build-stage images it created, leaving foreign images untouched (T02 F3).
+- [ ] Both Dockerfile stages pin a Node 22 minor of at least 22.18 (for example `node:22.23-bookworm-slim`), matching `engines`; `just container-check` reports the Node version (T16 verifier note).
 - [ ] No new dependencies.
 
 ## Independent verification
