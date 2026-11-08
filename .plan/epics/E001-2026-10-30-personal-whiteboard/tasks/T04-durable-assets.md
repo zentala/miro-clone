@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T04"
 title: "Add durable file assets and SQLite references"
-status: "pending"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T03"]
@@ -11,18 +11,18 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t04-impl (Herdr w2G, claude)"
 write_set: ["lib/assets.ts", "types/asset.ts", "lib/sqlite.ts", "lib/boards.ts", "app/api/assets/route.ts", "app/api/assets/[assetId]/route.ts", "Dockerfile", "tests/assets.test.cjs", "tests/critical-editor.test.cjs", "justfile", ".plan/ARCH.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T04] add durable file assets and SQLite references"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 3
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["1b2e98c"]
+verification_evidence: ["implementer: tsc exit 2 (Set/Map iteration) and assets test 1 fail (test bug) before fixes (retained); then just check 0, container-check 0", "verifier t04-verify round 1: PASS all criteria; just check 0; locked container-check 0 (3/3, 10/10); real SIGKILL between rename and INSERT publishes no reference, file reported unregistered {intact:true}, 404 not 500; 9 traversal ids rejected with 0 fs calls; decoder refuses corrupt IDAT and 40000x40000 bomb", "round 2 after DM rebase onto T16+T24 (justfile conflict resolved additively): npm ci ok; just check 0 (critical 10/10, export 16/16, packaging 2+1 skip, model 6/6, normalize 12/12, assets 5/5); locked container-check 0 (3/3, 10/10)"]
+evidence: ["Package: @napi-rs/image 1.16.0 MIT + 12 MIT platform packages; linux-x64-gnu binary 22 MB; image ~309.9 MB (PO accepted)", "PO accepted out-of-write_set: package files, next.config.mjs (native module outside bundle), .gitignore /data/assets/, lib/same-origin.ts (unification -> T05)", "GIF refused in T04 by PO decision; T05 accepts GIF (f975270)", "Moved: one docs sentence on unused vs unregistered -> T18; fsync of parent assets/ dir -> T18", "npm ci reports 20 vulnerabilities in older deps (next, eslint, postcss); none in @napi-rs/image"]
 ---
 # E001-T04: Add durable file assets and SQLite references
 
@@ -78,8 +78,7 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T03 version boundary first; T18 adds coordinated backup/restore. Test directories and data are disposable only.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS (two rounds) and integrated on main as 1b2e98c.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,

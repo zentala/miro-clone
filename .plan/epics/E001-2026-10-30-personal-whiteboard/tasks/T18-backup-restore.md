@@ -73,6 +73,10 @@ Use disposable databases/assets and generated fixtures; connect meaningful asser
 to the acceptance criteria, include them in the existing just check where critical,
 and do not introduce a new framework or tests that merely mirror implementation.
 
+## Carried from E001-T04 (PO, 2026-11-08)
+
+- Add one sentence to the asset documentation describing both states: `unused` = a registered asset no board references; `unregistered` = an intact file on disk without a database row (e.g. after an interrupted upload). Neither is an error or deletable.
+
 ## Known gating and evidence
 
 T04 file/DB consistency first. Existing backup skill/procedure must be read at dispatch. Off-box access/destination remains separate accepted infrastructure scope.
