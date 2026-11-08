@@ -233,6 +233,10 @@ this document creates no service or account permission.
 
 ## Proposed migration — not implemented
 
+The read-only structural exporter (E001-T15) is implemented; its usage and
+limits are in [docs/migration.md](../docs/migration.md). Normalization, dry
+run and import (T16/T17) are not implemented yet.
+
 Use a representative sample: official backup/export/restore investigation ->
 structural export -> normalization -> dry run/loss report -> new-board import ->
 source/visual/persistence comparison. PDF/SVG may preserve appearance without

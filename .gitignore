@@ -85,3 +85,4 @@ next-env.d.ts
 !/.plan/epics/E001-2026-10-30-personal-whiteboard/tasks/T20-expanded-table-view.md
 !/.plan/epics/E001-2026-10-30-personal-whiteboard/tasks/T21-acceptance-migration-rehearsal.md
 !/.plan/epics/E001-2026-10-30-personal-whiteboard/tasks/T22-release-deployment-acceptance.md
+!/.plan/epics/E001-2026-10-30-personal-whiteboard/tasks/T23-test-and-lint-hygiene.md

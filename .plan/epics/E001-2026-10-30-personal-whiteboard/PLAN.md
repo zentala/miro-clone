@@ -276,6 +276,8 @@ Independent verifier PASS on all five criteria. PO decisions:
   also blocks fill colour, z-order, text edits and deletion; shortcut Ctrl+Shift+L.
 - Verifier notes routed: F1 (cost table rounding in ARCH) and F2 (browser
   measurements) to T07; F3 (Tiptap 2 vs 3) to T10 at installation; F4 applied.
+- Added [E001-T23](tasks/T23-test-and-lint-hygiene.md) (3 points, Medium): split the
+  editor browser test, lint `tools/` and `tests/`; epic total 158 points.
 - Source defects routed: `z` moving the selection and camera-reset visibility to
   T07; unsanitized stored text HTML to T10, with sanitizing import in T16/T17.
 
