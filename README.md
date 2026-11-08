@@ -128,4 +128,7 @@ Critical manual verification, when running the app is authorized:
 Clerk, Convex and Liveblocks code and packages were removed after an import
 trace showed no active route used them. The former collaboration endpoint
 `/api/liveblocks-auth` stays as a stub: `POST` returns HTTP 410 Gone and other
-methods return 405. No dual-backend runtime mode is provided.
+methods return 405. No dual-backend runtime mode is provided. The app needs no
+secrets: `.env.example` lists only the optional `MIRO_SQLITE_PATH`. Unused
+packages, components and `public/` images left over from the hosted version
+were removed after the same kind of trace.
