@@ -100,7 +100,7 @@ async function createSyntheticBoard(origin) {
     assert.equal(created.status, 201);
     const { id } = await created.json();
     const points = [[0, 0, 0.5], [40, 20, 0.5], [80, 10, 0.5], [120, 40, 0.5]];
-    const document = { layerIds: ['stroke'], layers: { stroke: { type: 2, x: 300, y: 250, width: 120, height: 40, fill: { r: 0, g: 0, b: 0 }, points } } };
+    const document = { schemaVersion: 2, layerIds: ['stroke'], layers: { stroke: { type: 2, x: 300, y: 250, width: 120, height: 40, fill: { r: 0, g: 0, b: 0 }, points } } };
     await fetchOk(`${origin}/api/boards/${id}`, { method: 'PATCH', headers, body: JSON.stringify({ document }) });
     return { id, document };
 }
