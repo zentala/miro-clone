@@ -12,7 +12,7 @@ importance: "High"
 effort: "large"
 role: "implementer"
 executor: "unassigned"
-write_set: ["types/canvas.ts", "types/board.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId, "lib/same-origin.ts", "app/api/boards/**"]/_components/canvas.tsx", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md"]
+write_set: ["types/canvas.ts", "types/board.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "lib/same-origin.ts", "app/api/boards/**", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T05] paste, upload and render image layers"
