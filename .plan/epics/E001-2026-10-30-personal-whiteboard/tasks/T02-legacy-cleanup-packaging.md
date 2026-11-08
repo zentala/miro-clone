@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T02"
 title: "Remove retired hosted SDKs and slim container packaging"
-status: "pending"
+status: "done"
 priority: "high"
 type: "chore"
 dependencies: ["E001-T01"]
@@ -11,18 +11,18 @@ points: 5
 importance: "High"
 effort: "medium"
 role: "implementer"
-executor: "unassigned"
+executor: "t02-impl (Herdr w2G, claude)"
 write_set: ["package.json", "package-lock.json", "next.config.mjs", "Dockerfile", ".dockerignore", "liveblocks.config.ts", "convex/**", "providers/convex-client-provider.tsx", "components/room.tsx", "hooks/use-api-mutation.ts", "app/(dashboard)/_components/**", "app/board/[boardId]/_components/participants.tsx", "app/board/[boardId]/_components/cursors-presence.tsx", "app/board/[boardId]/_components/cursor.tsx", "app/board/[boardId]/_components/user-avatar.tsx", "app/board/[boardId]/_components/loading.tsx", "app/api/liveblocks-auth/route.ts", "tests/critical-editor.test.cjs", "README.md", "CHANGELOG.md", "tests/packaging.test.cjs", "justfile"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "build(container): [E001-T02] remove retired hosted SDKs and slim container packaging"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 2
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["6f47a7d", "af57af1"]
+verification_evidence: ["implementer: in-worktree just check exit 1 before eslint root fix (environment, retained)", "implementer: container-check with UI steps attempt 1 exit 1 (15 s readiness vs ~27 s podman keep-id first start; retained), fixed by warm-up start", "verifier t02-verify: PASS all criteria; just check exit 0 (critical 7/7, export 14/14, packaging 2 pass 1 skip); just container-check exit 0 (packaging 3/3, critical 7/7 inside container, confirmed by podman events)", "image 911,655,629 B -> 267,128,913 B measured by verifier; lockfile 548 -> 436 entries; 7 packages removed"]
+evidence: ["PO accepted images.unoptimized and podman as verification runtime; Docker NOT_CHECKED (target runtime checked in T22)", "Findings: F1 Low/1p .env.example mentions convex -> T24; F2 Low/2p container-check builds two images -> T23; F3 Low/1p dangling podman images on host -> DM/PO", "Incident: implementer deleted its own worktree node_modules in a mutation test (JOURNAL 2026-11-08)"]
 ---
 # E001-T02: Remove retired hosted SDKs and slim container packaging
 
@@ -78,8 +78,7 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 Container execution for disposable acceptance must be authorized at dispatch; ordinary source checks need no live deployment. Serialize package/lockfile and shared-test edits.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS and integrated on main as 6f47a7d..af57af1. Points estimate scope, not a numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
