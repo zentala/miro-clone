@@ -45,3 +45,13 @@ replacement-editor comparison from T01. Applied both: discovery compares only
 minimal patches versus coherent model extension within the accepted stack.
 Renderer/product/stack replacement remains excluded. No task/dependency/point
 change or product edit follows from these corrections.
+
+## 2026-11-08 — E001-T02 incident: worktree node_modules deleted during a mutation test
+
+- What happened: while checking that new packaging tests catch regressions, the T02 implementer made a
+  deliberately broken copy of its worktree whose node_modules was a symlink back to the worktree; removing
+  the copy deleted the worktree's real node_modules.
+- Impact: limited to the T02 worktree. Main checkout and the T03/T15 worktrees were checked and intact;
+  sources unchanged; `npm ci` restored the dependencies; later copies got their own install.
+- Rule since then (PO): never delete directories that contain symlinks; make test copies with `cp -a`
+  without symlinking node_modules or other shared directories.
