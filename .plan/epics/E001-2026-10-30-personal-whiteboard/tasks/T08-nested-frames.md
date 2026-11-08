@@ -70,6 +70,13 @@ Use disposable databases/assets and generated fixtures; connect meaningful asser
 to the acceptance criteria, include them in the existing just check where critical,
 and do not introduce a new framework or tests that merely mirror implementation.
 
+## Carried from E001-T03 verification (2026-11-08)
+
+- Rollback risk: the pre-T03 app stores parentId but does not enforce relations. If it deletes a parent, the
+  child keeps a dangling parentId; after returning to v2 the whole board is rejected (409) instead of repaired.
+  Today no UI creates parentId. When frames start creating parents, document this in ARCH and decide whether
+  v2 loading repairs dangling parents (report as loss) instead of rejecting the board.
+
 ## Known gating and evidence
 
 T03 parent model and T07 coordinate mapping first. Use generated nested fixtures; preserve unknown source relationships for later migration reporting.

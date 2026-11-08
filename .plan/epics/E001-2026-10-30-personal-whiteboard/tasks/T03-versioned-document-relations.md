@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T03"
 title: "Version board documents and establish shared object relations"
-status: "pending"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T01"]
@@ -11,18 +11,18 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t03-impl (Herdr w2G, claude)"
 write_set: ["types/board.ts", "types/canvas.ts", "lib/document-version.ts", "lib/document-migrations.ts", "lib/boards.ts", "lib/sqlite.ts", "store/use-board-store.ts", "hooks/use-local-board.ts", "app/api/boards/route.ts", "app/api/boards/[boardId]/route.ts", "tests/document-model.test.cjs", "tests/critical-editor.test.cjs", "justfile", ".plan/ARCH.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T03] version board documents and establish shared object relations"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 2
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["bb37fd0", "bb331ff"]
+verification_evidence: ["implementer: post-rebase just check exit 1 (packaging test sent a v1 document; retained), fixed by bb331ff", "verifier t03-verify: PASS 5/5; just check exit 0 (critical 9/9, export 14/14, packaging 2 pass 1 skip, document-model 6/6)", "verifier: just container-check attempt 1 exit 125 (podman storage error layer not known, environment; retained), retry exit 0 (packaging 3/3, critical 9/9 in container)", "verifier probe: legacy unversioned SQLite row loads and saves losslessly; unversioned PATCH is upgraded to v2 (200); forced save failure shows Save failed + Retry save, nothing lost"]
+evidence: ["PO accepted: 2 empty-document assertions gain schemaVersion 2; one-line schemaVersion 2 in tests/packaging.test.cjs (outside write_set)", "Findings: F1 Low/1p rollback test needs git history (git show 81211c9) -> T23; F2 Low/2p old app after rollback can orphan parentId, board then 409 on return to v2 -> T08; F3 Low/1p critical-editor test 360 lines -> T23", "409 page message is generic -> T07"]
 ---
 # E001-T03: Version board documents and establish shared object relations
 
@@ -77,8 +77,7 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T01 model/default review first. Introduce representation, not premature implementation of specialized lock gestures. Reconfirm write claims when other tasks touch the same store/validators.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS and integrated on main as bb37fd0..bb331ff. Points estimate scope, not a numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,

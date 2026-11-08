@@ -74,6 +74,12 @@ Use disposable databases/assets and generated fixtures; connect meaningful asser
 to the acceptance criteria, include them in the existing just check where critical,
 and do not introduce a new framework or tests that merely mirror implementation.
 
+## Carried from E001-T03 (PO, 2026-11-08)
+
+- The board page shows a generic "Unable to load board." for HTTP 409 (document saved by a newer app version).
+  Show an understandable message, e.g. "This board was saved by a newer version of the app", with the way back
+  to the board list. Source: app/board/[boardId]/page.tsx.
+
 ## Known gating and evidence
 
 T03 schema first; capacity/workload targets need T01 review. Shared camera/validator paths overlap multiple workstreams; serialize ownership.
