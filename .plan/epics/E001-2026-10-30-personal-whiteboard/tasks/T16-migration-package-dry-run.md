@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T16"
 title: "Normalize structural packages and report dry-run losses"
-status: "in-progress"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T15"]
@@ -16,13 +16,13 @@ write_set: ["types/migration.ts", "lib/migration/normalize.ts", "lib/migration/r
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T16] normalize structural packages and report dry-run losses"
-completion: "No"
+completion: "Yes"
 execution: "dispatched 2026-11-08 by dm-miro"
 phase: 3
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["c5e27af", "fc540b9", "dec932b", "e9f877e"]
+verification_evidence: ["verifier t16-verify round 1: PASS all criteria; just check 0 (migration-normalize 10/10); container-check 0; Node in image v22.23.4; clean-clone dry-run works, writes nothing", "round 2: F1-F3 closed end-to-end; exporter split byte-identical; just check 0 (critical 9/9, export 16/16, packaging 2+1 skip, model 6/6, normalize 12/12)", "round 2 container-check attempt 1 exit 1 (ERR_CONNECTION_RESET in container test while other worktrees ran container-check; retained, cause unproven), diagnostic rerun 0, PO-required run under flock lock 0 (3/3, 9/9)"]
+evidence: ["PO accepted write_set extensions: lib/migration/geometry.ts, tsconfig allowImportingTsExtensions, package.json engines node >=22.18, AGENTS/README Node 22.18, tools/miro-export split", "Findings fixed in T16: F1 Medium/2p null geometry accounted, F2 Low/2p failed parent keeps id -> parent-unresolved, F3 Low/1p rotation loss propagated", "Accepted explicit losses until real board (DECIDE #1): y axis down, REST groups/tags unverified, parent rotation ignored", "NOT_CHECKED: real Miro export, axis direction on a live board, rendering after import (T17)"]
 ---
 # E001-T16: Normalize structural packages and report dry-run losses
 
@@ -81,8 +81,7 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T15 structural contract first. Real representative source remains external; report the exact limitation rather than label synthetic coverage full fidelity.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS (two rounds) and integrated on main as c5e27af..e9f877e.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
