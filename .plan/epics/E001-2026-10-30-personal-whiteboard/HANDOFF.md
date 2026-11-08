@@ -133,6 +133,7 @@ pending/No; only the integrator updates them after independent acceptance.
 | [E001-T21](tasks/T21-acceptance-migration-rehearsal.md): Independently accept the integrated board and rehearse migration | 5 | High | E001-T02, E001-T06, E001-T08, E001-T09, E001-T10, E001-T11, E001-T12, E001-T14, E001-T17, E001-T18, E001-T20 | No |
 | [E001-T22](tasks/T22-release-deployment-acceptance.md): Coordinate release and independently accept intended HTTPS service | 5 | High | E001-T21 | No |
 | [E001-T23](tasks/T23-test-and-lint-hygiene.md): Split the editor browser test and lint tools/ and tests/ (added by PO 2026-11-08) | 3 | Medium | E001-T02, E001-T03 | No |
+| [E001-T24](tasks/T24-legacy-remnant-cleanup.md): Remove hosted-SDK remnants, unused packages and unused public assets (added by PO 2026-11-08) | 3 | Medium | E001-T02 | No |
 
 ## Boundaries for a future dispatched executor
 

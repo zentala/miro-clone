@@ -41,7 +41,7 @@ findings (T15 verifier F2; T03 test file at 341 lines).
       `git show <commit>`, so it passes in a shallow clone or container.
 - [ ] `just lint` (and so `just check`) covers `tools/` and `tests/`; existing
       warnings are listed, not silenced.
-- [ ] AGENTS.md "Verification" names every test file `just check` runs.
+- [ ] AGENTS.md "Verification" names every test file `just check` runs, including `tests/packaging.test.cjs`, and describes `just container-check`.
 - [ ] No new dependencies.
 
 ## Independent verification
