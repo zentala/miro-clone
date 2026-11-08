@@ -15,7 +15,8 @@ Dashboard/editor -> /api/boards and /api/boards/[boardId]
                  -> lib/boards.ts -> lib/sqlite.ts -> SQLite
 ```
 
-Node.js >=22.13 supplies built-in `node:sqlite`. SQLite stores board ID, title,
+Node.js >=22.18 supplies built-in `node:sqlite` and default TypeScript type
+stripping, which the migration scripts use (E001-T16). SQLite stores board ID, title,
 creation/update timestamps and a JSON document containing a schema version,
 ordered layer IDs and layer records (see
 [document schema versions](#document-schema-versions-e001-t03)). Supported layer types are rectangle, ellipse, freehand path,
@@ -278,11 +279,12 @@ unsupported and error states. Keep exact URLs/product variants and local asset
 copies where permitted. Choose transport/access boundaries during discovery;
 this document creates no service or account permission.
 
-## Proposed migration — not implemented
+## Migration — partly implemented
 
 The read-only structural exporter (E001-T15) is implemented; its usage and
-limits are in [docs/migration.md](../docs/migration.md). Normalization, dry
-run and import (T16/T17) are not implemented yet.
+limits are in [docs/migration.md](../docs/migration.md). Normalization and
+the dry-run loss report (E001-T16) are implemented, also documented there;
+import (T17) is not implemented yet.
 
 Use a representative sample: official backup/export/restore investigation ->
 structural export -> normalization -> dry run/loss report -> new-board import ->

@@ -103,7 +103,7 @@ Measure network traffic and browser memory; see [architecture](ARCH.md).
 Investigate official Miro Help backup/export/restore, PDF/SVG appearance,
 CSV geometry loss and REST coverage gaps. Prefer discovering a minimal
 read-only Web SDK structural exporter (`boards:read`) for preview-heavy boards;
-see [source references and limitations](ARCH.md#proposed-migration--not-implemented).
+see [source references and limitations](ARCH.md#migration--partly-implemented).
 No exporter/importer is implemented yet.
 
 Preserve IDs, URLs, geometry, parents and assets; retain unknown records. Use a

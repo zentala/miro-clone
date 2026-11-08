@@ -39,7 +39,7 @@ T01 baseline (read before T03, T07, T08, T09, T10, T11, T19 or T05/T06):
 proposed visual rows in [DESIGN](../../../DESIGN.md#decision-ledger). Library
 candidates are proposals; install only what PO accepted in the task record.
 
-Existing Node >=22.13 built-in SQLite creates the database at an absolute
+Node >=22.18 (built-in SQLite plus TypeScript type stripping since T16) creates the database at an absolute
 MIRO_SQLITE_PATH override or data/miro.sqlite. Runtime WAL/SHM and later assets
 must persist consistently. Dockerfile currently runs non-root Node 22 with
 full dependencies and next start, data under /app/data; no deployed service or
