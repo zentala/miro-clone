@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T07"
 title: "Implement zoom, pan, neutral grid and measured board capacity"
-status: "pending"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T03"]
@@ -11,18 +11,18 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t07-impl (Herdr w2G, claude)"
 write_set: ["types/canvas.ts", "types/board.ts", "lib/utils.ts", "store/use-board-store.ts", "app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/selection-tools.tsx", "app/board/[boardId]/_components/reset-camera.tsx", "tests/navigation-capacity.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T07] implement zoom, pan, neutral grid and measured board capacity"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "dispatched 2026-11-08 by dm-miro"
 phase: 3
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-08"
+commits: ["a57a98b", "b70d771", "47a2661", "2910cca"]
+verification_evidence: ["implementer: just check run 1 exit 1 (critical parent failed on one net::ERR_CONNECTION_REFUSED around restart; retained), isolated reruns 9/9 x3, then just check 0; locked container-check 0; after rebase onto T16/T24/T04 just check 0 (critical 10/10, navigation 10/10, board-store 4/4) and locked container-check 0 (3/3, 10/10)", "verifier t07-verify round 1: code criteria PASS (PNG export at DPR != 1 NOT_CHECKED); independent screenshot review 1440x900 and 390x844 at DPR 1/1.25, zoom 25/100/200, hover + focus-visible: FAIL V1 Medium/2p (refusal message overflow at 390 px)", "round 2 on the fix: V1 and V3 closed with new screenshots at 390/1440 px; just check 0"]
+evidence: ["Browser measurement before code (tests/capacity/measure-capacity.cjs, just measure-capacity), results in ARCH", "PO accepted: 5000-object cap; ~210 ms undo/drag frame at 2000 objects as known limit -> T25; out-of-write_set paths (document-version, use-local-board, selection-box, info, page, new modules); DESIGN rows accepted after visual PASS", "Open Low (to BACKLOG via PO): N1 Save failed state overflows at 390 px; N2 italic title last glyph clipped in truncate span; N3 409 over-limit sentence lacks period/differs from DESIGN wording; V2 app-wide red text contrast ~3.8:1; selection handles at zoom != 100% NOT_CHECKED"]
 ---
 # E001-T07: Implement zoom, pan, neutral grid and measured board capacity
 
@@ -84,8 +84,7 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T03 schema first; capacity/workload targets need T01 review. Shared camera/validator paths overlap multiple workstreams; serialize ownership.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done 2026-11-08; independently verified PASS (two rounds incl. visual review) and integrated on main as a57a98b..2910cca.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
