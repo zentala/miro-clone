@@ -54,6 +54,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] GIF gets no generated variants (the `@napi-rs/image` binary has no GIF decoder): placeholder from header dimensions, then the original; documented as a known limit, not a failure.
+
 - [ ] Generate variants with the PO-accepted `@napi-rs/image` (MIT); re-check bundled native binary licences at installation; `sharp` is rejected.
 
 - [ ] Generated variants preserve aspect ratio and never upscale beyond original pixels; originals remain byte-identical.

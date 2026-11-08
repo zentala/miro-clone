@@ -55,6 +55,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] GIF assets are imported as originals, not reported as losses.
+
 - [ ] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
 
 - [ ] A committed script imports into an explicitly new synthetic board; the same package/retry reuses mapping without duplicate objects or assets.

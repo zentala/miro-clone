@@ -54,6 +54,8 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
+- [ ] GIF (including animated) is accepted: original bytes stored through the T04 asset store, dimensions read from the GIF header without a decoder, rendered as the original file. T04's GIF refusal is lifted here (PO, 2026-11-08).
+
 - [ ] Real browser clipboard-image and file-upload actions create an image object with correct aspect ratio and a local stored original.
 - [ ] Select, move, resize, duplicate and remove an image with existing interaction/history behavior; undo/redo and reload retain the correct reference/geometry.
 - [ ] PNG export includes the image after assets decode, with no missing cross-origin content or silent blank export.
