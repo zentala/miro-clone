@@ -226,3 +226,15 @@ change or product edit follows from these corrections.
 - The selection-panel overlap with the left toolbar was reproduced with the
   same geometry on baseline and candidate at 390 px and 768 px. This is a
   pre-existing narrow-layout issue and did not block T25 delivery.
+
+## 2026-11-25 — E001-T05 phase-two implementation note
+
+- The first search for the export handler in `toolbar.tsx` returned no match
+  after T25 split the canvas into modules. The author continued by inspecting
+  the split action modules; this search result did not establish a product
+  failure.
+- The first focused GIF asset run, `node --test --test-concurrency=1
+  tests/assets.test.cjs`, exited 1: the new animated-GIF preservation case
+  passed, while the existing T04 case still expected GIF to be unsupported.
+  The accepted T05 behavior makes that expectation stale; other media-type
+  rejection assertions remain required.

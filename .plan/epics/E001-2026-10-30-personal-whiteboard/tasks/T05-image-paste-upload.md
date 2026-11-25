@@ -12,7 +12,7 @@ importance: "High"
 effort: "large"
 role: "implementer"
 executor: "t05-impl (w57:pB)"
-write_set: ["types/canvas.ts", "types/board.ts", "types/asset.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "lib/same-origin.ts", "app/api/boards/**", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md", "lib/document-version.ts", "lib/document-migrations.ts", "tests/document-model.test.cjs", "app/board/[boardId]/_components/canvas/**", "tests/packaging.test.cjs"]
+write_set: ["types/canvas.ts", "types/board.ts", "types/asset.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "lib/same-origin.ts", "app/api/boards/**", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "tests/assets.test.cjs", "tests/capacity-steps.cjs", "justfile", "DESIGN.md", "lib/document-version.ts", "lib/document-migrations.ts", "tests/document-model.test.cjs", "app/board/[boardId]/_components/canvas/**", "tests/packaging.test.cjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T05] paste, upload and render image layers"
@@ -55,9 +55,12 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 ### Scope note — 2026-11-25
 
 The DM records `types/asset.ts` as an accepted path: GIF originals require
-`image/gif` in `AssetMediaType`. This is a necessary path addition under the
-PO's standing rule for missed implementation paths; no separate release is
-required. Keep the change limited to the accepted media type.
+`image/gif` in `AssetMediaType`. `tests/assets.test.cjs` is also in scope for
+updating the obsolete T04 GIF-refusal expectation while preserving all other
+media validation assertions. `tests/capacity-steps.cjs` is in scope for the
+minimal current-schema expectation update. These are necessary path additions
+under the PO's standing rules for missed implementation paths and current
+schema expectations; no separate release is required.
 
 ## Acceptance criteria
 
