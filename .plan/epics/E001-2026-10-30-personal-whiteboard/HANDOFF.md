@@ -170,6 +170,11 @@ was reconciled with the records on 2026-11-25.
 
 - Obtain actual compatible filesystem/write-path preflight and the accepted
   task handoff; the planned write_set is a repo-relative proposal to reconfirm.
+- `npm ci` from the existing committed lockfile inside the owned worktree,
+  plus generated node_modules and build output, is routine verification setup
+  (PO, 2026-11-25). It adds no dependency and widens no tracked scope. Never
+  replace a behavior test with source-text assertions because dependencies
+  are not installed; keep the failed run in the record, install, rerun.
 - Keep schema/store/canvas/lockfile/check/docs ownership serialized; dependent
   completion and a free worker slot do not authorize overlapping writes.
 - Do not touch private BACKLOG/STATE, source exports, credentials, user browser
