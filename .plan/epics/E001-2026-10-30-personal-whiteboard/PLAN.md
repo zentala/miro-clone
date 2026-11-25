@@ -224,7 +224,9 @@ expenditure or subscription cancellation, and it releases no unrelated HOLD.
 - Runtime at resume: the internal HTTPS service did not answer (connection
   to port 443 failed, 2026-11-25). An earlier October receipt is not current
   reachability. The infrastructure owner inspects the actual route and runtime
-  within T22; no TLS bypass and no domain retarget.
+  within T22; no TLS bypass and no arbitrary destination or access expansion. Ordinary
+  canonical registration or route repair for this service goes through its
+  current domain/infrastructure owner.
 
 ## PO decisions on open defaults (2026-11-08)
 

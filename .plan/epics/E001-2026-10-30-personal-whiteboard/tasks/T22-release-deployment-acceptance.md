@@ -72,7 +72,7 @@ A documentation diff check does not certify production delivery.
 
 ## Known gating and evidence
 
-T21 acceptance plus actual infrastructure-owner uptake, backup and reachable HTTPS evidence are required. Observed 2026-11-25: the internal HTTPS service refused connections on port 443 (curl exit 7); an earlier October receipt is not current reachability. The infrastructure owner inspects the actual route/runtime; no TLS bypass or domain retarget. If unavailable, report the true missing input; do not invent a second queue or mark completed.
+T21 acceptance plus actual infrastructure-owner uptake, backup and reachable HTTPS evidence are required. Observed 2026-11-25: the internal HTTPS service refused connections on port 443 (curl exit 7); an earlier October receipt is not current reachability. The infrastructure owner inspects the actual route/runtime; no TLS bypass and no arbitrary destination or access expansion; ordinary canonical registration or route repair for this service goes through its current (2026-11-25) domain/infrastructure owner, not an assumed October machine. If unavailable, report the true missing input; do not invent a second queue or mark completed.
 
 Current state: pending; completion No; no executor dispatched and no verification
 evidence collected for this task. Points estimate scope, not a numeric time/token limit.
