@@ -133,6 +133,13 @@ test('v2 documents upgrade to v3 and image layers require a durable asset refere
     }
     assert.throws(() => version.validateDocument({ ...document, layers: { image: { ...image, fill } } }),
         error => error.code === 'invalid-schema', 'image data belongs in the asset store, not an inline fill');
+    for (const geometry of [{ width: 0 }, { height: 0 }]) {
+        assert.throws(() => version.validateDocument({ ...document, layers: { image: { ...image, ...geometry } } }),
+            error => error.code === 'invalid-schema', 'image dimensions must be positive');
+    }
+    const zeroSizeVector = current({ vector: node(0, { width: 0, height: 0 }) });
+    assert.deepEqual(version.validateDocument(zeroSizeVector), zeroSizeVector,
+        'zero-size vector geometry remains compatible');
 });
 
 test('effective lock inherits from every ancestor without copying own lock bits', () => {

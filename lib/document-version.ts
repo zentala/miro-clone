@@ -71,7 +71,8 @@ function validateLayer(id: string, value: unknown) {
     const validNonImage = layer.type !== LayerType.Image && isColor(layer.fill) &&
         (layer.value === undefined || typeof layer.value === "string");
     if (![layer.x, layer.y, layer.width, layer.height].every(Number.isFinite) ||
-        layer.width < 0 || layer.height < 0 || !(validImage || validNonImage)) {
+        layer.width < 0 || layer.height < 0 ||
+        (layer.type === LayerType.Image && (layer.width === 0 || layer.height === 0)) || !(validImage || validNonImage)) {
         fail("invalid-schema", `Layer ${id} has invalid geometry, fill or content`);
     }
     if (layer.type === LayerType.Path && !isStroke(layer.points)) fail("invalid-schema", `Layer ${id} has an invalid stroke`);

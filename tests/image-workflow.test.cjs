@@ -122,6 +122,22 @@ test('image layers: upload, clipboard, editing, history, persistence and export 
         writeFileSync(join(__dirname, 'capacity', 't05-visual-review-wide.png'), Buffer.from(screenshot.data, 'base64'));
     });
 
+    await step('board API refuses a zero-size image without changing the saved document', async () => {
+        const before = await board();
+        const layerId = before.document.layerIds[0];
+        const invalidDocument = structuredClone(before.document);
+        invalidDocument.layers[layerId].width = 0;
+        const response = await fetch(`${origin}/api/boards/${await boardId()}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json', origin },
+            body: JSON.stringify({ document: invalidDocument }),
+            signal: AbortSignal.timeout(deadline),
+        });
+        assert.equal(response.status, 400);
+        assert.equal((await response.json()).code, 'invalid-schema');
+        assert.deepEqual(storedDocument(), before.document, 'Rejected image geometry is not persisted');
+    });
+
     await step('PNG export decodes with both generated image colors', async () => {
         await click('button:has(svg.lucide-image-down)');
         const download = await until('completed PNG export', () => context.begunDownloads.find(item => context.completedDownloads.has(item.guid)));
