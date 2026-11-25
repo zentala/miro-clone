@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T23"
 title: "Split the editor browser test and lint tools/ and tests/"
-status: "pending"
+status: "in-progress"
 priority: "medium"
 type: "chore"
 dependencies: ["E001-T02", "E001-T03"]
@@ -11,13 +11,13 @@ points: 3
 importance: "Medium"
 effort: "small"
 role: "implementer"
-executor: "unassigned"
-write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md", "tests/navigation-steps.cjs", "tests/capacity-steps.cjs", "tests/document-model.test.cjs"]
+executor: "t23-impl (w57:p4); t23-verifier (w57:p7)"
+write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md", "tests/navigation-steps.cjs", "tests/capacity-steps.cjs", "tests/document-model.test.cjs", "tests/navigation-capacity.test.cjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "test(editor): [E001-T23] split the editor browser test and lint tools and tests"
 completion: "No"
-execution: "not-dispatched"
+execution: "accepted-scope commit and independent verification pending"
 phase: 2
 completed_at: null
 commits: []
