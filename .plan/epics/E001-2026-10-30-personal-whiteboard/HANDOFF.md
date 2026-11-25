@@ -183,6 +183,13 @@ was reconciled with the records on 2026-11-25.
   After T25 the same holds for the split `_components/canvas/**`. Bump the
   schema version with an upgrade step and a test when a stored shape changes.
   DM lists the exact paths in the task record; no separate PO request.
+  The same rule covers existing verification fixtures and assertions that
+  encode the CURRENT schema (e.g. `tests/packaging.test.cjs`,
+  `tests/critical-editor.test.cjs`, files under `tests/fixtures/`): update
+  them minimally wherever the bump requires, list the exact paths, keep the
+  explicit legacy-version upgrade and future-version rejection coverage, and
+  prefer the exported current-version constant over a literal number. No
+  blind replace-all, no weakened assertion, no new API or framework.
 - Keep schema/store/canvas/lockfile/check/docs ownership serialized; dependent
   completion and a free worker slot do not authorize overlapping writes.
 - Do not touch private BACKLOG/STATE, source exports, credentials, user browser
