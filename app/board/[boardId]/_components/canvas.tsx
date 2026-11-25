@@ -7,6 +7,7 @@ import {
     Color,
     Point,
 } from "@/types/canvas";
+import { MAX_LAYERS } from "@/lib/document-version";
 import {
     useBoardSelector,
     useCanRedo,
@@ -45,8 +46,45 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const title = useBoardSelector((current) => current.board.title);
     const { camera, zoomIn, zoomOut, resetZoom, resetCamera } = useBoardCamera(svgRef);
     const layerActions = useCanvasLayerActions(canvasState, setCanvasState, layerIds, camera);
-    const contentActions = useCanvasContentActions(canvasState, setCanvasState, lastUsedColor, store);
+    const { insertImage: insertImageLayer, ...contentActions } = useCanvasContentActions(canvasState, setCanvasState, lastUsedColor, store);
     const duplicateLayers = useCanvasDuplicate(setCanvasState);
+
+    const importImage = useCallback(async (file: File) => {
+        if (layerIds.length >= MAX_LAYERS) {
+            store.refuse(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+            throw new Error(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+        }
+        const svg = svgRef.current;
+        if (!svg) throw new Error("The board is not ready to add an image.");
+
+        let response: Response;
+        try {
+            response = await fetch("/api/assets", {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
+        } catch {
+            throw new Error("Unable to upload the image to local storage.");
+        }
+        const result = await response.json().catch(() => null) as { id?: unknown; width?: unknown; height?: unknown; error?: unknown } | null;
+        if (!response.ok) {
+            throw new Error(typeof result?.error === "string" ? result.error : "Unable to upload the image to local storage.");
+        }
+        if (typeof result?.id !== "string" || !Number.isFinite(result.width) || !Number.isFinite(result.height) ||
+            (result.width as number) <= 0 || (result.height as number) <= 0) {
+            throw new Error("The local asset service returned invalid image dimensions.");
+        }
+
+        const bounds = svg.getBoundingClientRect();
+        const center = {
+            x: (bounds.width / 2 - camera.x) / camera.zoom,
+            y: (bounds.height / 2 - camera.y) / camera.zoom,
+        };
+        if (!insertImageLayer({ id: result.id, width: result.width as number, height: result.height as number }, center)) {
+            throw new Error(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+        }
+    }, [camera, insertImageLayer, layerIds.length, store]);
 
     useDisableScrollBounce();
 
@@ -106,6 +144,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             onLayerPointerDown={onStableLayerPointerDown}
             onResizeHandlePointerDown={layerActions.onResizeHandlePointerDown}
             exportAsPng={exportAsPng}
+            onImportImage={importImage}
         />
     );
 };

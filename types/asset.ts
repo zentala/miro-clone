@@ -4,8 +4,8 @@
  * Documents reference assets through a layer's `assetId`; bytes never enter
  * the document JSON.
  */
-/** Types the bundled decoder can verify; its build has no GIF decoder. */
-export type AssetMediaType = "image/png" | "image/jpeg" | "image/webp";
+/** Images accepted by the local asset store; GIF dimensions come from its header. */
+export type AssetMediaType = "image/png" | "image/jpeg" | "image/webp" | "image/gif";
 
 /** Metadata row, published only after the original file is durably in place. */
 export type AssetMetadata = {

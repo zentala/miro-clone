@@ -1,8 +1,8 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { useMutation, useSelf } from "@/hooks/use-local-board";
-import { Camera, Color } from "@/types/canvas";
+import { useMutation, useSelf, useStorage } from "@/hooks/use-local-board";
+import { Camera, Color, LayerType } from "@/types/canvas";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
@@ -21,6 +21,9 @@ interface SelectionToolsProps {
 export const SelectionTools = memo(
     ({ camera, setLastUsedColor, onDuplicate, lastUsedColor }: SelectionToolsProps) => {
         const selection = useSelf((me) => me.presence.selection);
+        const containsImage = useStorage((root) =>
+            selection.some(id => root.layers.get(id)?.type === LayerType.Image)
+        );
 
         const moveToFront = useMutation(
             ({ storage }) => {
@@ -70,9 +73,10 @@ export const SelectionTools = memo(
                 if (!selection) {
                     return;
                 }
-                selection.forEach((id) =>
-                    liveLayers.get(id)?.set("fill", fill)
-                );
+                selection.forEach((id) => {
+                    const layer = liveLayers.get(id);
+                    if (layer?.get("type") !== LayerType.Image) layer?.set("fill", fill);
+                });
             },
             [selection, setLastUsedColor]
         );
@@ -98,7 +102,7 @@ export const SelectionTools = memo(
                 )`,
                 }}
             >
-                <ColorPicker onChange={setFill} lastUsedColor={lastUsedColor} />
+                {!containsImage && <ColorPicker onChange={setFill} lastUsedColor={lastUsedColor} />}
                 <div className="flex flex-col gap-y-0.5">
                     <Hint label="Bring to front">
                         <Button

@@ -51,6 +51,13 @@ async function image(format, seed = 1, width = 48, height = 32) {
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fill = { r: 1, g: 2, b: 3 };
 const withAsset = assetId => ({ schemaVersion: 2, layerIds: ['picture'], layers: { picture: { type: 0, x: 10, y: 20, width: 48, height: 32, fill, assetId } } });
+function animatedGif() {
+    const headerAndPalette = Buffer.from('47494638396101000100800000ffffff000000', 'hex');
+    const loopExtension = Buffer.from('21ff0b4e45545343415045322e300301000000', 'hex');
+    const frameControl = Buffer.from('21f9040001000000', 'hex');
+    const frame = Buffer.from('2c0000000001000100000202440100', 'hex');
+    return Buffer.concat([headerAndPalette, loopExtension, frameControl, frame, frameControl, frame, Buffer.from([0x3b])]);
+}
 const rows = databasePath => {
     if (!existsSync(databasePath)) return [];
     const db = new DatabaseSync(databasePath, { readOnly: true });
@@ -78,6 +85,21 @@ test('originals are stored unchanged under the data root, content-addressed and 
     assert.deepEqual(files(join(dirname(databasePath), 'assets', '.incoming')), [], 'No temporary files remain');
 });
 
+test('animated GIF originals are stored byte-for-byte using header dimensions without a decoder', async () => {
+    const databasePath = dataRoot('animated-gif');
+    const { assets } = loadApp(databasePath);
+    const bytes = animatedGif();
+    const { asset, created } = await assets.ingestAsset(bytes, 'image/gif');
+    assert.equal(created, true);
+    assert.deepEqual({ mediaType: asset.mediaType, width: asset.width, height: asset.height },
+        { mediaType: 'image/gif', width: 1, height: 1 });
+    const path = join(dirname(databasePath), 'assets', asset.id.slice(0, 2), asset.id);
+    assert.deepEqual(readFileSync(path), bytes, 'Both animation frames and all original GIF bytes are preserved');
+    assert.deepEqual(readFileSync((await assets.openAsset(asset.id)).path), bytes);
+    await assert.rejects(() => assets.ingestAsset(bytes, 'image/png'), assetError('media-type-mismatch'));
+    await assert.rejects(() => assets.ingestAsset(bytes.subarray(0, 13), 'image/gif'), assetError('undecodable'));
+});
+
 test('media type, size, content and IDs are validated before anything is written', async () => {
     const databasePath = dataRoot('validation');
     const { assets } = loadApp(databasePath);
@@ -91,7 +113,6 @@ test('media type, size, content and IDs are validated before anything is written
         ['media-type-mismatch', png, null],
         ['media-type-mismatch', png, 'image/jpeg'],
         ['unsupported-media-type', svg, 'image/svg+xml'],
-        ['unsupported-media-type', Buffer.from('474946383961', 'hex'), 'image/gif'],
         ['undecodable', png.subarray(0, png.length - 20), 'image/png'],
         ['undecodable', pngHeaderOnWebp, 'image/png'],
         ['too-large', oversized, 'image/png'],

@@ -9,6 +9,7 @@ import { Text } from "./text";
 import { Note } from "./note";
 import { Path } from "./path";
 import { colorToCss } from "@/lib/utils";
+import { Image } from "./image";
 
 interface LayerPreviewProps {
     id: string;
@@ -63,6 +64,16 @@ export const LayerPreview = memo(
             case LayerType.Rectangle:
                 return (
                     <Rectangle
+                        id={id}
+                        layer={layer}
+                        onPointerDown={onLayerPointerDown}
+                        selectionColor={selectionColor}
+                    />
+                );
+            case LayerType.Image:
+                return (
+                    <Image
+                        alt="Board image"
                         id={id}
                         layer={layer}
                         onPointerDown={onLayerPointerDown}

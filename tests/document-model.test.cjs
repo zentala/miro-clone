@@ -199,6 +199,3 @@ test('upgrade, app rollback and backup recovery on synthetic database copies', (
     assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 3, ...legacyDocument() });
     assert.equal(restored.getBoard('two').title, 'Second');
 });
-
-// This file already runs in `just check`; include the image workflow suite without changing the held check recipe.
-require('./image-workflow.test.cjs');

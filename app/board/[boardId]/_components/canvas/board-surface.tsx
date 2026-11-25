@@ -40,6 +40,7 @@ interface BoardSurfaceProps {
     onLayerPointerDown: (event: React.PointerEvent, layerId: string) => void;
     onResizeHandlePointerDown: (corner: Side, bounds: XYWH) => void;
     exportAsPng: () => void;
+    onImportImage: (file: File) => Promise<void>;
 }
 
 export function BoardSurface({
@@ -68,11 +69,12 @@ export function BoardSurface({
     onLayerPointerDown,
     onResizeHandlePointerDown,
     exportAsPng,
+    onImportImage,
 }: BoardSurfaceProps) {
     return (
         <main className="h-full w-full relative bg-neutral-100 touch-none" style={gridBackground(camera)}>
             <Info boardId={boardId} exportAsPng={exportAsPng} />
-            <Toolbar canvasState={canvasState} setCanvasState={setCanvasState} canUndo={canUndo} canRedo={canRedo} undo={undo} redo={redo} />
+            <Toolbar canvasState={canvasState} setCanvasState={setCanvasState} canUndo={canUndo} canRedo={canRedo} undo={undo} redo={redo} onImportImage={onImportImage} />
             <div className="absolute bottom-2 right-2 flex items-center gap-2">
                 {!isDefaultCamera(camera) && <ResetCamera resetCamera={resetCamera} />}
                 <ZoomControls zoom={camera.zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onResetZoom={resetZoom} />

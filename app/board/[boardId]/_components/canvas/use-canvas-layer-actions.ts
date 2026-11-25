@@ -6,12 +6,39 @@ import {
     Point,
     Side,
     XYWH,
+    LayerType,
 } from "@/types/canvas";
 import {
     findIntersectingLayersWithRectangle,
     pointerEventToCanvasPoint,
     resizeBounds,
 } from "@/lib/utils";
+
+function resizeImageBounds(bounds: XYWH, corner: Side, point: Point): XYWH {
+    const raw = resizeBounds(bounds, corner, point);
+    const changesWidth = (corner & (Side.Left | Side.Right)) !== 0;
+    const changesHeight = (corner & (Side.Top | Side.Bottom)) !== 0;
+    const ratio = bounds.width / bounds.height;
+    let width = raw.width;
+    let height = raw.height;
+
+    if (changesWidth && changesHeight) {
+        width = Math.max(raw.width, raw.height * ratio);
+        height = width / ratio;
+    } else if (changesWidth) {
+        height = width / ratio;
+    } else {
+        width = height * ratio;
+    }
+
+    const x = corner & Side.Left
+        ? bounds.x + bounds.width - width
+        : corner & Side.Right ? bounds.x : bounds.x + (bounds.width - width) / 2;
+    const y = corner & Side.Top
+        ? bounds.y + bounds.height - height
+        : corner & Side.Bottom ? bounds.y : bounds.y + (bounds.height - height) / 2;
+    return { x, y, width, height };
+}
 
 export function useCanvasLayerActions(
     canvasState: CanvasState,
@@ -48,8 +75,12 @@ export function useCanvasLayerActions(
 
     const resizeSelectedLayer = useMutation(({ storage, self }, point: Point) => {
         if (canvasState.mode !== CanvasMode.Resizing) return;
-        const bounds = resizeBounds(canvasState.initialBounds, canvasState.corner, point);
-        storage.get("layers").get(self.presence.selection[0])?.update(bounds);
+        const layer = storage.get("layers").get(self.presence.selection[0]);
+        if (!layer) return;
+        const bounds = layer.get("type") === LayerType.Image
+            ? resizeImageBounds(canvasState.initialBounds, canvasState.corner, point)
+            : resizeBounds(canvasState.initialBounds, canvasState.corner, point);
+        layer.update(bounds);
     }, [canvasState]);
 
     const onResizeHandlePointerDown = useCallback((corner: Side, initialBounds: XYWH) => {

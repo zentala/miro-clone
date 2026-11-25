@@ -22,11 +22,13 @@ import { getDatabase, getDatabasePath } from "./sqlite";
 export const MAX_ASSET_BYTES = 50 * 1024 * 1024;
 const ASSET_ID = /^[0-9a-f]{64}$/;
 const INCOMING = ".incoming";
+const MAX_GIF_PIXELS = 100_000_000;
 /** Magic bytes per accepted type, and the format name the decoder must report for it. */
-const SIGNATURES: { mediaType: AssetMediaType; format: string; matches: (b: Buffer) => boolean }[] = [
+const SIGNATURES: { mediaType: AssetMediaType; format: string | null; matches: (b: Buffer) => boolean }[] = [
     { mediaType: "image/png", format: "png", matches: b => b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) },
     { mediaType: "image/jpeg", format: "jpeg", matches: b => b.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) },
     { mediaType: "image/webp", format: "webp", matches: b => b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 12) === "WEBP" },
+    { mediaType: "image/gif", format: null, matches: b => b.toString("ascii", 0, 6) === "GIF87a" || b.toString("ascii", 0, 6) === "GIF89a" },
 ];
 
 export class AssetError extends Error {
@@ -58,15 +60,75 @@ export function getAsset(id: string): AssetMetadata | null {
     return row ? toMetadata(row) : null;
 }
 
-/** Media type from magic bytes, checked against the declared type, then decoded to prove the content and read its size. */
+function gifColorTableBytes(packed: number): number {
+    return 3 * 2 ** ((packed & 0b111) + 1);
+}
+
+/** Skips GIF data sub-blocks without decoding their contents. */
+function skipGifSubBlocks(bytes: Buffer, offset: number): number {
+    while (offset < bytes.length) {
+        const length = bytes[offset++];
+        if (length === 0) return offset;
+        offset += length;
+        if (offset > bytes.length) break;
+    }
+    throw new AssetError("undecodable", "The GIF image data is incomplete");
+}
+
+/** Checks the GIF container structure and reads its logical screen size without decoding frames. */
+function inspectGif(bytes: Buffer): { width: number; height: number } {
+    const headerSize = 13;
+    if (bytes.length < headerSize) throw new AssetError("undecodable", "The GIF header is incomplete");
+    const width = bytes.readUInt16LE(6);
+    const height = bytes.readUInt16LE(8);
+    if (width === 0 || height === 0 || width * height > MAX_GIF_PIXELS) {
+        throw new AssetError("undecodable", "The GIF dimensions are invalid or too large");
+    }
+
+    let offset = headerSize;
+    const screenFlags = bytes[10];
+    if (screenFlags & 0b1000_0000) offset += gifColorTableBytes(screenFlags);
+    if (offset > bytes.length) throw new AssetError("undecodable", "The GIF color table is incomplete");
+
+    let hasFrame = false;
+    while (offset < bytes.length) {
+        const marker = bytes[offset++];
+        if (marker === 0x3b) {
+            if (!hasFrame || offset !== bytes.length) break;
+            return { width, height };
+        }
+        if (marker === 0x21) {
+            if (offset >= bytes.length) break;
+            offset += 1; // Extension label; the payload uses the shared sub-block format.
+            offset = skipGifSubBlocks(bytes, offset);
+            continue;
+        }
+        if (marker !== 0x2c || offset + 9 > bytes.length) break;
+
+        const imageFlags = bytes[offset + 8];
+        offset += 9;
+        if (imageFlags & 0b1000_0000) offset += gifColorTableBytes(imageFlags);
+        if (offset >= bytes.length || offset > bytes.length) break;
+        const minimumCodeSize = bytes[offset++];
+        if (minimumCodeSize < 2 || minimumCodeSize > 8) break;
+        offset = skipGifSubBlocks(bytes, offset);
+        hasFrame = true;
+    }
+    throw new AssetError("undecodable", "The GIF structure is invalid or incomplete");
+}
+
+/** Media type from magic bytes, checked against the declared type; GIF metadata is read without decoding. */
 async function inspect(bytes: Buffer, declaredType: string | null) {
     if (bytes.length === 0) throw new AssetError("empty", "The upload is empty");
     if (bytes.length > MAX_ASSET_BYTES) throw new AssetError("too-large", `Assets hold at most ${MAX_ASSET_BYTES} bytes`);
     const signature = SIGNATURES.find(candidate => candidate.matches(bytes));
-    if (!signature) throw new AssetError("unsupported-media-type", "Only PNG, JPEG and WebP images are accepted");
+    if (!signature) throw new AssetError("unsupported-media-type", "Only PNG, JPEG, WebP and GIF images are accepted");
     const declared = declaredType?.split(";")[0].trim().toLowerCase();
     if (declared !== signature.mediaType) {
         throw new AssetError("media-type-mismatch", `Declared ${declared || "no type"} but the content is ${signature.mediaType}`);
+    }
+    if (signature.mediaType === "image/gif") {
+        return { mediaType: signature.mediaType, ...inspectGif(bytes) };
     }
     let metadata;
     try { metadata = await new Transformer(bytes).metadata(); }

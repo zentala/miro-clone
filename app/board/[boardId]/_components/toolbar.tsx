@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToolButton } from "./tool-button";
 import {
     Circle,
+    ImagePlus,
     MousePointer2,
     Pencil,
     Redo2,
@@ -11,7 +12,7 @@ import {
     Undo2,
 } from "lucide-react";
 import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
-import { useEffect } from "react";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useSelf } from "@/hooks/use-local-board";
 
 interface ToolbarProps {
@@ -21,6 +22,7 @@ interface ToolbarProps {
     redo: () => void;
     canUndo: boolean;
     canRedo: boolean;
+    onImportImage: (file: File) => Promise<void>;
 }
 
 const Toolbar = ({
@@ -30,8 +32,30 @@ const Toolbar = ({
     redo,
     canUndo,
     canRedo,
+    onImportImage,
 }: ToolbarProps) => {
     const selection = useSelf((me) => me.presence.selection);
+    const imageInput = useRef<HTMLInputElement>(null);
+    const [imageError, setImageError] = useState<string | null>(null);
+    const [isImportingImage, setIsImportingImage] = useState(false);
+
+    const importImage = useCallback(async (file: File) => {
+        setImageError(null);
+        setIsImportingImage(true);
+        try {
+            await onImportImage(file);
+        } catch (error) {
+            setImageError(error instanceof Error ? error.message : "Unable to add this image.");
+        } finally {
+            setIsImportingImage(false);
+        }
+    }, [onImportImage]);
+
+    const onImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.currentTarget.files?.[0];
+        event.currentTarget.value = "";
+        if (file) void importImage(file);
+    };
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -86,6 +110,21 @@ const Toolbar = ({
             document.removeEventListener("keydown", onKeyDown);
         };
     }, [selection, setCanvasState]);
+
+    useEffect(() => {
+        const onPaste = (event: ClipboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (target?.isContentEditable || target?.closest("input, textarea")) return;
+            const image = Array.from(event.clipboardData?.items ?? [])
+                .find(item => item.kind === "file" && item.type.startsWith("image/"))
+                ?.getAsFile();
+            if (!image) return;
+            event.preventDefault();
+            void importImage(image);
+        };
+        document.addEventListener("paste", onPaste);
+        return () => document.removeEventListener("paste", onPaste);
+    }, [importImage]);
 
     return (
         <div className="absolute top-[50%] -translate-y-[50%] left-2 flex flex-col gap-y-4">
@@ -168,6 +207,20 @@ const Toolbar = ({
                     }
                     isActive={canvasState.mode === CanvasMode.Pencil}
                 />
+                <ToolButton
+                    label="Add image"
+                    icon={ImagePlus}
+                    onClick={() => imageInput.current?.click()}
+                    isDisabled={isImportingImage}
+                />
+                <input
+                    ref={imageInput}
+                    aria-label="Choose image file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={onImageInputChange}
+                    type="file"
+                />
             </div>
             <div className="bg-white rounded-md p-1.5 flex flex-col items-center shadow-md">
                 <ToolButton
@@ -183,6 +236,11 @@ const Toolbar = ({
                     isDisabled={!canRedo}
                 />
             </div>
+            {imageError && (
+                <div role="alert" className="absolute left-16 top-0 z-50 max-w-80 rounded-md bg-white px-3 py-2 text-sm text-destructive shadow-md">
+                    {imageError}
+                </div>
+            )}
         </div>
     );
 };
