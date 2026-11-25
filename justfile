@@ -13,6 +13,7 @@ check:
     node --test --test-concurrency=1 scripts/backup-retention.test.mjs
     node --test --test-concurrency=1 tests/board-store.test.cjs
     node --test --test-concurrency=1 tests/navigation-capacity.test.cjs
+    node tests/capacity/selector-regression.cjs
 
 # Browser capacity measurement for the T01 workload matrix (slow; not part of check).
 # Example: just measure-capacity --workloads=2000 --viewports=1920x1080 --dprs=2
