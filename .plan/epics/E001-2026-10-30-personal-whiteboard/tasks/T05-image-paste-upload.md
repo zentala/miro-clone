@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T05"
 title: "Paste, upload and render image layers"
-status: "in-progress"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T04"]
@@ -11,18 +11,18 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "t05-impl (w57:pB)"
+executor: "t05-impl (w57:pB); independent verification by t05-verifier (w57:pG) and ROOT rounds 1-3"
 write_set: ["types/canvas.ts", "types/board.ts", "types/asset.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "lib/same-origin.ts", "app/api/boards/**", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "tests/assets.test.cjs", "tests/capacity-steps.cjs", "justfile", "DESIGN.md", "lib/document-version.ts", "lib/document-migrations.ts", "tests/document-model.test.cjs", "app/board/[boardId]/_components/canvas/**", "tests/packaging.test.cjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T05] paste, upload and render image layers"
-completion: "No"
-execution: "phase-one implementation in progress in e001/t05-image-layers; shared canvas/store, lib/assets.ts and check-recipe paths remain held pending T18/T25 integration"
+completion: "Yes"
+execution: "Accepted, integrated and pushed to main on 2026-11-25 after rebasing on 37fdb2c and passing the fresh integrated just check"
 phase: 4
-completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+completed_at: "2026-11-25"
+commits: ["c6bb99022b2cf5001fb9bf27e4555c804f38c6ba", "38abc40ee07e26c65a1efefed08c0af7737d3c3d", "1d362f5332b96805b19af7c2a023a92687c6a3dd", "440ba23ecaff7d0631223876b04eb081d4195bbc"]
+verification_evidence: ["Independent review campaign: .plan/reports/2026-11-25-t05/appointed-verifier-round2.md preserves round 1 F1 and round 2 F2 FAILs; .plan/reports/2026-11-25-t05/root-independent-rounds-1-3.md records independent round 3 PASS", "ROOT independently verified zero-size image API rejection, unchanged SQLite, vector zero-size compatibility and v1/v2/future-version behavior; focused model and real-browser image tests passed 19/19", "After rebase on main 37fdb2c, just check passed on the integrated candidate and produced .next/standalone/server.js; main is 440ba23 and pushed to origin/main", "Wide and narrow actual-app screenshots inspected against DESIGN.md at 1280x900 and 390x844; centered selected-image states pass"]
+evidence: ["Feature source is preserved across four separate commits, including the independent resize and document-boundary corrections", "Earlier F1/F2 failures and the brittle first assertion failure remain in the same review campaign; the inherited viewport-sized export note remains Low/2p and nonblocking", "No live data was read or changed; all zero-size image examples were synthetic and T05 schema v3 was unreleased at review time"]
 ---
 # E001-T05: Paste, upload and render image layers
 
@@ -64,14 +64,14 @@ schema expectations; no separate release is required.
 
 ## Acceptance criteria
 
-- [ ] Every mutating API route (boards and assets) uses the single same-origin guard in `lib/same-origin.ts`; the two copies in the board routes are removed and their tests still pass (T04 review N2).
+- [x] Every mutating API route (boards and assets) uses the single same-origin guard in `lib/same-origin.ts`; the two copies in the board routes are removed and their tests still pass (T04 review N2).
 
-- [ ] GIF (including animated) is accepted: original bytes stored through the T04 asset store, dimensions read from the GIF header without a decoder, rendered as the original file. T04's GIF refusal is lifted here (PO, 2026-11-08).
+- [x] GIF (including animated) is accepted: original bytes stored through the T04 asset store, dimensions read from the GIF header without a decoder, rendered as the original file. T04's GIF refusal is lifted here (PO, 2026-11-08).
 
-- [ ] Real browser clipboard-image and file-upload actions create an image object with correct aspect ratio and a local stored original.
-- [ ] Select, move, resize, duplicate and remove an image with existing interaction/history behavior; undo/redo and reload retain the correct reference/geometry.
-- [ ] PNG export includes the image after assets decode, with no missing cross-origin content or silent blank export.
-- [ ] Unsupported/oversized inputs produce visible errors without corrupting the board or leaking partially committed references.
+- [x] Real browser clipboard-image and file-upload actions create an image object with correct aspect ratio and a local stored original.
+- [x] Select, move, resize, duplicate and remove an image with existing interaction/history behavior; undo/redo and reload retain the correct reference/geometry.
+- [x] PNG export includes the image after assets decode, with no missing cross-origin content or silent blank export.
+- [x] Unsupported/oversized inputs produce visible errors without corrupting the board or leaking partially committed references.
 
 ## Independent verification
 
@@ -88,9 +88,27 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T04 durable storage first. Use generated image fixtures and a synthetic clipboard; browser/OS clipboard access must not read the user's clipboard.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: accepted and delivered 2026-11-25. Points estimate scope, not a
+numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
+
+## Delivery — 2026-11-25
+
+- Source was rebased onto current main `37fdb2c`, fast-forwarded to `main` at
+  `440ba23ecaff7d0631223876b04eb081d4195bbc`, and pushed to `origin/main`.
+- The post-rebase integrated `just check` exited 0. TypeScript and lint passed;
+  lint retained the existing `components/custom-color-picker.tsx:39`
+  `lastUsedColor` warning. The production build succeeded at
+  `miro-clone/.next/standalone/server.js`; the packaging test skipped its
+  explicitly opt-in container-only case.
+- The integrated image workflow passed 12 TAP tests, including the API
+  zero-size rejection, upload, clipboard, resize/collapse/crossing, history,
+  export pixels and 390x844 layout. `document-model.test.cjs` passed 7;
+  `critical-editor.test.cjs` passed 10; all other `just check` recipes passed.
+- The independent review campaign preserves round 1 F1 and round 2 F2 FAILs.
+  ROOT round 3 independently confirmed the document/API boundary correction,
+  vector compatibility, actual browser outcome and pictured screenshots. The
+  low-point inherited viewport-sized export observation remains nonblocking.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
 limitations and independent review evidence. Attach accepted commits/evidence only after

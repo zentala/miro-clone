@@ -238,3 +238,123 @@ change or product edit follows from these corrections.
   passed, while the existing T04 case still expected GIF to be unsupported.
   The accepted T05 behavior makes that expectation stale; other media-type
   rejection assertions remain required.
+- An interim `just check` exited 0 after the phase-two type changes, but the
+  image workflow test still only exercises the same-origin guard and the recipe
+  does not run it. This is build/source evidence only, not image acceptance;
+  the browser image flow and owning check coverage remain to be completed.
+- A referenced local role detail was unavailable. It is already dispositioned
+  nonblocking; no Harness repair or additional search is in scope.
+- During later source discovery, image-layer and resize-symbol searches returned
+  exit 2 and exit 1. These search results did not establish product behavior;
+  the author continued by inspecting the current source modules and existing
+  browser harness.
+- Independent synthetic-browser WIP checks also passed file upload, pointer
+  move, aspect-ratio-preserving resize, duplicate/delete, undo and reload, with
+  the stored image reference intact. A separate narrow 390 px view showed the
+  selected image and controls fitting. These are supplemental probes, not the
+  final stable-source acceptance; redo and final independent checks remain.
+- A later existing-harness scratch run also passed Ctrl+Shift+Z redo and exact
+  asset-reference preservation through the edit/history/reload sequence. The
+  author may adapt its selectors into the durable image browser test; the
+  scratch run is not final-source acceptance.
+- The first attempt to read that scratch used a stale result filename and
+  exited 1. DM relayed the exact existing filename; no extra test run or
+  product operation followed from the failed read.
+- The first narrow image fixture resized the viewport after placing the image
+  at wide-layout coordinates, leaving it offscreen. This is a fixture issue,
+  not evidence of a responsive product defect. The narrow review uses a fresh
+  390 px board with normal centered image insertion and retains actual layout
+  assertions; the separately recorded baseline toolbar overlap remains intact.
+- The first focused `node --test --test-concurrency=1
+  tests/image-workflow.test.cjs` run exited 1 at that narrow-fixture step after
+  the wide-position board stayed at its prior coordinates. The author is
+  correcting the fixture to create and populate a fresh 390 px board.
+- The corrected focused image workflow now passes `node --check` and
+  `node --test --test-concurrency=1 tests/image-workflow.test.cjs`. The author
+  reports coverage for upload/paste, durable original/reference, move/resize,
+  copy/delete, undo/redo, reload and decoded export pixels. The fresh 390 px
+  fixture reports a visible 200×100 image and handles; final visual review and
+  full gate are still pending.
+- The first headed-browser visual attempt exited 1 because no display server
+  was available. A replacement browser service was then started but is outside
+  the accepted route and will not be used. The author is stopping only the
+  processes it started and returning to `Page.captureScreenshot` in the
+  existing Node/CDP harness.
+
+- Independent browser review found a reproducible image-resize failure: dragging
+  the bottom-right handle to the top-left saves a zero-by-zero image; dragging
+  the collapsed handle again produces a non-finite height and a visible save
+  failure. This is limited to image geometry; existing vector behavior must stay
+  unchanged. The T05 candidate is not accepted until the author adds finite,
+  positive aspect-preserving resize behavior and a browser regression.
+
+- The first focused image-workflow run after the resize correction,
+  `node --test --test-concurrency=1 tests/image-workflow.test.cjs`, exited 1
+  with four dependent browser steps skipped. The preceding `npm run build`
+  exited 0. The detailed failed assertion is still being recovered from the
+  worker's test output; this failed run remains separate from any correction or
+  later passing retry.
+
+- The exact first local F1-regression assertion failure was recovered: the test
+  expected a 20 px edge but observed 21 px because the minimum-handle constraint
+  and aspect ratio affect the rendered geometry. The author replaced the brittle
+  pixel expectation with positive finite ratio/crossing invariants; this first
+  failed run remains retained separately from the later passing run.
+
+- The first DM lookup for the T06 task used a stale filename and returned
+  `No such file or directory`; the canonical record is `tasks/T06-progressive-images.md`.
+  No product files were changed by this failed read.
+
+- Independent T05 verification startup recorded one generic `SKILL.md` read
+  returning exit 1; the designated review-loop and design-review instructions
+  were subsequently read, and review proceeded. No product code was involved.
+
+- The independent T05 verifier's first focused image-workflow run exited 1
+  because the clean verifier worktree had no production `.next` artifact; the
+  shared-origin guard test passed but browser app startup failed. The verifier
+  retained this result, ran the owning full `just check` to build the candidate,
+  then reran the focused test. This setup-order failure remains distinct from
+  the product regression and later results.
+
+- Independent T05 round 2 found F2 at the document/API boundary: the validator
+  still accepts a zero-width or zero-height ImageLayer, and a stored invalid
+  image cannot recover through a later resize. The current evidence contains no
+  released T05 v3 image documents; the existing live backup predates image
+  support, and zero-size examples so far are disposable synthetic review data.
+  Correct only image geometry validation and its API/document regression. Keep
+  v1/v2 vector documents and zero-size vector geometry compatible; do not bump
+  the schema or migrate production data for this unreleased synthetic case.
+
+- T05 F2 correction rejects zero width or height for image layers and leaves
+  zero-size vector geometry valid. The author reports the API returns 400
+  `invalid-schema` without changing SQLite; v2/current-v3/future-version tests
+  remain. The original 0c33c83 feature and separate 347bf6f resize correction
+  remain intact; F2 is separate commit 5d58db8.
+- ROOT's independent round 3 on the clean 5d58db8 candidate passed the source,
+  document/API, browser and screenshot checks. The focused model/image run
+  passed 19 tests; the author separately reports full `just check` exit 0 and
+  build artifact `.next/standalone/server.js`. Round 2 FAIL F2 stays preserved
+  in its report history. T05 still needs rebase on current main, a fresh integrated
+  `just check`, and normal push before task completion.
+
+## 2026-11-25 — E001-T05 accepted and delivered
+
+- The image-layer implementation and both confirmed corrections are integrated
+  on main through commits `c6bb990`, `38abc40`, `1d362f5` and `440ba23`; the
+  source push to `origin/main` succeeded. Earlier F1/F2 FAILs remain recorded in
+  the same independent-review campaign, and the separate correction commits
+  preserve their history.
+- The post-rebase integrated `just check` exited 0 and produced
+  `.next/standalone/server.js`. The existing color-picker lint warning remains;
+  the packaging recipe skipped its explicitly opt-in container-only test.
+- ROOT round 3 independently passed the image-only document/API boundary,
+  zero-size vector compatibility, browser regression and screenshots. The
+  round-3 focused model/image run passed 19 tests. The authored visual assets
+  remain at the tracked wide and narrow paths; screenshots regenerated by the
+  final check were restored to their reviewed versions.
+- No T05 v3 live image document was released or known; the existing backup
+  predates image support. Zero-size image samples were synthetic. No live data
+  was read or changed.
+- The inherited viewport-sized PNG export observation remains Low/2p and
+  nonblocking. T05 is marked done; next ready authoring is T06/T10 on disjoint
+  worktree paths, with their shared check/docs/package paths serialized.

@@ -144,7 +144,7 @@ was reconciled with the records on 2026-11-25.
 | [E001-T02](tasks/T02-legacy-cleanup-packaging.md): Remove retired hosted SDKs and slim container packaging | 5 | High | E001-T01 | Yes |
 | [E001-T03](tasks/T03-versioned-document-relations.md): Version board documents and establish shared object relations | 8 | High | E001-T01 | Yes |
 | [E001-T04](tasks/T04-durable-assets.md): Add durable file assets and SQLite references | 8 | High | E001-T03 | Yes |
-| [E001-T05](tasks/T05-image-paste-upload.md): Paste, upload and render image layers | 8 | High | E001-T04 | No |
+| [E001-T05](tasks/T05-image-paste-upload.md): Paste, upload and render image layers | 8 | High | E001-T04 | Yes |
 | [E001-T06](tasks/T06-progressive-images.md): Generate variants and bound viewport image loading | 8 | High | E001-T05, E001-T07 | No |
 | [E001-T07](tasks/T07-navigation-grid-capacity.md): Implement zoom, pan, neutral grid and measured board capacity | 8 | High | E001-T03 | Yes |
 | [E001-T08](tasks/T08-nested-frames.md): Add named nested frames with stable child geometry | 8 | High | E001-T03, E001-T07 | No |
