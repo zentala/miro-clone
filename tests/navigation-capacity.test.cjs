@@ -11,7 +11,7 @@ const { ANCHOR, generateDocument, insertBoard } = require('./lib/synthetic-board
 const { navigationSteps } = require('./navigation-steps.cjs');
 const { capacitySteps } = require('./capacity-steps.cjs');
 
-test('navigation and capacity: zoom, pan, grid, z key, camera reset, export, measured limit', { timeout: 300000 }, async t => {
+async function prepareNavigationTest(t) {
     const owned = await mkdtemp(join(tmpdir(), 'miro-navigation-'));
     const profile = join(owned, 'chromium-profile');
     const downloads = join(owned, 'downloads');
@@ -65,6 +65,11 @@ test('navigation and capacity: zoom, pan, grid, z key, camera reset, export, mea
             }
         }),
     };
+    return { context, exceptions };
+}
+
+test('navigation and capacity: zoom, pan, grid, z key, camera reset, export, measured limit', { timeout: 300000 }, async t => {
+    const { context, exceptions } = await prepareNavigationTest(t);
     await navigationSteps(context);
     await capacitySteps(context);
     assert.deepEqual(exceptions, [], 'No uncaught browser exceptions');
