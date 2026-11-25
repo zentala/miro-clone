@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { link, mkdir, mkdtemp, open, readdir, rm, stat, unlink } from "node:fs/promises";
+import { link, mkdir, mkdtemp, open, readdir, rename, rm, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -62,7 +62,8 @@ function databaseReferences(snapshotPath) {
   const db = new DatabaseSync(snapshotPath, { readOnly: true });
   try {
     const boards = db.prepare("SELECT document FROM boards").all();
-    const assetRows = db.prepare("SELECT id FROM assets ORDER BY id").all();
+    const hasAssetsTable = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'assets'").get());
+    const assetRows = hasAssetsTable ? db.prepare("SELECT id FROM assets ORDER BY id").all() : [];
     const references = new Set();
     for (const { document } of boards) {
       let parsed;
@@ -121,13 +122,11 @@ export async function readBackupHeader(path) {
   } finally { await handle.close(); }
 }
 
-async function currentFingerprint(databasePath, assetFiles) {
-  const [info, ...walState] = await Promise.all([stat(databasePath, { bigint: true }),
-    stat(`${databasePath}-wal`, { bigint: true }).catch(() => null),
-    stat(`${databasePath}-shm`, { bigint: true }).catch(() => null)]);
-  return JSON.stringify({ database: { size: String(info.size), mtimeNs: String(info.mtimeNs) },
-    wal: walState.map(state => state ? { size: String(state.size), mtimeNs: String(state.mtimeNs) } : null),
-    assets: assetFiles.map(({ name, size, mtimeMs }) => ({ name, size, mtimeMs })) });
+async function contentFingerprint(stagedDatabase, assetFiles) {
+  return JSON.stringify({
+    database: await digestFile(stagedDatabase),
+    assets: assetFiles.map(({ name, size, sha256 }) => ({ name, size, sha256 })),
+  });
 }
 
 async function newestUnchanged(destination, fingerprint) {
@@ -136,11 +135,24 @@ async function newestUnchanged(destination, fingerprint) {
   for (const entry of candidates) {
     try {
       const { header } = await readBackupHeader(join(destination, entry.name));
-      if (header.sourceFingerprint === fingerprint) return entry.name;
+      await verifyBackup(join(destination, entry.name));
+      if (header.contentFingerprint === fingerprint) return entry.name;
       return null;
     } catch { return null; }
   }
   return null;
+}
+
+async function recordUnchangedCheck(destination, backupName, checkedAt) {
+  const unchangedSince = backupName.match(/-(\d{8}T\d{6}Z)\.mcb$/)?.[1];
+  if (!unchangedSince) throw new Error(`Cannot read backup timestamp: ${backupName}`);
+  const target = join(destination, `${APP}.last-check`);
+  const temporary = `${target}.${randomUUID()}.tmp`;
+  const handle = await open(temporary, "wx", 0o600);
+  try { await handle.writeFile(`${JSON.stringify({ checkedAt: checkedAt.getTime(), unchangedSince })}\n`); await handle.sync(); }
+  finally { await handle.close(); }
+  try { await rename(temporary, target); }
+  catch (error) { await rm(temporary, { force: true }); throw error; }
 }
 
 export async function createBackup({ database, destination, now = new Date() }) {
@@ -157,20 +169,22 @@ export async function createBackup({ database, destination, now = new Date() }) 
     const db = new DatabaseSync(sourceDb);
     try { db.exec(`VACUUM INTO ${quoteSqlString(stagedDatabase)}`); } finally { db.close(); }
     const tableCounts = databaseReferences(stagedDatabase);
-    if (tableCounts.assets === 0) throw new Error("Database has no registered asset rows; refusing an unrestorable backup");
     const assetFiles = await walkAssets(join(sourceRoot, "assets"));
     const present = new Set(assetFiles.map(file => basename(file.path)));
     for (const id of tableCounts.references) if (!present.has(id)) throw new Error(`Referenced asset file is missing: ${id}`);
-    const fingerprint = await currentFingerprint(sourceDb, assetFiles);
+    const fingerprint = await contentFingerprint(stagedDatabase, assetFiles);
     const unchanged = await newestUnchanged(targetDir, fingerprint);
-    if (unchanged) return { status: "unchanged, skipped", file: unchanged };
+    if (unchanged) {
+      await recordUnchangedCheck(targetDir, unchanged, now);
+      return { status: "unchanged, skipped", file: unchanged };
+    }
 
     const files = [{ name: "miro.sqlite", path: stagedDatabase, ...(await digestFile(stagedDatabase)) }, ...assetFiles];
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const name = `${APP}-${timestamp}.mcb`;
     const destinationPath = join(targetDir, name);
     const temporaryPath = `${destinationPath}.tmp`;
-    const header = { format: 1, createdAt: now.toISOString(), sourceFingerprint: fingerprint,
+    const header = { format: 1, createdAt: now.toISOString(), contentFingerprint: fingerprint,
       database: basename(sourceDb), boards: tableCounts.boards, registeredAssets: tableCounts.assets,
       referencedAssets: [...tableCounts.references].sort(), files: files.map(({ name, size, sha256 }) => ({ name, size, sha256 })) };
     try {

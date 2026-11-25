@@ -43,17 +43,17 @@ function within(path, parent) {
 async function assetReferences(databasePath) {
   const db = new DatabaseSync(databasePath, { readOnly: true });
   try {
-    const boards = db.prepare("SELECT document FROM boards").all();
-    const assets = new Set(db.prepare("SELECT id FROM assets").all().map(row => row.id));
+    const boards = db.prepare("SELECT title, document FROM boards ORDER BY id").all();
+    const hasAssetsTable = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'assets'").get());
+    const assets = new Set(hasAssetsTable ? db.prepare("SELECT id FROM assets").all().map(row => row.id) : []);
     if (!boards.length) throw new Error("Restored database has no board rows");
-    if (!assets.size) throw new Error("Restored database has no registered asset rows");
     const references = new Set();
     for (const { document } of boards) {
       const parsed = JSON.parse(document);
       for (const layer of Object.values(parsed?.layers ?? {})) if (typeof layer?.assetId === "string") references.add(layer.assetId);
     }
     for (const id of references) if (!assets.has(id)) throw new Error(`Restored database references an unknown asset: ${id}`);
-    return { boards: boards.length, assets: assets.size, references };
+    return { boards: boards.length, titles: boards.map(row => row.title), assets: assets.size, references };
   } finally { db.close(); }
 }
 
@@ -112,7 +112,7 @@ export async function restoreTest({ backup, database, targetRoot }) {
       for await (const chunk of content) hash.update(chunk);
       if (hash.digest("hex") !== id) throw new Error(`Referenced asset bytes failed verification: ${id}`);
     }
-    return { boards: restored.boards, registeredAssets: restored.assets, referencedAssets: restored.references.size };
+    return { boards: restored.boards, boardTitles: restored.titles, registeredAssets: restored.assets, referencedAssets: restored.references.size };
   } finally {
     await rm(ownedTarget, { recursive: true, force: true });
   }

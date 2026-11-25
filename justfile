@@ -10,6 +10,7 @@ check:
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
     node --test --test-concurrency=1 tests/assets.test.cjs
     node --test --test-concurrency=1 tests/backup-restore.test.cjs
+    node --test --test-concurrency=1 scripts/backup-retention.test.mjs
     node --test --test-concurrency=1 tests/board-store.test.cjs
     node --test --test-concurrency=1 tests/navigation-capacity.test.cjs
 
@@ -48,7 +49,15 @@ migration-dry-run export *args:
 # Create a verified SQLite-plus-assets snapshot in the chosen local directory.
 backup destination:
     node scripts/backup.mjs --destination "{{destination}}"
+    node scripts/backup-retention.mjs prune --app miro-clone --dir "{{destination}}" --apply
 
 # Restore the newest snapshot into a dated temporary directory and remove it.
 backup-verify destination:
     node scripts/restore-test.mjs --directory "{{destination}}"
+
+# Report status or show a retention plan for a selected destination.
+backup-status destination:
+    node scripts/backup-retention.mjs status --app miro-clone --dir "{{destination}}" --max-age-hours 36
+
+backup-prune destination:
+    node scripts/backup-retention.mjs prune --app miro-clone --dir "{{destination}}"
