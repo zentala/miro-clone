@@ -11,6 +11,17 @@ const { ANCHOR, generateDocument, insertBoard } = require('./lib/synthetic-board
 const { navigationSteps } = require('./navigation-steps.cjs');
 const { capacitySteps } = require('./capacity-steps.cjs');
 
+function createStepRunner(t, session, exceptions, app) {
+    let flowFailed = false;
+    return (name, run) => t.test(name, { skip: flowFailed ? 'Earlier prerequisite failed' : false }, async () => {
+        try { await run(); } catch (error) {
+            flowFailed = true;
+            const page = await session.evaluate('document.body.innerText.slice(0, 1500)').catch(() => 'Page unavailable');
+            throw new Error(`${error.message}\nPage: ${page}\nBrowser exceptions: ${JSON.stringify(exceptions)}\nServer: ${app.log}`, { cause: error });
+        }
+    });
+}
+
 async function prepareNavigationTest(t) {
     const owned = await mkdtemp(join(tmpdir(), 'miro-navigation-'));
     const profile = join(owned, 'chromium-profile');
@@ -54,16 +65,9 @@ async function prepareNavigationTest(t) {
         const db = new DatabaseSync(databasePath, { readOnly: true });
         try { return JSON.parse(db.prepare('SELECT document FROM boards WHERE id = ?').get(id).document); } finally { db.close(); }
     };
-    let flowFailed = false;
     const context = {
         session, cdp, origin, databasePath, downloads, read, generateDocument, insertBoard, until,
-        step: (name, run) => t.test(name, { skip: flowFailed ? 'Earlier prerequisite failed' : false }, async () => {
-            try { await run(); } catch (error) {
-                flowFailed = true;
-                const page = await session.evaluate('document.body.innerText.slice(0, 1500)').catch(() => 'Page unavailable');
-                throw new Error(`${error.message}\nPage: ${page}\nBrowser exceptions: ${JSON.stringify(exceptions)}\nServer: ${app.log}`, { cause: error });
-            }
-        }),
+        step: createStepRunner(t, session, exceptions, app),
     };
     return { context, exceptions };
 }
