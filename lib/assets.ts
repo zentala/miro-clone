@@ -77,7 +77,7 @@ async function inspect(bytes: Buffer, declaredType: string | null) {
     return { mediaType: signature.mediaType, width: metadata.width, height: metadata.height };
 }
 
-async function syncDirectory(path: string) {
+export async function syncDirectory(path: string) {
     const handle = await open(path, "r");
     try { await handle.sync(); } finally { await handle.close(); }
 }
@@ -112,6 +112,7 @@ async function storeFile(id: string, bytes: Buffer) {
         throw error;
     }
     await syncDirectory(dirname(target));
+    await syncDirectory(assetsRoot());
 }
 
 /**

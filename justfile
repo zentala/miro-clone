@@ -9,6 +9,7 @@ check:
     node --test --test-concurrency=1 tests/document-model.test.cjs
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
     node --test --test-concurrency=1 tests/assets.test.cjs
+    node --test --test-concurrency=1 tests/backup-restore.test.cjs
     node --test --test-concurrency=1 tests/board-store.test.cjs
     node --test --test-concurrency=1 tests/navigation-capacity.test.cjs
 
@@ -43,3 +44,11 @@ container-check:
 # Validate a structural Miro export and print its loss report; changes no board.
 migration-dry-run export *args:
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migration/dry-run.mjs "{{export}}" {{args}}
+
+# Create a verified SQLite-plus-assets snapshot in the chosen local directory.
+backup destination:
+    node scripts/backup.mjs --destination "{{destination}}"
+
+# Restore the newest snapshot into a dated temporary directory and remove it.
+backup-verify destination:
+    node scripts/restore-test.mjs --directory "{{destination}}"

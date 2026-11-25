@@ -1,5 +1,10 @@
 # Miro migration: read-only structural export
 
+Before importing into or replacing a real board, take a fresh backup of the
+SQLite database and durable assets, then run `just backup-verify <destination>`.
+A configured destination alone does not prove the backup is fresh
+or restorable; see [Local backup and restore check](backup.md).
+
 ## TLDR
 
 `tools/miro-export` is a minimal Miro Web SDK v2 app that reads one board with
