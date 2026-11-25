@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T25"
 title: "Redraw only changed layers and split the canvas component"
-status: "pending"
+status: "in-progress"
 priority: "high"
 type: "improvement"
 dependencies: ["E001-T07"]
@@ -11,13 +11,13 @@ points: 5
 importance: "High"
 effort: "medium"
 role: "implementer"
-executor: "unassigned"
-write_set: ["app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/canvas/**", "app/board/[boardId]/_components/layer-preview.tsx", "hooks/use-local-board.ts", "store/use-board-store.ts", "tests/capacity/**", "tests/board-store.test.cjs"]
+executor: "t25-impl-fresh (w57:p8); prior session retained at w57:p5"
+write_set: ["app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/canvas/**", "app/board/[boardId]/_components/layer-preview.tsx", "hooks/use-local-board.ts", "store/use-board-store.ts", "tests/capacity/**", "tests/board-store.test.cjs", "providers/local-board-provider.tsx"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "perf(whiteboard): [E001-T25] redraw only changed layers"
 completion: "No"
-execution: "not-dispatched"
+execution: "fresh-session preflight pending; edits not released"
 phase: 4
 completed_at: null
 commits: []
