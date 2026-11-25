@@ -12,7 +12,7 @@ importance: "Medium"
 effort: "small"
 role: "implementer"
 executor: "unassigned"
-write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md"]
+write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-editor/**", "tests/fixtures/**", ".eslintrc.json", "package.json", "justfile", "AGENTS.md", "tests/navigation-steps.cjs", "tests/capacity-steps.cjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "test(editor): [E001-T23] split the editor browser test and lint tools and tests"
