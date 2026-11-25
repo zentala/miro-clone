@@ -217,6 +217,18 @@ must cover real UI, assets, geometry/history, reload/restart, measured network/
 memory and appropriate restore/loss scenarios. Task22 also needs independent
 intended HTTPS/replacement evidence from the infrastructure owner.
 
+### Local visual evidence for UI tasks (2026-11-25)
+
+For this repository's local UI acceptance, use the existing disposable app and
+Node/CDP browser harness. Capture representative wide and narrow screenshots
+with `Page.captureScreenshot` before the harness cleans up; retain the PNGs for
+an independent image-capable review against `DESIGN.md`. The accepted E2E route
+does not require Playwright MCP, port 9223 setup, or a replacement browser
+service. Preserve actual execution refusals and do not route around them. This
+task-local app procedure is separate from workspace-browser rules, which remain
+unchanged; it creates no global Harness rule, tool, dependency or additional
+gate.
+
 Baseline evidence is historical: 2026-10-30 just check exit 0, seven TAP passes
 (one parent + six steps), cleanup complete. It proves neither new features nor
 deployment. Preserve earlier static exit 2, first UI create 403/exit 1, later
