@@ -12,7 +12,7 @@ importance: "High"
 effort: "medium"
 role: "implementer"
 executor: "unassigned"
-write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets.ts"]
+write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets.ts", "scripts/backup-retention.mjs", "scripts/backup-retention.test.mjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(backup): [E001-T18] coordinate SQLite and asset backup with verified restore"
@@ -76,6 +76,17 @@ and do not introduce a new framework or tests that merely mirror implementation.
 ## Carried from E001-T04 (PO, 2026-11-08)
 
 - Add one sentence to the asset documentation describing both states: `unused` = a registered asset no board references; `unregistered` = an intact file on disk without a database row (e.g. after an interrupted upload). Neither is an error or deletable.
+
+## PO decision on the shared retention script (2026-11-25)
+
+The backup skill asks each app to copy `backup-retention.mjs` and its test.
+Copy both unchanged from the Harness repository, `skills/backup/`, revision
+58be8c9 (2026-10-18), into `scripts/`. Add one provenance comment below the
+shebang naming that repository, path and revision; the owner of this app wrote
+the script, so no third-party licence applies. No host path, no import from
+another checkout. Run the copied test in `just check`. Do not edit the copied
+logic; a needed change goes to the Harness owner. A systemd timer and off-box
+copies stay out of this task; scheduling belongs to deployment (T22).
 
 ## Known gating and evidence
 
