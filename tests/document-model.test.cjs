@@ -52,44 +52,44 @@ function row(databasePath, id) {
     try { return { ...db.prepare('SELECT * FROM boards WHERE id = ?').get(id) }; } finally { db.close(); }
 }
 const node = (type, extra = {}) => ({ type, x: 0, y: 0, width: 10, height: 10, fill, ...extra });
-const current = (layers, layerIds = Object.keys(layers)) => ({ schemaVersion: 2, layerIds, layers });
+const current = (layers, layerIds = Object.keys(layers)) => ({ schemaVersion: 3, layerIds, layers });
 
-test('pre-version documents open unchanged and save as v2 without losing IDs, order, title, geometry or content', () => {
+test('pre-version documents open unchanged and save as v3 without losing IDs, order, title, geometry or content', () => {
     const databasePath = join(owned, 'upgrade.sqlite');
     const storedText = JSON.stringify(legacyDocument());
     seed(databasePath, [['legacy', 'Legacy board', storedText]]);
     const { boards } = loadApp(databasePath);
     const opened = boards.getBoard('legacy');
     assert.equal(opened.title, 'Legacy board');
-    assert.deepEqual(opened.document, { schemaVersion: 2, ...legacyDocument() });
+    assert.deepEqual(opened.document, { schemaVersion: 3, ...legacyDocument() });
     assert.equal(row(databasePath, 'legacy').document, storedText, 'Opening must not rewrite the stored payload');
     boards.updateBoard('legacy', { document: opened.document });
     const saved = row(databasePath, 'legacy');
     assert.equal(saved.title, 'Legacy board');
-    assert.deepEqual(JSON.parse(saved.document), { schemaVersion: 2, ...legacyDocument() });
+    assert.deepEqual(JSON.parse(saved.document), { schemaVersion: 3, ...legacyDocument() });
     // An unversioned submission (for example from a client loaded before the upgrade) is upgraded, not refused.
-    assert.equal(boards.updateBoard('legacy', { document: legacyDocument() }).document.schemaVersion, 2);
-    assert.deepEqual(boards.createBoard('Fresh').document, { schemaVersion: 2, layerIds: [], layers: {} });
+    assert.equal(boards.updateBoard('legacy', { document: legacyDocument() }).document.schemaVersion, 3);
+    assert.deepEqual(boards.createBoard('Fresh').document, { schemaVersion: 3, layerIds: [], layers: {} });
 });
 
 test('future schema versions are refused without rewriting the stored payload', () => {
     const databasePath = join(owned, 'future.sqlite');
-    const futureText = '{"schemaVersion": 3, "layerIds": ["a"], "layers": {"a": {"type": 42, "shape": "unknown"}}}';
+    const futureText = '{"schemaVersion": 4, "layerIds": ["a"], "layers": {"a": {"type": 42, "shape": "unknown"}}}';
     seed(databasePath, [['future', 'Future board', futureText], ['ok', 'Readable', JSON.stringify(legacyDocument())]]);
     const { boards } = loadApp(databasePath);
     const before = row(databasePath, 'future');
     const refused = error => error instanceof boards.UnreadableBoardError && error.reason.code === 'unsupported-version' &&
-        /version 3 is newer than supported version 2/.test(error.message);
+        /version 4 is newer than supported version 3/.test(error.message);
     assert.throws(() => boards.getBoard('future'), refused);
     assert.throws(() => boards.updateBoard('future', { document: current({}) }), refused);
     assert.throws(() => boards.updateBoard('future', { title: 'Renamed' }), refused);
-    assert.throws(() => boards.updateBoard('ok', { document: { schemaVersion: 3, layerIds: [], layers: {} } }),
+    assert.throws(() => boards.updateBoard('ok', { document: { schemaVersion: 4, layerIds: [], layers: {} } }),
         error => error.code === 'unsupported-version');
     assert.deepEqual(row(databasePath, 'future'), before, 'Title, payload text and timestamp stay byte-identical');
     const listed = Object.fromEntries(boards.listBoards().map(entry => [entry.id, entry]));
     assert.equal(listed.future.document, null);
     assert.equal(listed.future.documentError.code, 'unsupported-version');
-    assert.equal(listed.ok.document.schemaVersion, 2);
+    assert.equal(listed.ok.document.schemaVersion, 3);
 });
 
 test('validation separates duplicate IDs, missing references, cycles and unsupported records from accepted schema', () => {
@@ -118,6 +118,21 @@ test('validation separates duplicate IDs, missing references, cycles and unsuppo
     }
     assert.deepEqual(row(databasePath, 'board'), before, 'Refused saves leave the last accepted document in place');
     assert.equal(boards.getBoard('board').document.layers.leaf.parentId, 'inner');
+});
+
+test('v2 documents upgrade to v3 and image layers require a durable asset reference', () => {
+    const { migrations, version } = loadApp(join(owned, 'images.sqlite'));
+    const legacy = { schemaVersion: 2, layerIds: ['old'], layers: { old: node(0) } };
+    assert.deepEqual(migrations.upgradeDocument(legacy), { ...legacy, schemaVersion: 3 });
+    const image = { type: 5, x: 12, y: 24, width: 160, height: 90, assetId: 'a'.repeat(64) };
+    const document = { schemaVersion: 3, layerIds: ['image'], layers: { image } };
+    assert.deepEqual(migrations.upgradeDocument(document), document);
+    for (const assetId of ['', '../unsafe', 'A'.repeat(64)]) {
+        assert.throws(() => version.validateDocument({ ...document, layers: { image: { ...image, assetId } } }),
+            error => error.code === 'invalid-schema');
+    }
+    assert.throws(() => version.validateDocument({ ...document, layers: { image: { ...image, fill } } }),
+        error => error.code === 'invalid-schema', 'image data belongs in the asset store, not an inline fill');
 });
 
 test('effective lock inherits from every ancestor without copying own lock bits', () => {
@@ -181,6 +196,9 @@ test('upgrade, app rollback and backup recovery on synthetic database copies', (
     // Recovery: the pre-upgrade copy is untouched and opens with the same content.
     assert.equal(row(backup, 'one').document, JSON.stringify(legacyDocument()));
     const restored = loadApp(backup).boards;
-    assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 2, ...legacyDocument() });
+    assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 3, ...legacyDocument() });
     assert.equal(restored.getBoard('two').title, 'Second');
 });
+
+// This file already runs in `just check`; include the image workflow suite without changing the held check recipe.
+require('./image-workflow.test.cjs');

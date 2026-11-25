@@ -30,7 +30,11 @@ function loadApp(databasePath) {
         writeFileSync(join(outDir, file.replace(/\.ts$/, '.js')), outputText);
     }
     process.env.MIRO_SQLITE_PATH = databasePath;
-    return { assets: require(join(outDir, 'lib/assets.js')), boards: require(join(outDir, 'lib/boards.js')) };
+    return {
+        assets: require(join(outDir, 'lib/assets.js')),
+        boards: require(join(outDir, 'lib/boards.js')),
+        version: require(join(outDir, 'lib/document-version.js')),
+    };
 }
 function dataRoot(name) {
     const directory = join(owned, name);
@@ -179,7 +183,8 @@ test('a new process on the same data root serves the asset; lost or damaged file
     const { asset, path } = await second.assets.openAsset(ids.kept);
     assert.equal(asset.mediaType, 'image/webp');
     assert.deepEqual(readFileSync(path), kept, 'Same bytes after restart');
-    assert.deepEqual(second.boards.getBoard(board.id).document, document);
+    assert.deepEqual(second.boards.getBoard(board.id).document,
+        { ...document, schemaVersion: second.version.CURRENT_SCHEMA_VERSION });
     rmSync(second.assets.assetPath(ids.lost));
     const corrupted = Buffer.from(damaged); corrupted[corrupted.length - 3] ^= 0xff;
     writeFileSync(second.assets.assetPath(ids.damaged), corrupted);

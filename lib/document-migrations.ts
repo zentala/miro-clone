@@ -14,6 +14,8 @@ const UPGRADES: Record<number, (document: RawDocument) => RawDocument> = {
     // v1 -> v2: explicit version. Absent parentId means root and absent locked means
     // unlocked, so every layer, ID and paint-order entry stays unchanged.
     1: document => ({ ...document, schemaVersion: 2 }),
+    // v2 -> v3: adds the image layer type; existing layer records are unchanged.
+    2: document => ({ ...document, schemaVersion: 3 }),
 };
 
 /** Unversioned documents are version 1; any other value must be a positive integer. */

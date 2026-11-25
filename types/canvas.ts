@@ -11,7 +11,7 @@ export type Camera = {
     zoom: number;
 };
 
-/** Relation and protection fields shared by every layer type (document schema v2). */
+/** Relation and protection fields shared by every layer type (document schema v3). */
 export type ObjectRelations = {
     /** Containing object; absent means the layer sits at the board root. */
     parentId?: string;
@@ -26,6 +26,7 @@ export enum LayerType {
     Path,
     Text,
     Note,
+    Image,
 }
 
 export type RectangleLayer = ObjectRelations & {
@@ -76,6 +77,19 @@ export type NoteLayer = ObjectRelations & {
     height: number;
     width: number;
     fill: Color;
+    value?: string;
+};
+
+/** A durable image object points to an original stored outside the board document. */
+export type ImageLayer = ObjectRelations & {
+    type: LayerType.Image;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    assetId: string;
+    /** Optional compatibility keys keep existing generic LiveObject access typed. */
+    fill?: Color;
     value?: string;
 };
 
@@ -147,4 +161,5 @@ export type Layer =
     | EllipseLayer
     | PathLayer
     | TextLayer
-    | NoteLayer;
+    | NoteLayer
+    | ImageLayer;

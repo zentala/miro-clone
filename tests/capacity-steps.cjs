@@ -29,7 +29,7 @@ async function capacityStep1(context) {
         await until('large-board undo saved', () => read('large').layers[ANCHOR.id].x === ANCHOR.x, 30000);
         await h.saved();
         await h.open('large', REPRESENTATIVE);
-        assert.deepEqual(read('large'), document, 'Reload keeps the generated content unchanged');
+        assert.deepEqual(read('large'), { ...document, schemaVersion: 3 }, 'Reload keeps the generated content unchanged');
     });
 }
 async function capacityStep2(context) {
