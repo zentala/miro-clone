@@ -191,3 +191,38 @@ change or product edit follows from these corrections.
 - A later rebase included only the already-delivered T23 journal and task-record
   commit; no product source paths changed, so the T18 gate remains applicable.
   T18 is now fast-forwarded onto main after T23.
+
+## 2026-11-25 — E001-T05 current-version gate failures
+
+- The first T05 full `just check` exited 1 because `tests/critical-editor.test.cjs`
+  still expected current saved documents to use schema v2 after the accepted
+  v3 migration. The current-version assertions were corrected without changing
+  the legacy input or unsupported-future-version cases; focused editor/model
+  tests then passed 18/18.
+- The next full `just check` also exited 1 at
+  `tests/packaging.test.cjs:171`: a synthetic v2 request is correctly persisted
+  as v3, but the packaging assertion still compares the stored row to the
+  un-upgraded request. The failure is preserved; no packaging-test change has
+  been made pending the owning PO's path disposition.
+- PO then accepted the minimal current-schema assertion update in the packaging
+  test and reaffirmed the standing rule for existing current-schema expectations
+  in other suites. The T05 author reports the focused affected suites passed
+  (35 pass, one expected skip) and the next full `just check` exited 0 with a
+  production build. The original v2 input fixtures and future-version rejection
+  checks remain in scope; independent review and the final rebase gate remain
+  pending.
+
+## 2026-11-25 — E001-T25 final verification
+
+- The final candidate passed independent source and browser verification after
+  rebasing onto the T18-integrated main. Full `just check` exited 0: 90 tests,
+  89 passed and one expected container-only skip; the production build passed.
+- At 2,000 objects, undo improved from 263.1 ms to 32.9 ms and drag p95 from
+  216.6 ms to 16.7 ms; each run sent one patch. Both candidate measures meet
+  the 100 ms target.
+- Browser checks passed selector changes across rectangle, path, clear and a
+  second rectangle, plus paint-order changes, insert, duplicate, delete, undo
+  and reload. The selector bounds and handles updated immediately.
+- The selection-panel overlap with the left toolbar was reproduced with the
+  same geometry on baseline and candidate at 390 px and 768 px. This is a
+  pre-existing narrow-layout issue and did not block T25 delivery.

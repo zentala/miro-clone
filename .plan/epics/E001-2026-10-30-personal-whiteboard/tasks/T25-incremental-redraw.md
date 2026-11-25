@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T25"
 title: "Redraw only changed layers and split the canvas component"
-status: "in-progress"
+status: "done"
 priority: "high"
 type: "improvement"
 dependencies: ["E001-T07"]
@@ -16,13 +16,13 @@ write_set: ["app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "perf(whiteboard): [E001-T25] redraw only changed layers"
-completion: "No"
-execution: "candidate 62d0df7 plus accepted check-recipe commit 20b480a; independent review active; rebase on T18-integrated main and final gate pending"
+completion: "Yes"
+execution: "accepted candidate rebased onto main 21fff87, independently verified and fast-forward integrated; delivery record and push pending"
 phase: 4
-completed_at: null
-commits: ["62d0df7", "20b480a"]
-verification_evidence: []
-evidence: ["Author-reported just check exit 0 on 20b480a, including node tests/capacity/selector-regression.cjs; Next production build succeeded", "Author-reported selector-bounds and z-order browser regression PASS", "T07 2000-object measurement self-report: undo 38.4 ms, drag p95/max 16.7 ms, one PATCH; independent rerun pending", "DM reviewed the retained wide and 390px narrow screenshots: pictured states are legible and the selection panel does not overlap the left toolbar", "ROOT separately reported an earlier alternate-position 390px overlap; the author repositioned the fixture. Whether that state is reproducible and pre-existing remains under independent review; fixture repositioning is not a product fix"]
+completed_at: "2026-11-25"
+commits: ["866ef7b", "7d625f7"]
+verification_evidence: [".plan/reports/2026-11-25-t25-verification-round1.md — final round 2 PASS on rebased candidate 7d625f70f50d50b4560e42eb1991d323bf546e99"]
+evidence: ["Integrated candidate passed full just check: exit 0, 90 tests, 89 passed, one expected container-only skip; Next production build succeeded", "Independent 2000-object T07 comparison at 1280x900 DPR1 zoom1: baseline undo 263.1 ms and drag p95 216.6 ms; candidate undo 32.9 ms and drag p95/max 16.7 ms; one PATCH each", "Real-browser F1 rectangle-to-path-to-clear-to-different-rectangle selector transitions updated bounds/handles immediately", "Real-browser F2 repeated front/back ordering, geometry edit, insert, duplicate, delete, undo and reload preserved rendered order", "Retained wide and narrow screenshots passed for pictured states", "Alternate-position selection-panel/toolbar overlap was reproduced identically on baseline and candidate at 390px and 768px and dispositioned pre-existing; no T25 change claimed", "Earlier probe failures and corrections remain in the same verification report"]
 ---
 # E001-T25: Redraw only changed layers and split the canvas component
 
