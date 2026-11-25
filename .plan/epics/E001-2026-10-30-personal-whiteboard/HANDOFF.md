@@ -175,6 +175,14 @@ was reconciled with the records on 2026-11-25.
   (PO, 2026-11-25). It adds no dependency and widens no tracked scope. Never
   replace a behavior test with source-text assertions because dependencies
   are not installed; keep the failed run in the record, install, rerun.
+- Standing PO decision (2026-11-25): a task that adds or changes a layer type
+  (T05, T08, T09, T10, T11, T12, T19) may make the minimal necessary changes to
+  the shared document model: `lib/document-version.ts` (supported types and
+  schema version), `lib/document-migrations.ts` (upgrade step),
+  `types/canvas.ts`, `types/board.ts` and `tests/document-model.test.cjs`.
+  After T25 the same holds for the split `_components/canvas/**`. Bump the
+  schema version with an upgrade step and a test when a stored shape changes.
+  DM lists the exact paths in the task record; no separate PO request.
 - Keep schema/store/canvas/lockfile/check/docs ownership serialized; dependent
   completion and a free worker slot do not authorize overlapping writes.
 - Do not touch private BACKLOG/STATE, source exports, credentials, user browser
