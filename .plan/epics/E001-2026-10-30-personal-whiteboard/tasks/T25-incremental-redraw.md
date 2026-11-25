@@ -12,17 +12,17 @@ importance: "High"
 effort: "medium"
 role: "implementer"
 executor: "t25-impl-fresh (w57:p8); prior session retained at w57:p5"
-write_set: ["app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/canvas/**", "app/board/[boardId]/_components/layer-preview.tsx", "hooks/use-local-board.ts", "store/use-board-store.ts", "tests/capacity/**", "tests/board-store.test.cjs", "providers/local-board-provider.tsx"]
+write_set: ["app/board/[boardId]/_components/canvas.tsx", "app/board/[boardId]/_components/canvas/**", "app/board/[boardId]/_components/layer-preview.tsx", "hooks/use-local-board.ts", "store/use-board-store.ts", "tests/capacity/**", "tests/board-store.test.cjs", "providers/local-board-provider.tsx", "app/board/[boardId]/_components/info.tsx", "justfile"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "perf(whiteboard): [E001-T25] redraw only changed layers"
 completion: "No"
-execution: "fresh-session preflight pending; edits not released"
+execution: "candidate 62d0df7 plus accepted check-recipe commit 20b480a; independent review active; rebase on T18-integrated main and final gate pending"
 phase: 4
 completed_at: null
-commits: []
+commits: ["62d0df7", "20b480a"]
 verification_evidence: []
-evidence: []
+evidence: ["Author-reported just check exit 0 on 20b480a, including node tests/capacity/selector-regression.cjs; Next production build succeeded", "Author-reported selector-bounds and z-order browser regression PASS", "T07 2000-object measurement self-report: undo 38.4 ms, drag p95/max 16.7 ms, one PATCH; independent rerun pending", "DM reviewed the retained wide and 390px narrow screenshots: pictured states are legible and the selection panel does not overlap the left toolbar", "ROOT separately reported an earlier alternate-position 390px overlap; the author repositioned the fixture. Whether that state is reproducible and pre-existing remains under independent review; fixture repositioning is not a product fix"]
 ---
 # E001-T25: Redraw only changed layers and split the canvas component
 

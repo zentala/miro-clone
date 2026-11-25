@@ -181,3 +181,13 @@ change or product edit follows from these corrections.
   browser test passed 10/10. The fake-Podman regression remains the evidence that
   foreign image tags are preserved; this run did not exercise a real shared-image
   deletion probe.
+
+## 2026-11-25 — E001-T18 integrated verification
+
+- PO accepted T18 after independent review. The two T18 commits were rebased
+  onto T23-integrated main without source conflicts; fresh `just check` exited 0
+  with 88 passes and one expected skip. The successful build artifact was
+  produced in the T18 worktree at `.next`.
+- A later rebase included only the already-delivered T23 journal and task-record
+  commit; no product source paths changed, so the T18 gate remains applicable.
+  T18 is now fast-forwarded onto main after T23.

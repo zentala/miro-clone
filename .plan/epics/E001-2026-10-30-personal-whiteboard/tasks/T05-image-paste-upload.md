@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T05"
 title: "Paste, upload and render image layers"
-status: "pending"
+status: "in-progress"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T04"]
@@ -11,13 +11,13 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t05-impl (w57:pB)"
 write_set: ["types/canvas.ts", "types/board.ts", "store/use-board-store.ts", "lib/assets.ts", "app/board/[boardId]/_components/canvas.tsx", "lib/same-origin.ts", "app/api/boards/**", "app/board/[boardId]/_components/layer-preview.tsx", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/toolbar.tsx", "tests/image-workflow.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md", "lib/document-version.ts", "lib/document-migrations.ts", "tests/document-model.test.cjs", "app/board/[boardId]/_components/canvas/**"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T05] paste, upload and render image layers"
 completion: "No"
-execution: "not-dispatched"
+execution: "phase-one implementation in progress in e001/t05-image-layers; shared canvas/store, lib/assets.ts and check-recipe paths remain held pending T18/T25 integration"
 phase: 4
 completed_at: null
 commits: []

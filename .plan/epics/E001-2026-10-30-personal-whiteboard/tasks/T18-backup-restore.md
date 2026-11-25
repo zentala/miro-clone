@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T18"
 title: "Coordinate SQLite and asset backup with verified restore"
-status: "pending"
+status: "done"
 priority: "high"
 type: "improvement"
 dependencies: ["E001-T04"]
@@ -11,18 +11,19 @@ points: 5
 importance: "High"
 effort: "medium"
 role: "implementer"
-executor: "unassigned"
+executor: "t18-impl; t18-verifier (w57:p6)"
 write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-restore.test.cjs", "justfile", "docs/backup.md", "docs/migration.md", "lib/assets.ts", "scripts/backup-retention.mjs", "scripts/backup-retention.test.mjs"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(backup): [E001-T18] coordinate SQLite and asset backup with verified restore"
 completion: "No"
-execution: "not-dispatched"
+execution: "PO accepted independent PASS; rebased after T23; fresh just check passed; integrated on main"
+completed_at: "2026-11-25"
 phase: 4
 completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+commits: ["b50aa20", "cbd270c"]
+verification_evidence: [".plan/reports/2026-11-25-t18-verification-round1.md: independent PASS; F1/F2, corrupt prior archive and same-second collision covered", "Fresh just check on T23-integrated source: exit 0, 88 pass, 1 expected skip; build artifact .plan/worktrees/e001-t18/.next", "T18 was rebased after a docs-only T23 delivery commit; source-tree paths were unchanged, so the successful fresh gate remains applicable to the integrated product source"]
+evidence: ["PO accepted candidate 13ad777 on the independent report before integration", "T18 commits rebased onto T23 and fast-forwarded to main", "Earlier failed runs and F1/F2 reproductions/corrections are retained in the independent review campaign and JOURNAL"]
 ---
 # E001-T18: Coordinate SQLite and asset backup with verified restore
 
