@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { cn } from "@/lib/utils";
 import { useRenameModal } from "@/store/use-rename-modal";
-import { useLocalBoard } from "@/hooks/use-local-board";
+import { useBoardSelector, useLocalBoard } from "@/hooks/use-local-board";
 import { ImageDown, Menu } from "lucide-react";
 import { Poppins } from "next/font/google";
 import Image from "next/image";
@@ -30,7 +30,9 @@ const TabSeparator = () => {
 const Info = ({ boardId, exportAsPng }: InfoProps) => {
     const { onOpen } = useRenameModal();
     const store = useLocalBoard();
-    const data = store.board;
+    const data = useBoardSelector((current) => current.board);
+    const status = useBoardSelector((current) => current.status);
+    const notice = useBoardSelector((current) => current.notice);
 
     if (!data) return <InfoSkeleton />;
 
@@ -73,8 +75,8 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                     <ImageDown />
                 </Button>
             </Hint>
-            <span role="status" className="px-2 text-xs">{store.status}</span>
-            {store.status === "Save failed" && <Button variant="board" onClick={store.save}>Retry save</Button>}
+            <span role="status" className="px-2 text-xs">{status}</span>
+            {status === "Save failed" && <Button variant="board" onClick={store.save}>Retry save</Button>}
             <TabSeparator />
             <Actions
                 id={data.id}
@@ -93,12 +95,12 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
             </Actions>
         </div>
         {/* Own panel below the fixed-height Info bar, so a long reason wraps instead of widening the bar. */}
-        {store.notice && (
+        {notice && (
             <p
                 role="alert"
                 className="absolute top-16 left-2 max-w-[min(24rem,calc(100vw-1rem))] bg-white rounded-md px-3 py-2 shadow-md text-xs text-destructive"
             >
-                {store.notice}
+                {notice}
             </p>
         )}
         </>

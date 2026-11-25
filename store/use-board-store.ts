@@ -12,6 +12,7 @@ import { assertRelations } from "../lib/document-version";
 export class DocumentEdit {
     before: BoardDocument | null = null;
     private copied = new Set<string>();
+    private copiedLayerIds = false;
     constructor(public document: BoardDocument) {}
     /** Must run before any write to the document. */
     begin() {
@@ -34,6 +35,15 @@ export class DocumentEdit {
         this.begin();
         this.document.layers[id] = layer;
         this.copied.add(id);
+    }
+    /** Preserve prior order snapshots while keeping the live order stable until it changes. */
+    writableLayerIds(): string[] {
+        this.begin();
+        if (!this.copiedLayerIds) {
+            this.document.layerIds = [...this.document.layerIds];
+            this.copiedLayerIds = true;
+        }
+        return this.document.layerIds;
     }
     /** True when the content differs from the snapshot; compares only layers that were written. */
     changed(): boolean {
@@ -91,10 +101,10 @@ export class LayerList {
     constructor(private edit: DocumentEdit) {}
     private get ids() { return this.edit.document.layerIds; }
     get length() { return this.ids.length; }
-    push(id: string) { this.edit.begin(); this.ids.push(id); }
+    push(id: string) { this.edit.writableLayerIds().push(id); }
     indexOf(id: string) { return this.ids.indexOf(id); }
-    delete(index: number) { this.edit.begin(); this.ids.splice(index, 1); }
-    move(from: number, to: number) { this.edit.begin(); const [id] = this.ids.splice(from, 1); this.ids.splice(to, 0, id); }
+    delete(index: number) { this.edit.writableLayerIds().splice(index, 1); }
+    move(from: number, to: number) { const ids = this.edit.writableLayerIds(); const [id] = ids.splice(from, 1); ids.splice(to, 0, id); }
     toImmutable(): readonly string[] { return [...this.ids]; }
 }
 
@@ -118,12 +128,24 @@ export class BoardStore {
     pending = 0;
     /** A readable reason for the last refused edit, such as the board size limit; cleared by the next change. */
     notice: string | null = null;
+    revision = 0;
+    private listeners = new Set<() => void>();
     /** Changes made during a paused gesture (drag, resize) are saved once, when the gesture ends. */
     private deferred = false;
     private edit: DocumentEdit | null = null;
     private queue: Promise<void> = Promise.resolve();
     changed: () => void = () => {};
     constructor(public board: Board) { this.document = structuredClone(board.document); }
+    subscribe = (listener: () => void) => {
+        this.listeners.add(listener);
+        return () => this.listeners.delete(listener);
+    };
+    refresh() { this.notify(); }
+    private notify() {
+        this.revision++;
+        this.changed();
+        this.listeners.forEach(listener => listener());
+    }
     storage = {
         get: <K extends "layers" | "layerIds">(key: K): K extends "layers" ? LayerMap : LayerList => {
             const edit = this.edit ?? new DocumentEdit(this.document);
@@ -155,7 +177,7 @@ export class BoardStore {
         this.presence.selection = this.presence.selection.filter(id => Object.hasOwn(document.layers, id));
         if (this.deferred) { this.deferred = false; this.pending--; }
         this.paused = false; this.group = null; this.notice = null;
-        this.save(); this.changed();
+        this.save(); this.notify();
     }
     mutate<T>(callback: (context: MutationContext) => T): T {
         const context: MutationContext = { storage: this.storage, self: { presence: this.presence }, setMyPresence: values => Object.assign(this.presence, values) };
@@ -173,11 +195,11 @@ export class BoardStore {
         catch (error) { if (edit.before) this.document = edit.before; throw error; }
         finally { this.edit = null; }
         if (changed) this.record(edit.before!);
-        if (changed || this.presenceChanged(presenceBefore)) this.changed();
+        if (changed || this.presenceChanged(presenceBefore)) this.notify();
         return result;
     }
     /** Shows a refused edit's reason in the board status area. */
-    refuse(message: string) { this.notice = message; this.changed(); }
+    refuse(message: string) { this.notice = message; this.notify(); }
     private record(before: BoardDocument) {
         if (!this.paused || !this.group) {
             this.past.push(before);
@@ -198,7 +220,7 @@ export class BoardStore {
     save = () => {
         // The serialized text is the snapshot; later edits cannot change a queued save.
         const body = JSON.stringify({ document: this.document });
-        this.pending++; this.status = "Saving…"; this.changed();
+        this.pending++; this.status = "Saving…"; this.notify();
         this.queue = this.queue.then(async () => {
             try {
                 const response = await fetch(`/api/boards/${encodeURIComponent(this.board.id)}`, {
@@ -207,7 +229,7 @@ export class BoardStore {
                 if (!response.ok) throw new Error("Save failed");
                 this.status = "Saved";
             } catch { this.status = "Save failed"; }
-            finally { this.pending--; if (this.pending) this.status = "Saving…"; this.changed(); }
+            finally { this.pending--; if (this.pending) this.status = "Saving…"; this.notify(); }
         });
     };
 }
