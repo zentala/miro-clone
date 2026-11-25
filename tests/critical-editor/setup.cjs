@@ -1,0 +1,225 @@
+// Real browser acceptance using only Node builtins and installed Chromium.
+const assert = require('node:assert/strict');
+const { spawn } = require('node:child_process');
+const { mkdtemp, mkdir, readFile, rm, stat } = require('node:fs/promises');
+const { tmpdir } = require('node:os');
+const { join, resolve } = require('node:path');
+const { createServer } = require('node:net');
+const { EventEmitter } = require('node:events');
+const { setTimeout: delay } = require('node:timers/promises');
+const { DatabaseSync } = require('node:sqlite');
+
+const root = resolve(__dirname, '../..');
+// Optional: MIRO_TEST_IMAGE runs the same flow against disposable podman containers of that image.
+const containerImage = process.env.MIRO_TEST_IMAGE;
+const deadline = 15000;
+async function until(description, predicate, timeout = deadline) {
+    const end = Date.now() + timeout;
+    let last;
+    while (Date.now() < end) {
+        last = await predicate();
+        if (last) return last;
+        await delay(75);
+    }
+    throw new Error(`Timed out waiting for ${description}; last result: ${JSON.stringify(last)}`);
+}
+async function unusedPort() {
+    const server = createServer();
+    await new Promise((done, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', done); });
+    const port = server.address().port;
+    await new Promise((done, reject) => server.close(error => error ? reject(error) : done()));
+    return port;
+}
+function child(command, args, options) {
+    const process = spawn(command, args, { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+    const record = { process, log: '', error: null, closed: false };
+    process.once('error', error => { record.error = error; });
+    process.once('close', () => { record.closed = true; });
+    for (const stream of [process.stdout, process.stderr]) stream.on('data', data => { record.log = (record.log + data).slice(-12000); });
+    return record;
+}
+async function stop(record) {
+    if (!record || record.closed) return;
+    record.process.kill('SIGTERM');
+    const end = Date.now() + 4000;
+    while (!record.closed && Date.now() < end) await delay(50);
+    if (!record.closed) {
+        record.process.kill('SIGKILL');
+        await until('owned process exit', () => record.closed, 4000);
+    }
+}
+class CDP extends EventEmitter {
+    constructor(socket) {
+        super(); this.socket = socket; this.pending = new Map(); this.id = 0;
+        socket.addEventListener('message', ({ data }) => {
+            const message = JSON.parse(data);
+            if (message.id) {
+                const pending = this.pending.get(message.id);
+                if (!pending) return;
+                clearTimeout(pending.timer); this.pending.delete(message.id);
+                if (message.error) pending.reject(new Error(JSON.stringify(message.error)));
+                else pending.resolve(message.result);
+            } else this.emit(message.method, message.params, message.sessionId);
+        });
+        socket.addEventListener('close', () => {
+            for (const pending of this.pending.values()) { clearTimeout(pending.timer); pending.reject(new Error('CDP connection closed')); }
+            this.pending.clear();
+        });
+    }
+    static async connect(url) {
+        const socket = new WebSocket(url);
+        await new Promise((done, reject) => {
+            const timer = setTimeout(() => { socket.close(); reject(new Error('CDP connection timeout')); }, deadline);
+            socket.addEventListener('open', () => { clearTimeout(timer); done(); }, { once: true });
+            socket.addEventListener('error', () => { clearTimeout(timer); reject(new Error('CDP connection failed')); }, { once: true });
+        });
+        return new CDP(socket);
+    }
+    call(method, params = {}, sessionId) {
+        const id = ++this.id;
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`CDP timeout: ${method}`)); }, deadline);
+            this.pending.set(id, { resolve, reject, timer });
+            this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
+        });
+    }
+    close() { this.socket.close(); }
+}
+
+async function createCriticalEditor(t) {
+    const context = {};
+    const owned = await mkdtemp(join(tmpdir(), 'miro-critical-'));
+    const databasePath = containerImage ? join(owned, 'data', 'miro.sqlite') : join(owned, 'synthetic.sqlite');
+    const profile = join(owned, 'chromium-profile');
+    const downloads = join(owned, 'downloads');
+    await mkdir(profile); await mkdir(downloads);
+    if (containerImage) await mkdir(join(owned, 'data'));
+    const processes = [];
+    let cdp;
+    t.after(async () => {
+        if (cdp) cdp.close();
+        // Reverse creation order; never enumerate or terminate unrelated processes.
+        for (const record of [...processes].reverse()) await stop(record);
+        await rm(owned, { recursive: true, force: true });
+        assert.ok(processes.every(record => record.closed), 'All owned child processes must exit');
+        await assert.rejects(() => stat(owned), { code: 'ENOENT' });
+        t.diagnostic('Cleanup complete: owned Next/Chromium exited; temporary SQLite, profile and downloads removed');
+    });
+    const port = await unusedPort();
+    const origin = `http://127.0.0.1:${port}`;
+    const containers = [];
+    async function removeContainers() {
+        for (const name of containers.splice(0)) {
+            const removal = child('podman', ['rm', '--force', '--ignore', name], {});
+            await until(`removal of container ${name}`, () => removal.closed, 30000);
+        }
+    }
+    if (containerImage) t.after(removeContainers);
+    // Each start replaces the container on the same /app/data mount, published on loopback only.
+    // keep-id maps the image's node user to the host user so this test can read the mounted SQLite.
+    async function containerApp() {
+        await removeContainers();
+        containers.push(`miro-critical-${port}-${Date.now()}`);
+        return child('podman', ['run', '--rm', '--name', containers[0], '--userns=keep-id:uid=1000,gid=1000',
+            '--publish', `127.0.0.1:${port}:3000`, '--volume', `${join(owned, 'data')}:/app/data:Z`, containerImage], {});
+    }
+    async function startApp() {
+        const record = containerImage ? await containerApp() : child(process.execPath, [join(root, 'node_modules/next/dist/bin/next'), 'start', root, '--hostname', '127.0.0.1', '--port', String(port)], {
+            cwd: root,
+            env: { ...process.env, NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1', MIRO_SQLITE_PATH: databasePath },
+        });
+        processes.push(record);
+        await until('isolated application readiness', async () => {
+            if (record.error || record.closed) throw new Error(`Application failed: ${record.error || record.log}`);
+            try { return (await fetch(origin, { signal: AbortSignal.timeout(1000) })).ok; } catch { return false; }
+        });
+        context.app = record;
+        return record;
+    }
+    await startApp();
+    const foreignCreate = await fetch(`${origin}/api/boards`, {
+        method: 'POST', headers: { Origin: 'https://untrusted.invalid', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Must not be created' }), signal: AbortSignal.timeout(deadline),
+    });
+    assert.equal(foreignCreate.status, 403, 'Foreign origins must remain rejected');
+    const chromium = child('/usr/bin/chromium-browser', [
+        '--headless=new', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
+        `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
+        '--disable-background-networking', '--disable-extensions', '--disable-component-update',
+        '--disable-sync', '--disable-default-apps', '--window-size=1280,900', 'about:blank',
+    ], { cwd: owned, env: {
+        ...process.env,
+        XDG_DATA_HOME: join(owned, 'xdg-data'),
+        XDG_CONFIG_HOME: join(owned, 'xdg-config'),
+        XDG_CACHE_HOME: join(owned, 'xdg-cache'),
+    } });
+    processes.push(chromium);
+    const devtools = await until('owned Chromium debugging endpoint', async () => {
+        if (chromium.error || chromium.closed) throw new Error(`Chromium failed: ${chromium.error || chromium.log}`);
+        try { return (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).trim().split('\n'); } catch { return false; }
+    });
+    cdp = await CDP.connect(`ws://127.0.0.1:${devtools[0]}${devtools[1]}`);
+    const { targetId } = await cdp.call('Target.createTarget', { url: 'about:blank' });
+    const { sessionId } = await cdp.call('Target.attachToTarget', { targetId, flatten: true });
+    const page = (method, params) => cdp.call(method, params, sessionId);
+    const exceptions = [], networkFailures = [], completedDownloads = new Set(), begunDownloads = [];
+    cdp.on('Runtime.exceptionThrown', (event, session) => { if (session === sessionId) exceptions.push(event.exceptionDetails.text + ': ' + (event.exceptionDetails.exception?.description || '')); });
+    cdp.on('Network.loadingFailed', (event, session) => { if (session === sessionId && !event.canceled) networkFailures.push(event.errorText); });
+    cdp.on('Browser.downloadWillBegin', event => begunDownloads.push(event));
+    cdp.on('Browser.downloadProgress', event => { if (event.state === 'completed') completedDownloads.add(event.guid); });
+    await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable');
+    await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await cdp.call('Browser.setDownloadBehavior', { behavior: 'allowAndName', downloadPath: downloads, eventsEnabled: true });
+    async function evaluate(expression) {
+        const result = await page('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+        if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+        return result.result.value;
+    }
+    async function click(selector) {
+        const point = await until(`clickable ${selector}`, () => evaluate(`(() => {
+            const element = document.querySelector(${JSON.stringify(selector)});
+            if (!element || element.disabled) return false;
+            const bounds = element.getBoundingClientRect();
+            return bounds.width && bounds.height ? {x: bounds.x + bounds.width/2, y: bounds.y + bounds.height/2} : false;
+        })()`));
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+        await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
+    }
+    // Class-independent query: the drawing SVG owns the input handlers and full viewport.
+    const renderedStroke = () => evaluate('Array.from(document.querySelectorAll("svg")).find(svg => svg.classList.contains("h-[100vh]"))?.querySelector("path")?.getAttribute("d") || ""');
+    const saved = () => until('visible Saved status', () => evaluate('document.querySelector("[role=status]")?.textContent === "Saved"'));
+    let flowFailed = false;
+    async function step(name, run) {
+        return t.test(name, { skip: flowFailed ? 'Earlier prerequisite failed' : false }, async () => {
+            try { await run(); }
+            catch (error) {
+                flowFailed = true;
+                const state = await evaluate('JSON.stringify({url:location.href,text:document.body.innerText.slice(0,2000)})').catch(() => 'Page unavailable');
+                throw new Error(`${error.message}\nPage: ${state}\nBrowser exceptions: ${JSON.stringify(exceptions)}\nServer: ${context.app?.log || ''}`, { cause: error });
+            }
+        });
+    }
+
+
+    context.startApp = startApp;
+    context.stop = stop;
+    context.step = step;
+    context.page = page;
+    context.origin = origin;
+    context.evaluate = evaluate;
+    context.click = click;
+    context.until = until;
+    context.renderedStroke = renderedStroke;
+    context.saved = saved;
+    context.databasePath = databasePath;
+    context.downloads = downloads;
+    context.begunDownloads = begunDownloads;
+    context.completedDownloads = completedDownloads;
+    context.exceptions = exceptions;
+    context.networkFailures = networkFailures;
+    context.deadline = deadline;
+    return context;
+}
+
+module.exports = { createCriticalEditor };

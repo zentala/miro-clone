@@ -23,11 +23,19 @@ measure-capacity *args:
 container-check:
     #!/usr/bin/env bash
     set -euo pipefail
+    lock_file="${TMPDIR:-/tmp}/miro-clone-container-check.lock"
+    exec 9>"$lock_file"
+    if ! flock -n 9; then
+        echo "Another container-check is running; waiting for the lock."
+        flock 9
+    fi
     npm run build
-    MIRO_CONTAINER_TEST=1 node --test --test-concurrency=1 tests/packaging.test.cjs
+    node --test --test-concurrency=1 tests/packaging.test.cjs
     tag="localhost/miro-clone-critical:$(date +%s%N)"
     trap 'podman rmi --force "$tag" >/dev/null 2>&1 || true' EXIT
-    podman build --quiet --tag "$tag" .
+    # Do not retain intermediate layer images; the trap owns only this unique final tag.
+    podman build --layers=false --rm --quiet --tag "$tag" .
+    podman run --rm "$tag" node --version
     # The first keep-id start of a new image prepares id-mapped layers (~30 s); do it outside the test's readiness wait.
     podman run --rm --userns=keep-id:uid=1000,gid=1000 "$tag" true
     MIRO_TEST_IMAGE="$tag" node --test --test-concurrency=1 tests/critical-editor.test.cjs

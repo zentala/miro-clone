@@ -18,8 +18,24 @@ and verify the saved board title, layer order, content and geometry survive
 from SQLite. Also verify rename/delete, failed saves, and grouped drag history.
 
 ## Verification
-`just check` runs TypeScript, existing ESLint, a production build, and
-`node --test --test-concurrency=1 tests/critical-editor.test.cjs`.
+`just check` runs TypeScript, ESLint over application source plus `tools/`,
+`tests/` and `scripts/`, a production build, and these test files:
+
+- `tests/critical-editor.test.cjs` (all nine existing browser steps)
+- `tests/miro-export.test.cjs`
+- `tests/packaging.test.cjs`
+- `tests/document-model.test.cjs`
+- `tests/migration-normalize.test.cjs`
+- `tests/assets.test.cjs`
+- `tests/board-store.test.cjs`
+- `tests/navigation-capacity.test.cjs`
+
+`just container-check` serializes disposable Podman checks with a system-temp
+lock, builds one image, reports its Node version, runs packaging and critical
+browser checks against disposable data, and removes only its unique temporary
+image tag. Intermediate layer images are disabled for this build.
+The existing lint warning in `components/custom-color-picker.tsx:39` reports
+that `useMemo` omits `lastUsedColor`; it remains visible and is not suppressed.
 The browser test uses Node builtins and existing system Chromium, without
 framework packages. It must exercise UI creation, real pointer drawing,
 undo/redo, a downloaded PNG, reload and a full application process restart.

@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint --dir app --dir components --dir hooks --dir lib --dir providers --dir scripts --dir store --dir tools --dir tests --dir types"
   },
   "dependencies": {
     "@napi-rs/image": "^1.16.0",

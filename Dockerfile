@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build
+FROM node:22.23-bookworm-slim AS build
 
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -8,7 +8,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.23-bookworm-slim AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production \

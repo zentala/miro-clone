@@ -2,7 +2,6 @@
 // Compiles the real TypeScript sources with the installed compiler; no extra framework.
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
 const { mkdtempSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { dirname, join, resolve } = require('node:path');
@@ -12,8 +11,6 @@ const ts = require('typescript');
 const root = resolve(__dirname, '..');
 const owned = mkdtempSync(join(tmpdir(), 'miro-document-model-'));
 after(() => rmSync(owned, { recursive: true, force: true }));
-// Last commit before explicit document versions; used to prove an app rollback still reads v2.
-const PRE_VERSION_COMMIT = '81211c9';
 const SOURCES = ['types/canvas.ts', 'types/board.ts', 'lib/sqlite.ts', 'lib/document-version.ts',
     'lib/document-migrations.ts', 'lib/boards.ts', 'store/use-board-store.ts'];
 
@@ -176,7 +173,7 @@ test('upgrade, app rollback and backup recovery on synthetic database copies', (
     withRelations.layers['rect-1'].locked = true;
     upgraded.updateBoard('one', { document: withRelations });
     // Rollback: the pre-version validator still accepts v2 payloads and keeps the unknown fields it saves back.
-    const legacySource = execFileSync('git', ['show', `${PRE_VERSION_COMMIT}:types/board.ts`], { cwd: root, encoding: 'utf8' });
+    const legacySource = readFileSync(join(root, 'tests/fixtures/pre-version-board.txt'), 'utf8');
     const legacy = require(compile(join(owned, 'pre-version'), 'types/board.ts', legacySource));
     const resaved = JSON.stringify(legacy.validateDocument(JSON.parse(row(working, 'one').document)));
     assert.deepEqual(JSON.parse(resaved), withRelations);

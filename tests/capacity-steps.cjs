@@ -11,11 +11,9 @@ const MAX_LAYERS = Number(/export const MAX_LAYERS = (\d+);/.exec(readFileSync(j
 /** Representative workload W2 from ARCH.md; it must fit under the limit. */
 const REPRESENTATIVE = 2000;
 
-async function capacitySteps(context) {
-    const { step, read, session, until, origin, databasePath, generateDocument, insertBoard } = context;
+async function capacityStep1(context) {
+    const { step, read, session, until, databasePath, generateDocument, insertBoard } = context;
     const h = helpers(context);
-    const alert = () => h.evaluate('document.querySelector("[role=alert]")?.textContent ?? ""');
-
     await step(`a generated ${REPRESENTATIVE}-object board opens, drags with one save, undoes and reloads`, async () => {
         assert.ok(REPRESENTATIVE <= MAX_LAYERS);
         const document = generateDocument(REPRESENTATIVE);
@@ -33,7 +31,11 @@ async function capacitySteps(context) {
         await h.open('large', REPRESENTATIVE);
         assert.deepEqual(read('large'), document, 'Reload keeps the generated content unchanged');
     });
-
+}
+async function capacityStep2(context) {
+    const { step, read, session, until, databasePath, generateDocument, insertBoard } = context;
+    const h = helpers(context);
+    const alert = () => h.evaluate('document.querySelector("[role=alert]")?.textContent ?? ""');
     await step(`a board at the ${MAX_LAYERS}-object limit refuses new objects with a visible reason`, async () => {
         const document = generateDocument(MAX_LAYERS);
         insertBoard(databasePath, 'full', 'Full generated board', document);
@@ -70,7 +72,11 @@ async function capacitySteps(context) {
         }
         await session.page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
     });
-
+}
+async function capacityStep3(context) {
+    const { step, read, session, until, origin, databasePath, generateDocument, insertBoard } = context;
+    const h = helpers(context);
+    const alert = () => h.evaluate('document.querySelector("[role=alert]")?.textContent ?? ""');
     await step('the server refuses documents above the limit; such stored boards show a readable page', async () => {
         const over = generateDocument(MAX_LAYERS + 1);
         const before = read('navigation');
@@ -91,4 +97,9 @@ async function capacitySteps(context) {
     });
 }
 
+async function capacitySteps(context) {
+    await capacityStep1(context);
+    await capacityStep2(context);
+    await capacityStep3(context);
+}
 module.exports = { capacitySteps, MAX_LAYERS };

@@ -52,11 +52,10 @@ function helpers({ session, until, origin }) {
 const near = (actual, expected, tolerance, message) => assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: ${actual} vs ${expected}`);
 const center = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
 
-async function navigationSteps(context) {
-    const { step, read, session, until, downloads, cdp } = context;
+async function navigationStep1(context) {
+    const { step, read, session, until } = context;
     const h = helpers(context);
     const anchor = () => read('navigation').layers[ANCHOR.id];
-
     await step('plain z leaves the selection in place; arrows move it and Ctrl+Z undoes', async () => {
         await h.open('navigation', 2);
         await session.clickAt({ x: 250, y: 250 });
@@ -72,7 +71,10 @@ async function navigationSteps(context) {
         await until('Ctrl+Z undo saved', () => anchor().x === ANCHOR.x);
         await h.saved();
     });
-
+}
+async function navigationStep2(context) {
+    const { step, until } = context;
+    const h = helpers(context);
     await step('camera reset appears when either coordinate or the zoom differs from the default', async () => {
         assert.equal(await h.resetVisible(), false);
         await h.wheel(CENTER, 30, 0);
@@ -88,7 +90,10 @@ async function navigationSteps(context) {
         await h.resetCamera();
         assert.equal(await h.zoom(), 1);
     });
-
+}
+async function navigationStep3(context) {
+    const { step, session } = context;
+    const h = helpers(context);
     await step('zoom keeps the world point under the pointer or viewport centre', async () => {
         const pointer = { x: 250, y: 250 };
         await h.wheel(pointer, 0, -100, CTRL);
@@ -109,7 +114,11 @@ async function navigationSteps(context) {
         near(after.y, before.y, 0.01, 'Button zoom keeps the centre world point (y)');
         await h.resetCamera();
     });
-
+}
+async function navigationStep4(context) {
+    const { step, read, session, until } = context;
+    const h = helpers(context);
+    const anchor = () => read('navigation').layers[ANCHOR.id];
     await step('drag, resize and selection net map to world coordinates at zoom 2, DPR 1.25, after pan', async () => {
         await session.page('Emulation.setDeviceMetricsOverride', { ...VIEWPORT, deviceScaleFactor: 1.25, mobile: false });
         // Pan the anchor close to the viewport centre (odd offsets), then zoom about the centre.
@@ -144,7 +153,10 @@ async function navigationSteps(context) {
         await session.page('Emulation.setDeviceMetricsOverride', { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
         await h.resetCamera();
     });
-
+}
+async function navigationStep5(context) {
+    const { step, read } = context;
+    const h = helpers(context);
     await step('grid is a view overlay: scales with zoom, hidden below 25 %, never saved', async () => {
         // The grid is the workspace background behind the SVG scene, so it can never be hit or exported.
         const grid = () => h.evaluate(`(() => {
@@ -168,7 +180,10 @@ async function navigationSteps(context) {
         assert.deepEqual(Object.keys(read('navigation').layers).sort(), [ANCHOR.id, 'note']);
         await h.resetCamera();
     });
-
+}
+async function navigationStep6(context) {
+    const { step, session, downloads, cdp } = context;
+    const h = helpers(context);
     await step('PNG export is identical at any zoom and pan', async () => {
         const exported = [];
         const exportPng = async () => {
@@ -189,4 +204,12 @@ async function navigationSteps(context) {
     });
 }
 
+async function navigationSteps(context) {
+    await navigationStep1(context);
+    await navigationStep2(context);
+    await navigationStep3(context);
+    await navigationStep4(context);
+    await navigationStep5(context);
+    await navigationStep6(context);
+}
 module.exports = { navigationSteps, helpers };
