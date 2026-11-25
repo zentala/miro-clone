@@ -71,6 +71,19 @@ Use disposable databases/assets and generated fixtures; connect meaningful asser
 to the acceptance criteria, include them in the existing just check where critical,
 and do not introduce a new framework or tests that merely mirror implementation.
 
+## Extension owner receipt (2026-11-25)
+
+The zntl-chrome owner accepted the capability as its epic E103 (draft contract
+v1 in that repository, `.plan/epics/E103-2026-11-25-board-product-extraction/CONTRACT.md`).
+Inputs for this task: the board calls the extension through
+`externally_connectable` from `https://miro.internal` only; the board reads the
+extension ID from its own configuration (no fixed manifest key); extension
+results are `found`, `not_found`, `unsupported`, `busy`, `failed`, while
+`pending` and `browser_offline` are board-side states; one extraction at a time
+with a 45 s budget; image as a data URL up to 2 MiB. The final contract version
+is agreed between both POs when this task starts; a change is an E103
+amendment. T14 needs a product URL on a host an adapter supports.
+
 ## Known gating and evidence
 
 External owner/capability is NOT_CHECKED during planning. Lack of external delivery holds actual integration, not this bounded consumer contract.
