@@ -88,6 +88,17 @@ another checkout. Run the copied test in `just check`. Do not edit the copied
 logic; a needed change goes to the Harness owner. A systemd timer and off-box
 copies stay out of this task; scheduling belongs to deployment (T22).
 
+## PO clarification of "nonempty key tables" (2026-11-25)
+
+The key table is `boards`. A backup with zero board rows is empty and fails.
+Zero asset rows is valid when no saved board references an asset: text-only
+and image-free boards must back up and restore. A board that references an
+asset whose row or bytes are missing fails the backup. A database from before
+T04 that has no `assets` table is read as zero assets, read-only, with no
+schema change to the source. Tests cover: image-free boards with an empty
+`assets` table, a pre-T04 database without the table, zero boards (refused)
+and a referenced asset with missing bytes (refused).
+
 ## Known gating and evidence
 
 T04 file/DB consistency first. Existing backup skill/procedure must be read at dispatch. Off-box access/destination remains separate accepted infrastructure scope.
