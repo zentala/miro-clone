@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T23"
 title: "Split the editor browser test and lint tools/ and tests/"
-status: "in-progress"
+status: "done"
 priority: "medium"
 type: "chore"
 dependencies: ["E001-T02", "E001-T03"]
@@ -17,12 +17,13 @@ handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "test(editor): [E001-T23] split the editor browser test and lint tools and tests"
 completion: "No"
-execution: "accepted-scope commit and independent verification pending"
+execution: "accepted by PO; integrated on main; fresh just check and required container-check passed"
+completed_at: "2026-11-25"
 phase: 2
 completed_at: null
-commits: []
-verification_evidence: []
-evidence: []
+commits: ["598bad6", "9c1de03", "7cbc8c2"]
+verification_evidence: [".plan/reports/2026-11-25-t23-verification-round1.md: final round 2 PASS on 74eb580; cleanup fake-Podman regression preserved foreign image; all test/helper bodies under 50 lines", "main integrated just check: exit 0, 65 pass, 1 expected skip; production build succeeded at .next", "main just container-check: exit 0; packaging tests 2 pass, 1 expected skip; owned-tag cleanup recipe completed; no real shared-image deletion probe"]
+evidence: ["PO accepted candidate and report before integration", "Rebased T23 commits and fast-forwarded ahead of T18/T25", "First integrated just check failure exit 2 due to missing installed @napi-rs/image was retained; npm ci from the existing lockfile then succeeded", "Existing ESLint warning in components/custom-color-picker.tsx remains unsuppressed"]
 ---
 # E001-T23: Split the editor browser test and lint tools/ and tests/
 
