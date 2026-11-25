@@ -2,7 +2,7 @@
 
 Status: epic directions accepted by the owner on 2026-10-30. The
 [canonical umbrella plan](epics/E001-2026-10-30-personal-whiteboard/PLAN.md)
-breaks them into 22 tasks with 155 indicative points. On 2026-11-08 the owner
+breaks them into 25 tasks with 166 indicative points. On 2026-11-08 the owner
 approved execution with parallel work; the sole PO/DM pair delivers through
 Herdr (AO retired). Real Miro account access is still not authorized.
 
@@ -13,7 +13,14 @@ The [handoff](epics/E001-2026-10-30-personal-whiteboard/HANDOFF.md) and task
 records own dependencies, write-scope proposals, acceptance and future evidence.
 This roadmap is a workstream map, not a second task-state queue.
 
-## Paused 2026-11-08 — resume point
+## Resumed 2026-11-25 — deliver and deploy the whole epic
+
+Owner decision, 2026-11-25: "zrealizuj caly ten epic; wdroz wszystko". The
+pause below is lifted and internal deployment is authorized
+([PLAN, Execution route](epics/E001-2026-10-30-personal-whiteboard/PLAN.md#resume-and-full-delivery-2026-11-25)).
+Real Miro account access and retiring the subscription stay with the owner.
+
+## Paused 2026-11-08 — resume point (historical)
 
 Owner decision, 2026-11-08: stop for the day after the tasks in flight. Done
 and on main: T01, T02, T03, T04, T07, T15, T16, T24 (53 of 166 points). Nothing
@@ -32,8 +39,7 @@ behavioral coverage. Delivery does not mean full Miro compatibility.
 
 ## Canonical execution breakdown
 
-Task records are the sole source of status/points/evidence. They all start
-pending with completion No; no implementation has been dispatched. This
+Task records are the sole source of status/points/evidence. This
 reference table does not duplicate a status queue.
 
 | Accepted workstream | Canonical task records |
@@ -48,11 +54,12 @@ reference table does not duplicate a status queue.
 | Record tables and expanded view | [E001-T19](epics/E001-2026-10-30-personal-whiteboard/tasks/T19-record-tables.md), [E001-T20](epics/E001-2026-10-30-personal-whiteboard/tasks/T20-expanded-table-view.md) |
 | Independent acceptance and intended HTTPS delivery | [E001-T21](epics/E001-2026-10-30-personal-whiteboard/tasks/T21-acceptance-migration-rehearsal.md), [E001-T22](epics/E001-2026-10-30-personal-whiteboard/tasks/T22-release-deployment-acceptance.md) |
 
-The previous 65-point sketch is superseded by 155 indicative points across
-22 coherent tasks (5 or 8 points each). Estimates are not time/token limits.
+The previous 65-point sketch is superseded by 166 indicative points across
+25 tasks (3, 5 or 8 points each). Estimates are not time/token limits.
 Re-estimation must update canonical records, phase/epic sums and selected route,
 not silently treat new/unknown work as zero. The eight dependency groupings
-have totals 5, 21, 40, 26, 32, 13, 13 and 5; no phase exceeds 70.
+have totals 5, 21, 40, 26, 32, 13, 13 and 5; T23, T24 and T25 (11 points,
+added 2026-11-08) sit outside the groupings. No phase exceeds 70.
 
 Phases are dependency groupings, not barriers requiring unrelated siblings.
 T09 precedes T11, T13 precedes T14 and T17 precedes T21 within their groups.
@@ -64,8 +71,8 @@ T19/T20 remain Medium/medium, not first-migration blockers.
 
 Early value can be reviewed after baseline/model/packaging, then durable image
 paste/navigation, then loss-aware new-board migration. Independently accepted
-partial delivery may use the existing infrastructure owner with separately
-approved scope; it need not wait for unrelated siblings. Final T22 still owns
+partial delivery may use the existing infrastructure owner (authorized by the
+owner on 2026-11-25); it need not wait for unrelated siblings. Final T22 still owns
 full intended HTTPS/replacement acceptance, not automatic production permission.
 
 Content completeness is separate from runtime readiness. Read-only source and

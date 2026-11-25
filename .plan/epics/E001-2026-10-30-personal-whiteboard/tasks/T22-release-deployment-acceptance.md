@@ -45,7 +45,7 @@ Current-source references are baseline evidence; entries marked planned do not e
 
 ## Bounds and proposed write scope
 
-This task owns app release docs and receipt only, not infrastructure writes or permission to activate production. No image publication, direct code copy, account operations or automatic subscription cancellation.
+This task owns app release docs and receipt only, not infrastructure writes. Internal production activation is authorized by the owner's 2026-11-25 decision (PLAN, Execution route). No image publication, direct code copy, account operations or automatic subscription cancellation.
 
 The frontmatter write_set is a repo-relative proposal for this app only, not current
 authorization. Confirm actual impacted paths, dependency results and compatible filesystem
@@ -56,7 +56,7 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 - [ ] Provide app release instructions/receipt for the verified forge revision, schema compatibility, data/asset paths and rollback; do not claim an automatic deployment pipeline already exists.
 - [ ] Hand exact app requirements to the existing infrastructure owner/session. Only that owner changes infrastructure; no compose/domain/server path is in this write_set.
-- [ ] After separate explicit production activation approval, use the forge-backed accepted update route, preserve existing database/assets/unrelated services and verify a fresh backup before real-data changes.
+- [ ] Under the owner's 2026-11-25 delivery decision, use the forge-backed accepted update route, preserve existing database/assets/unrelated services and verify a fresh backup before real-data changes.
 - [ ] An independent verifier opens the intended HTTPS URL and checks delivered critical workflows plus persistence after replacement; source tests or a raw local port are not deployment acceptance.
 - [ ] Record sanitized observable results in app docs; the actual URL, machine/access details and operational receipt remain with the private infrastructure owner. Without its delivery/approval, keep runtime acceptance NOT_CHECKED.
 
@@ -72,7 +72,7 @@ A documentation diff check does not certify production delivery.
 
 ## Known gating and evidence
 
-T21 acceptance plus actual infrastructure-owner uptake, production approval, backup and reachable HTTPS evidence are required. If unavailable, report the true missing input; do not invent a second queue or mark completed.
+T21 acceptance plus actual infrastructure-owner uptake, backup and reachable HTTPS evidence are required. Observed 2026-11-25: the internal HTTPS service refused connections on port 443 (curl exit 7); an earlier October receipt is not current reachability. The infrastructure owner inspects the actual route/runtime; no TLS bypass or domain retarget. If unavailable, report the true missing input; do not invent a second queue or mark completed.
 
 Current state: pending; completion No; no executor dispatched and no verification
 evidence collected for this task. Points estimate scope, not a numeric time/token limit.

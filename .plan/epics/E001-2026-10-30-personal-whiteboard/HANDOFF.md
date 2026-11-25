@@ -6,7 +6,7 @@ Repository owner: zentala/miro-clone, existing main branch. Work only in this
 repository or its authorized worktree. This handoff is the entrypoint for
 execution, which the owner approved on 2026-11-08 (see PLAN, Execution route):
 the sole PO/DM pair delivers through visible Herdr; AO is retired. One umbrella
-epic, E001, 22 task records, 155 indicative points. PO decisions on open
+epic, E001, 25 task records, 166 indicative points. PO decisions on open
 defaults are in PLAN, "PO decisions on open defaults (2026-11-08)".
 
 Read [root AGENTS](../../../AGENTS.md), [PURPOSE](../../PURPOSE.md),
@@ -73,9 +73,9 @@ external waits must not hold independent synthetic/model work.
 
 | Phase | Dependency grouping | Points | Done |
 | --- | --- | ---: | --- |
-| 1 | Baseline and defaults: [E001-T01](tasks/T01-baseline.md) | 5 | No |
-| 2 | Packaging, shared model and source export: [E001-T02](tasks/T02-legacy-cleanup-packaging.md), [E001-T03](tasks/T03-versioned-document-relations.md), [E001-T15](tasks/T15-read-only-exporter.md) | 21 | No |
-| 3 | Assets, coordinates, rich text, normalization and records: [E001-T04](tasks/T04-durable-assets.md), [E001-T07](tasks/T07-navigation-grid-capacity.md), [E001-T10](tasks/T10-rich-text.md), [E001-T16](tasks/T16-migration-package-dry-run.md), [E001-T19](tasks/T19-record-tables.md) | 40 | No |
+| 1 | Baseline and defaults: [E001-T01](tasks/T01-baseline.md) | 5 | Yes |
+| 2 | Packaging, shared model and source export: [E001-T02](tasks/T02-legacy-cleanup-packaging.md), [E001-T03](tasks/T03-versioned-document-relations.md), [E001-T15](tasks/T15-read-only-exporter.md) | 21 | Yes |
+| 3 | Assets, coordinates, rich text, normalization and records: [E001-T04](tasks/T04-durable-assets.md), [E001-T07](tasks/T07-navigation-grid-capacity.md), [E001-T10](tasks/T10-rich-text.md), [E001-T16](tasks/T16-migration-package-dry-run.md), [E001-T19](tasks/T19-record-tables.md) | 40 | Partly (T04, T07, T16) |
 | 4 | Image ingestion, frames, restore and expanded table: [E001-T05](tasks/T05-image-paste-upload.md), [E001-T08](tasks/T08-nested-frames.md), [E001-T18](tasks/T18-backup-restore.md), [E001-T20](tasks/T20-expanded-table-view.md) | 26 | No |
 | 5 | Progressive loading, locks, code and cards: [E001-T06](tasks/T06-progressive-images.md), [E001-T09](tasks/T09-shared-locks.md), [E001-T11](tasks/T11-code-blocks.md), [E001-T12](tasks/T12-website-product-cards.md) | 32 | No |
 | 6 | Extraction contract and delivered consumer: [E001-T13](tasks/T13-extraction-contract-handoff.md), [E001-T14](tasks/T14-extraction-consumer.md) | 13 | No |
@@ -101,7 +101,17 @@ Full T21 acceptance still requires rich text, code and both record-table views,
 plus extraction/migration/backup. T22 closes full intended HTTPS delivery.
 Independently reviewed partial value may be delivered through the existing
 infrastructure owner under separate accepted scope, without phase-wide
-barriers. Neither partial nor full production activation is authorized now.
+barriers. The owner's 2026-11-25 decision authorizes internal deployment,
+partial or full (PLAN, Execution route); no further production question.
+
+## Resumed 2026-11-25: deliver and deploy the whole epic
+
+Owner decision, 2026-11-25: "zrealizuj caly ten epic; wdroz wszystko". The
+pause below is lifted; full delivery including internal deployment is
+authorized (PLAN, Execution route). The sole PO/DM pair delivers through
+Herdr. The order below still applies. Runtime at resume:
+the internal HTTPS service did not answer (port 443 connection failed); T22
+has the infrastructure owner inspect the actual route and runtime.
 
 ## Resume after the 2026-11-08 pause
 
@@ -124,18 +134,19 @@ decisions still open: real Miro board access, retiring the paid subscription.
 
 ## Canonical task links and sizes
 
-This is a read map, not a second task-state queue. All current task records say
-pending/No; only the integrator updates them after independent acceptance.
+This is a read map, not a second task-state queue. Task records hold status;
+only the integrator updates them after independent acceptance. The Done column
+was reconciled with the records on 2026-11-25.
 
 | Task | Points | Importance | Hard dependencies | Done |
 | --- | ---: | --- | --- | --- |
-| [E001-T01](tasks/T01-baseline.md): Establish source baseline, design decisions and workload | 5 | High | None | No |
-| [E001-T02](tasks/T02-legacy-cleanup-packaging.md): Remove retired hosted SDKs and slim container packaging | 5 | High | E001-T01 | No |
-| [E001-T03](tasks/T03-versioned-document-relations.md): Version board documents and establish shared object relations | 8 | High | E001-T01 | No |
-| [E001-T04](tasks/T04-durable-assets.md): Add durable file assets and SQLite references | 8 | High | E001-T03 | No |
+| [E001-T01](tasks/T01-baseline.md): Establish source baseline, design decisions and workload | 5 | High | None | Yes |
+| [E001-T02](tasks/T02-legacy-cleanup-packaging.md): Remove retired hosted SDKs and slim container packaging | 5 | High | E001-T01 | Yes |
+| [E001-T03](tasks/T03-versioned-document-relations.md): Version board documents and establish shared object relations | 8 | High | E001-T01 | Yes |
+| [E001-T04](tasks/T04-durable-assets.md): Add durable file assets and SQLite references | 8 | High | E001-T03 | Yes |
 | [E001-T05](tasks/T05-image-paste-upload.md): Paste, upload and render image layers | 8 | High | E001-T04 | No |
 | [E001-T06](tasks/T06-progressive-images.md): Generate variants and bound viewport image loading | 8 | High | E001-T05, E001-T07 | No |
-| [E001-T07](tasks/T07-navigation-grid-capacity.md): Implement zoom, pan, neutral grid and measured board capacity | 8 | High | E001-T03 | No |
+| [E001-T07](tasks/T07-navigation-grid-capacity.md): Implement zoom, pan, neutral grid and measured board capacity | 8 | High | E001-T03 | Yes |
 | [E001-T08](tasks/T08-nested-frames.md): Add named nested frames with stable child geometry | 8 | High | E001-T03, E001-T07 | No |
 | [E001-T09](tasks/T09-shared-locks.md): Enforce shared locks and accepted frame inheritance | 8 | High | E001-T03, E001-T08 | No |
 | [E001-T10](tasks/T10-rich-text.md): Add durable rich text and font controls | 8 | High | E001-T03 | No |
@@ -143,8 +154,8 @@ pending/No; only the integrator updates them after independent acceptance.
 | [E001-T12](tasks/T12-website-product-cards.md): Add local website and product cards independent of extraction | 8 | High | E001-T05 | No |
 | [E001-T13](tasks/T13-extraction-contract-handoff.md): Define extraction contract and hand off external-owner work | 5 | High | E001-T01, E001-T12 | No |
 | [E001-T14](tasks/T14-extraction-consumer.md): Integrate the delivered extraction interface into cards | 8 | High | E001-T13 | No |
-| [E001-T15](tasks/T15-read-only-exporter.md): Implement a minimal read-only structural export tool | 8 | High | E001-T01 | No |
-| [E001-T16](tasks/T16-migration-package-dry-run.md): Normalize structural packages and report dry-run losses | 8 | High | E001-T15 | No |
+| [E001-T15](tasks/T15-read-only-exporter.md): Implement a minimal read-only structural export tool | 8 | High | E001-T01 | Yes |
+| [E001-T16](tasks/T16-migration-package-dry-run.md): Normalize structural packages and report dry-run losses | 8 | High | E001-T15 | Yes |
 | [E001-T17](tasks/T17-idempotent-importer.md): Import packages idempotently into new boards | 8 | High | E001-T16, E001-T06, E001-T08, E001-T09, E001-T12, E001-T18 | No |
 | [E001-T18](tasks/T18-backup-restore.md): Coordinate SQLite and asset backup with verified restore | 5 | High | E001-T04 | No |
 | [E001-T19](tasks/T19-record-tables.md): Add typed record tables and an embedded board view | 8 | Medium | E001-T03 | No |
@@ -153,7 +164,7 @@ pending/No; only the integrator updates them after independent acceptance.
 | [E001-T22](tasks/T22-release-deployment-acceptance.md): Coordinate release and independently accept intended HTTPS service | 5 | High | E001-T21 | No |
 | [E001-T23](tasks/T23-test-and-lint-hygiene.md): Split the editor browser test and lint tools/ and tests/ (added by PO 2026-11-08) | 3 | Medium | E001-T02, E001-T03 | No |
 | [E001-T25](tasks/T25-incremental-redraw.md): Redraw only changed layers and split the canvas component (added by PO 2026-11-08) | 5 | High | E001-T07 | No |
-| [E001-T24](tasks/T24-legacy-remnant-cleanup.md): Remove hosted-SDK remnants, unused packages and unused public assets (added by PO 2026-11-08) | 3 | Medium | E001-T02 | No |
+| [E001-T24](tasks/T24-legacy-remnant-cleanup.md): Remove hosted-SDK remnants, unused packages and unused public assets (added by PO 2026-11-08) | 3 | Medium | E001-T02 | Yes |
 
 ## Boundaries for a future dispatched executor
 
@@ -171,7 +182,7 @@ pending/No; only the integrator updates them after independent acceptance.
   no account mutation/shared-link/subscription operation follows from planning.
 - T22 owns app release docs/receipt. Actual infrastructure writes and private
   URL/access details stay with the existing infrastructure owner/session. Use
-  forge-backed accepted updates, explicit production approval, fresh backup
+  forge-backed accepted updates under the owner's 2026-11-25 decision, fresh backup
   before real-data changes, and preserve data/assets/unrelated services.
 - Do not operate retired orchestration/readiness/checksum tooling, install a
   daemon, invent a new lease/gate or populate a numeric time/token budget.
@@ -201,7 +212,7 @@ Use ordinary hooks and verified integration; a task cannot mark itself completed
 
 ## Actual prerequisites still outside this plan's evidence
 
-The 155 points cover only this app repository's scoped tasks. Separately owned
+The 166 points cover only this app repository's scoped tasks. Separately owned
 extension/infrastructure implementation is unestimated external work, not
 silently zero or included. T13 discovers/obtains the relevant owner's scope and
 estimate; infrastructure delivery is separately scoped through its owner at

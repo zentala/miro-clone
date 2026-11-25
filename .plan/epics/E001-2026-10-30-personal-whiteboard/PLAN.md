@@ -5,8 +5,8 @@
 Complete one personal self-hosted Miro replacement, from the existing SVG/SQLite
 board through image/link-heavy representative migration to an independently
 accepted owner-approved HTTPS service. Direction: serves [PURPOSE](../../PURPOSE.md)
-and [VISION](../../VISION.md), not full Miro parity. One umbrella epic, 22 pending
-records, 155 indicative Fibonacci points. Estimates are scope estimates, not
+and [VISION](../../VISION.md), not full Miro parity. One umbrella epic, 25 task
+records, 166 indicative Fibonacci points. Estimates are scope estimates, not
 budgets. Execution is approved by the owner on 2026-11-08 and delivered by the
 sole PO/DM pair through Herdr; see [Execution route](#execution-route).
 
@@ -154,11 +154,11 @@ No numeric time/token allowance or budget_minutes field is invented.
   unsupported source records and a reviewed loss report. Table/code/rich-text
   models do not block this milestone. It is not a full-fidelity claim.
 - Full replacement: T21 integrates all required directions and T22 accepts the
-  intended HTTPS/replacement outcome after separate production approval.
+  intended HTTPS/replacement outcome under the owner's 2026-11-25 delivery decision.
 
 Independently reviewed partial deliveries may use the existing infrastructure
-owner when separately scoped/authorized, without waiting for unrelated phase
-siblings. No partial deployment is authorized now. T22 remains the final full
+owner, without waiting for unrelated phase siblings. The owner's 2026-11-25
+decision authorizes internal deployment, partial or full. T22 remains the final full
 product delivery/URL acceptance task, not a barrier to every earlier useful slice.
 
 ## Test strategy
@@ -206,6 +206,25 @@ authorized" above for app-repository work.
 - Still outside this approval (see private DECIDE.md): reading a real Miro
   account/board, retiring the paid Miro subscription. Deployment to the
   internal service (T22) follows the standing PO mandate after T21 acceptance.
+
+### Resume and full delivery (2026-11-25)
+
+Owner decision, 2026-11-25 (OpenAgents channel): "zrealizuj caly ten epic;
+wdroz wszystko" — deliver the whole epic and deploy everything. This lifts
+the 2026-11-08 pause and authorizes, under the standing PO mandate, all
+in-scope implementation, checks, normal push and internal deployment of the
+app at its existing internal service. No further production question is
+needed for that scope. It does not grant real Miro account access, paid
+expenditure or subscription cancellation, and it releases no unrelated HOLD.
+
+- State at resume: 8 of 25 tasks done (T01, T02, T03, T04, T07, T15, T16,
+  T24), 53 of 166 points, all on main.
+- Order: T18 and T23 in parallel worktrees, then T25, then T05 -> T10 -> T19,
+  then every remaining task as its dependencies close.
+- Runtime at resume: the internal HTTPS service did not answer (connection
+  to port 443 failed, 2026-11-25). An earlier October receipt is not current
+  reachability. The infrastructure owner inspects the actual route and runtime
+  within T22; no TLS bypass and no domain retarget.
 
 ## PO decisions on open defaults (2026-11-08)
 
@@ -307,21 +326,20 @@ nonempty coordinated restore works. Real-source fidelity needs a separately
 authorized representative sample, not just generated fixtures.
 
 Final acceptance includes the intended owner-approved HTTPS service and durable
-replacement under the existing infrastructure owner, with separate production
-approval and data preservation. Until then runtime delivery is NOT_CHECKED.
+replacement under the existing infrastructure owner, under the owner's
+2026-11-25 delivery decision, with data preservation. Until then runtime delivery is NOT_CHECKED.
 Independent source/result acceptance and accepted commits/evidence are required
 before completing task records. Passing source tests alone is not delivery.
 
 ## Subtasks
 
-The 22 records linked above define bounds, proposed local write sets, dependencies,
-points, real tests and gating. All pending, completion No, execution not
-dispatched. [HANDOFF](HANDOFF.md) is the empty-context entrypoint;
+The 25 records linked above define bounds, proposed local write sets, dependencies,
+points, real tests and gating. Each record holds its own status and evidence. [HANDOFF](HANDOFF.md) is the empty-context entrypoint;
 [INDEX](../INDEX.md) has one epic row only.
 
 ## Risks and GAPS
 
-The 155 points estimate only scoped app-repository tasks. Separately owned
+The 166 points estimate only scoped app-repository tasks. Separately owned
 extension and infrastructure implementation is unestimated external work,
 not zero and not included in that total. T13 discovers/obtains the relevant
 external-owner scope and estimate; T22 coordinates separately scoped
@@ -336,5 +354,5 @@ not a full-fidelity promise.
 All tasks are 5 or 8 indicative points. Discovery can change scope/sizing;
 update task records, phase/epic totals and route together. Never reduce the
 apparent total to select direct execution. The old 65-point sketch is superseded.
-No product code/runtime/account work has run. Independent plan-content review
-passed and the content is accepted; execution remains unauthorized/not admitted.
+Independent plan-content review passed and the content is accepted. Execution
+was approved on 2026-11-08 and resumed with full delivery on 2026-11-25.
