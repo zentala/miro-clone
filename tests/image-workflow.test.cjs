@@ -76,6 +76,13 @@ test('image layers: upload, clipboard, editing, history, persistence and export 
         await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...to, button: 'left', buttons: 1 });
         await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1 });
     }
+    async function dragThrough(from, points) {
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...from });
+        await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...from, button: 'left', buttons: 1, clickCount: 1 });
+        for (const point of points) await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point, button: 'left', buttons: 1 });
+        const to = points[points.length - 1];
+        await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1 });
+    }
     async function key(key, modifiers) {
         const code = `Key${key.toUpperCase()}`;
         for (const type of ['keyDown', 'keyUp']) await page('Input.dispatchKeyEvent', {
@@ -161,6 +168,45 @@ test('image layers: upload, clipboard, editing, history, persistence and export 
             return item.width === 300 && item.height === 150 && item.assetId === initialAssetId;
         });
         await saved();
+    });
+
+    await step('image resize stays positive through collapse and anchor crossing, then can resize again', async () => {
+        const initial = await board();
+        const layerId = initial.document.layerIds[0];
+        const initialLayer = initial.document.layers[layerId];
+        const anchor = { x: initialLayer.x, y: initialLayer.y };
+        const bottomRight = () => evaluate(`(() => { const r=document.querySelectorAll('[data-editor-overlay] rect')[5].getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()`);
+
+        await dragThrough(await bottomRight(), [anchor]);
+        await saved();
+        let current = await board();
+        let layer = current.document.layers[layerId];
+        assert.ok(Number.isFinite(layer.width) && layer.width > 0);
+        assert.ok(Number.isFinite(layer.height) && layer.height > 0);
+        assert.ok(Math.abs(layer.width / layer.height - 2) < 0.001);
+        assert.equal(layer.assetId, initialAssetId);
+
+        await drag(await bottomRight(), { x: anchor.x - 20, y: anchor.y - 10 });
+        await saved();
+        current = await board();
+        layer = current.document.layers[layerId];
+        assert.ok(Number.isFinite(layer.width) && layer.width > 0);
+        assert.ok(Number.isFinite(layer.height) && layer.height > 0);
+        assert.ok(Math.abs(layer.width / layer.height - 2) < 0.001);
+        assert.ok(layer.x < anchor.x && layer.y < anchor.y, 'The resized image crosses to the other side of its anchor');
+        assert.equal(layer.assetId, initialAssetId);
+
+        const crossed = { ...layer };
+        await drag(await bottomRight(), { x: crossed.x + crossed.width + 60, y: crossed.y + crossed.height + 30 });
+        await saved();
+        current = await board();
+        layer = current.document.layers[layerId];
+        assert.ok(Number.isFinite(layer.x) && Number.isFinite(layer.y));
+        assert.ok(Number.isFinite(layer.width) && layer.width > 0);
+        assert.ok(Number.isFinite(layer.height) && layer.height > 0);
+        assert.ok(Math.abs(layer.width / layer.height - 2) < 0.001);
+        assert.ok(layer.width > crossed.width && layer.height > crossed.height);
+        assert.equal(layer.assetId, initialAssetId);
     });
 
     await step('duplicate, delete, two undos and redo retain the asset reference through reload', async () => {

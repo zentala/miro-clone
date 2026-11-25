@@ -14,29 +14,45 @@ import {
     resizeBounds,
 } from "@/lib/utils";
 
+const MIN_IMAGE_EDGE = 1;
+
 function resizeImageBounds(bounds: XYWH, corner: Side, point: Point): XYWH {
-    const raw = resizeBounds(bounds, corner, point);
+    const ratio = bounds.width / bounds.height;
+    if (!Number.isFinite(ratio) || ratio <= 0 || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return bounds;
+
     const changesWidth = (corner & (Side.Left | Side.Right)) !== 0;
     const changesHeight = (corner & (Side.Top | Side.Bottom)) !== 0;
-    const ratio = bounds.width / bounds.height;
-    let width = raw.width;
-    let height = raw.height;
+    const anchorX = corner & Side.Left ? bounds.x + bounds.width : bounds.x;
+    const anchorY = corner & Side.Top ? bounds.y + bounds.height : bounds.y;
+    const minimumWidth = Math.min(MIN_IMAGE_EDGE, ratio);
+    const minimumHeight = Math.min(MIN_IMAGE_EDGE, 1 / ratio);
+    const pointerWidth = changesWidth ? Math.abs(point.x - anchorX) : bounds.width;
+    const pointerHeight = changesHeight ? Math.abs(point.y - anchorY) : bounds.height;
+    let width: number;
+    let height: number;
 
     if (changesWidth && changesHeight) {
-        width = Math.max(raw.width, raw.height * ratio);
+        width = Math.max(pointerWidth, pointerHeight * ratio, minimumWidth);
         height = width / ratio;
     } else if (changesWidth) {
+        width = Math.max(pointerWidth, minimumWidth);
         height = width / ratio;
-    } else {
+    } else if (changesHeight) {
+        height = Math.max(pointerHeight, minimumHeight);
         width = height * ratio;
+    } else {
+        return bounds;
     }
 
-    const x = corner & Side.Left
-        ? bounds.x + bounds.width - width
-        : corner & Side.Right ? bounds.x : bounds.x + (bounds.width - width) / 2;
-    const y = corner & Side.Top
-        ? bounds.y + bounds.height - height
-        : corner & Side.Bottom ? bounds.y : bounds.y + (bounds.height - height) / 2;
+    if (![width, height].every(value => Number.isFinite(value) && value > 0)) return bounds;
+
+    const x = changesWidth
+        ? point.x < anchorX ? anchorX - width : anchorX
+        : bounds.x + (bounds.width - width) / 2;
+    const y = changesHeight
+        ? point.y < anchorY ? anchorY - height : anchorY
+        : bounds.y + (bounds.height - height) / 2;
+    if (![x, y].every(Number.isFinite)) return bounds;
     return { x, y, width, height };
 }
 
