@@ -10,7 +10,7 @@ const { createCriticalEditor } = require('./critical-editor/setup.cjs');
 test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable reload/restart', { timeout: 120000 }, async t => {
     const context = await createCriticalEditor(t);
     const { step, page, origin, evaluate, click, until, renderedStroke, saved, databasePath, downloads, begunDownloads, completedDownloads, deadline, exceptions, networkFailures } = context;
-    let boardUrl, originalStroke, originalDocument;
+    let boardUrl, originalStroke, originalDocument, zoomAssetId;
     await step('create board through the UI', async () => {
         await page('Page.navigate', { url: origin });
         await until('hydrated dashboard', () => evaluate('document.querySelector("h1")?.textContent === "Boards" && !document.body.textContent.includes("Loading boards")'));
@@ -99,6 +99,49 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
         assert.deepEqual(board.document, originalDocument);
     });
+    await step('visible image requests follow committed camera zoom and rendered CSS pixels', async () => {
+        const { Transformer } = require('@napi-rs/image');
+        const pixels = Buffer.alloc(800 * 400 * 4);
+        for (let i = 0; i < pixels.length; i += 4) pixels.set([i / 4 % 256, 80, 190, 255], i);
+        const imageBytes = await Transformer.fromRgbaPixels(pixels, 800, 400).png();
+        const upload = await fetch(`${origin}/api/assets`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'image/png' }, body: imageBytes, signal: AbortSignal.timeout(deadline) });
+        assert.equal(upload.status, 201);
+        const asset = await upload.json();
+        zoomAssetId = asset.id;
+        const boardApi = boardUrl.replace('/board/', '/api/boards/');
+        const storedBoard = await (await fetch(boardApi, { signal: AbortSignal.timeout(deadline) })).json();
+        const document = structuredClone(storedBoard.document);
+        document.layerIds.push('progressive-image');
+        document.layers['progressive-image'] = { type: 5, x: 500, y: 300, width: 100, height: 200, assetId: asset.id };
+        const patched = await fetch(boardApi, { method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ document }), signal: AbortSignal.timeout(deadline) });
+        assert.equal(patched.status, 200);
+        await page('Page.reload', { ignoreCache: true });
+        await until('visible image preview after reload', () => evaluate(`(() => {
+            const image = document.querySelector('image[aria-label="Board image"]');
+            return image?.getAttribute('href')?.startsWith('blob:') === true;
+        })()`));
+        const initial = await until('first visible 48-pixel image preview request', () => evaluate(`performance.getEntriesByType('resource').some(entry => entry.name.includes('/api/assets/${asset.id}?width=48'))`));
+        assert.equal(initial, true);
+        await page('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 550, y: 400, deltaY: -100, deltaX: 0, modifiers: 2 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 550, y: 400, deltaY: -100, deltaX: 0, modifiers: 2 });
+        const measured = await until('committed zoom requests the width selected from rendered bounds', async () => evaluate(`(() => {
+            const image = document.querySelector('image[aria-label="Board image"]');
+            const camera = document.querySelector('[data-board-camera]');
+            const transform = camera?.getAttribute('transform') || '';
+            const match = transform.match(/scale\\(([^)]+)\\)/);
+            const bounds = image?.getBoundingClientRect();
+            const zoom = Number(match?.[1] || 1);
+            const width = bounds?.width || 0;
+            const dpr = window.devicePixelRatio || 1;
+            const requested = [48, 160, 320, 640, 1280, 2560].find(value => value >= Math.ceil(width * dpr)) || 2560;
+            const fetched = performance.getEntriesByType('resource').some(entry => entry.name.includes('/api/assets/${asset.id}?width=' + requested));
+            return fetched && zoom > 1.5 ? { width, zoom, dpr, requested } : false;
+        })()`));
+        assert.deepEqual(measured, { width: measured.width, zoom: measured.zoom, dpr: 1, requested: 320 });
+        assert.ok(Math.ceil(measured.width * measured.dpr) <= measured.requested);
+        assert.ok(measured.requested === 48 || Math.ceil(measured.width * measured.dpr) > [48, 160, 320, 640, 1280, 2560][[48, 160, 320, 640, 1280, 2560].indexOf(measured.requested) - 1]);
+        assert.equal(await evaluate(`document.querySelector('image[aria-label="Board image"]')?.getAttribute('href')?.startsWith('blob:')`), true);
+    });
     await step('pre-version board with all five layer types opens, edits, undoes and saves as v3', async () => {
         const fill = { r: 10, g: 20, b: 30 };
         // Unversioned synthetic document as stored before E001-T03; record order differs from paint order.
@@ -180,6 +223,38 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal((await upload(png, 'image/png')).status, 200, 'Same bytes are stored once');
         const stored = join(databasePath, '..', 'assets', asset.id.slice(0, 2), asset.id);
         assert.deepEqual(await readFile(stored), png, 'Original sits in the data root beside SQLite');
+        const orientedPixels = Buffer.alloc(200 * 100 * 4);
+        for (let y = 0; y < 100; y++) for (let x = 0; x < 200; x++) {
+            orientedPixels.set(x < 100 ? [230, 30, 45, 255] : [20, 80, 220, 255], (y * 200 + x) * 4);
+        }
+        const rawJpeg = await Transformer.fromRgbaPixels(orientedPixels, 200, 100).jpeg(90);
+        const tiff = Buffer.alloc(26);
+        tiff.write('II'); tiff.writeUInt16LE(42, 2); tiff.writeUInt32LE(8, 4); tiff.writeUInt16LE(1, 8);
+        tiff.writeUInt16LE(0x112, 10); tiff.writeUInt16LE(3, 12); tiff.writeUInt32LE(1, 14); tiff.writeUInt16LE(6, 18);
+        const exif = Buffer.concat([Buffer.from('Exif\0\0', 'binary'), tiff]);
+        const marker = Buffer.alloc(4); marker[0] = 255; marker[1] = 225; marker.writeUInt16BE(exif.length + 2, 2);
+        const orientedJpeg = Buffer.concat([rawJpeg.subarray(0, 2), marker, exif, rawJpeg.subarray(2)]);
+        const orientedUpload = await upload(orientedJpeg, 'image/jpeg');
+        assert.equal(orientedUpload.status, 201);
+        const orientedAsset = await orientedUpload.json();
+        assert.deepEqual({ width: orientedAsset.width, height: orientedAsset.height }, { width: 100, height: 200 },
+            'New image layers size themselves from EXIF-oriented dimensions');
+        const orientedStoredPath = join(databasePath, '..', 'assets', orientedAsset.id.slice(0, 2), orientedAsset.id);
+        assert.deepEqual(await readFile(orientedStoredPath), orientedJpeg, 'EXIF JPEG original bytes remain unchanged');
+        const variantResponse = await fetch(`${origin}/api/assets/${orientedAsset.id}?width=160`, { signal: AbortSignal.timeout(deadline) });
+        assert.equal(variantResponse.headers.get('content-type'), 'image/webp');
+        const orientedVariant = Buffer.from(await variantResponse.arrayBuffer());
+        const variantMetadata = await new Transformer(orientedVariant).metadata(true);
+        assert.deepEqual({ width: variantMetadata.width, height: variantMetadata.height }, { width: 100, height: 200 },
+            'Small requested variants preserve oriented portrait geometry without upscaling');
+        const orientationPixels = await evaluate(`(async()=>{const urls=${JSON.stringify([
+            `data:image/jpeg;base64,${orientedJpeg.toString('base64')}`,
+            `data:image/webp;base64,${orientedVariant.toString('base64')}`,
+        ])};const result=[];for(const url of urls){const image=new Image();image.src=url;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext('2d');context.drawImage(image,0,0);const pixel=(x,y)=>Array.from(context.getImageData(x,y,1,1).data);result.push({width:image.naturalWidth,height:image.naturalHeight,top:pixel(10,10),bottom:pixel(10,image.naturalHeight-10)});}return result;})()`);
+        assert.equal(orientationPixels[0].height > orientationPixels[0].width, true);
+        assert.equal(orientationPixels[1].height > orientationPixels[1].width, true);
+        assert.ok(orientationPixels[1].top[0] > orientationPixels[1].top[2], 'The variant keeps red at the top');
+        assert.ok(orientationPixels[1].bottom[2] > orientationPixels[1].bottom[0], 'The variant keeps blue at the bottom');
         for (const id of ['..%2F..%2Fsynthetic.sqlite', '..%2Fdata%2Fmiro.sqlite', asset.id.toUpperCase()]) {
             assert.equal((await fetch(`${origin}/api/assets/${id}`)).status, 400, id);
         }
@@ -199,7 +274,17 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.deepEqual((await (await fetch(`${origin}/api/boards/${board.id}`)).json()).document,
             { ...document, schemaVersion: 3 });
         const report = await (await fetch(`${origin}/api/assets`)).json();
-        assert.deepEqual(report, { referenced: [{ id: asset.id, boards: [board.id] }], unused: [], missing: [], unregistered: [], deletable: [], danglingReferences: [], unscannedBoards: [] });
+        const mainBoardId = new URL(boardUrl).pathname.split('/').at(-1);
+        assert.deepEqual(report.referenced, [
+            { id: asset.id, boards: [board.id] },
+            { id: zoomAssetId, boards: [mainBoardId] },
+        ].sort((left, right) => left.id.localeCompare(right.id)));
+        assert.deepEqual(report.unused, [orientedAsset.id], 'The standalone EXIF fixture remains an intentionally unused original');
+        assert.deepEqual(report.missing, [], 'No referenced originals are missing');
+        assert.deepEqual(report.unregistered, [], 'No stored originals are unregistered');
+        assert.deepEqual(report.danglingReferences, [], 'No board points to an unregistered original');
+        assert.deepEqual(report.deletable, []);
+        assert.deepEqual(report.unscannedBoards, []);
         const decoded = await evaluate(`(async () => { const image = new Image(); image.src = '/api/assets/${asset.id}'; await image.decode(); return [image.naturalWidth, image.naturalHeight]; })()`);
         assert.deepEqual(decoded, [30, 20], 'The browser decodes the served original');
     });

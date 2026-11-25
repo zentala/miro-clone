@@ -7,6 +7,22 @@
 /** Images accepted by the local asset store; GIF dimensions come from its header. */
 export type AssetMediaType = "image/png" | "image/jpeg" | "image/webp" | "image/gif";
 
+/** Bounded output widths used by the progressive image endpoint. */
+export const ASSET_VARIANT_WIDTHS = [48, 160, 320, 640, 1280, 2560] as const;
+export type AssetVariantWidth = typeof ASSET_VARIANT_WIDTHS[number];
+
+/** Select by rendered CSS pixels and DPR; SVG camera zoom is already in the rendered bounds. */
+export function chooseAssetVariantWidth(cssWidth: number, dpr: number): AssetVariantWidth {
+    const requested = Math.max(1, Math.ceil(cssWidth * dpr));
+    return ASSET_VARIANT_WIDTHS.find(width => width >= requested) ?? ASSET_VARIANT_WIDTHS[ASSET_VARIANT_WIDTHS.length - 1];
+}
+
+export function orientedImageDimensions(width: number, height: number, orientation?: number | null) {
+    return orientation != null && orientation >= 5 && orientation <= 8
+        ? { width: height, height: width }
+        : { width, height };
+}
+
 /** Metadata row, published only after the original file is durably in place. */
 export type AssetMetadata = {
     id: string;

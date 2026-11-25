@@ -309,23 +309,27 @@ Code font size and line-number toggle are explicit requirements. Record tables
 need embedded and full-page views over the same data; rich-text tables are a
 separate capability. Editor/highlighter/grid-library selection remains open.
 
-The image, extraction and migration sections below retain design proposals;
-accepting the direction does not accept every implementation detail. This
-architecture and [roadmap](ROADMAP.md) use the same map for alignment, without
-a parallel queue or ready-to-execute work packages.
+The extraction and migration sections below retain design proposals;
+accepting those directions does not accept every implementation detail. The
+image section records the implemented T06 path and its measured partial W2
+result. This architecture and [roadmap](ROADMAP.md) use the same map for
+alignment, without a parallel queue or ready-to-execute work packages.
 
-## Proposed image pipeline — not implemented
+## Progressive image pipeline (E001-T06)
 
-Store originals and derived variants as durable files and asset metadata in
-SQLite. Do not embed image binaries in every document snapshot. Design a
-consistent backup of database plus assets before enabling real imports.
+Original image bytes remain unchanged in the durable asset store, with metadata
+in SQLite; board documents contain only asset IDs. The 48-pixel first-fit WebP
+preview is a rebuildable file under `assets/.variants/`, outside canonical asset
+shards and backup contents. Ingestion attempts to create it before returning;
+the endpoint can generate it on demand if the cache is absent. GIFs retain their
+original animation and bytes. Larger variants are generated on demand.
 
 Render a metadata-derived gradient placeholder, then a low-resolution preview,
 then a variant matched to actual displayed CSS size times device pixel ratio.
 Zoom changes the displayed dimensions; do not multiply zoom twice. Preserve
-aspect ratio and never upscale beyond the original. Candidate long-edge sizes
-from the draft (128, 256, 512, 1024, 2048 pixels) require measurement, not adoption
-as a fixed storage contract.
+aspect ratio and never upscale beyond the original. The first preview width is
+48 pixels, matching the measured 24 CSS-pixel fitted image at DPR 2. Larger
+variant widths are 160, 320, 640, 1280 and 2560 pixels.
 
 Cull off-screen objects; bound in-flight requests, stale work and decoded-image
 cache/memory. On immediate zoom-in, select the needed variant instead of
@@ -334,6 +338,22 @@ replacement decoding completes. Normal navigation must not fetch originals
 merely because a high-resolution export might later be requested. Measure
 network bytes, variant choice and browser memory during fast zoom/pan on
 representative boards and high-DPI displays.
+
+### Measured first-fit image slice
+
+The focused browser run used a disposable SQLite database, asset directory and
+Chromium profile at 1920×1080 CSS pixels and DPR 2. It opened 2,000 objects,
+including 800 generated PNG/JPEG/WebP assets. Each source was 490,000 pixels;
+the source files totaled 786,757,308 bytes. All 800 fitted SVG images fired load
+events with no errors. The first-fit preview responses totaled 633,312 bytes and
+completed in 2,177 ms. Peak active image requests and peak pending images were
+both 8; 10 stale fit-window requests were cancelled; ordinary navigation
+fetched no originals. The result meets the proposed 8 MB and 4 s first-fit image
+bounds.
+
+This is a reduced image-size slice using 0.49 MP sources, near the low end of
+the proposed W2 source range of 0.3–24 MP. It does not establish 24 MP coverage
+or full W2 performance. Decoded browser memory remains NOT_CHECKED.
 
 ## Proposed extraction boundary — not implemented
 

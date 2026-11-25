@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { AssetError, openAsset } from "@/lib/assets";
+import { readImageVariant, ASSET_VARIANT_WIDTHS } from "@/lib/image-variants";
 import type { AssetErrorCode } from "@/types/asset";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,15 +11,36 @@ type Context = { params: { assetId: string } };
 const SERVE_STATUS: Partial<Record<AssetErrorCode, number>> = { "invalid-id": 400, "not-found": 404, "data-missing": 500 };
 
 /** Original bytes, unchanged. IDs are content hashes, so a response never changes and may be cached forever. */
-export async function GET(_request: Request, { params }: Context) {
+export async function GET(request: Request, { params }: Context) {
     try {
-        const { asset, path } = await openAsset(params.assetId);
-        return new Response(Readable.toWeb(createReadStream(path)) as ReadableStream, {
+        const requestedWidth = new URL(request.url).searchParams.get("width");
+        const variantWidth = requestedWidth === null ? null : Number(requestedWidth);
+        if (requestedWidth !== null && (!Number.isInteger(variantWidth) || !ASSET_VARIANT_WIDTHS.includes(variantWidth as typeof ASSET_VARIANT_WIDTHS[number]))) {
+            return NextResponse.json({ error: "Unsupported image variant width", code: "invalid-variant" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+        }
+        if (variantWidth === null) {
+            const { asset, path } = await openAsset(params.assetId);
+            return new Response(Readable.toWeb(createReadStream(path)) as ReadableStream, {
+                headers: {
+                    "Content-Type": asset.mediaType,
+                    "Content-Length": String(asset.byteSize),
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                    "ETag": `"${asset.id}-original"`,
+                    "X-Content-Type-Options": "nosniff",
+                    "Content-Security-Policy": "default-src 'none'; sandbox",
+                },
+            });
+        }
+        const result = await readImageVariant(params.assetId, variantWidth);
+        const { asset, bytes } = result;
+        return new Response(bytes, {
             headers: {
-                "Content-Type": asset.mediaType,
-                "Content-Length": String(asset.byteSize),
+                "Content-Type": result.mediaType,
+                "Content-Length": String(bytes.byteLength),
                 "Cache-Control": "public, max-age=31536000, immutable",
-                "ETag": `"${asset.id}"`,
+                "ETag": `"${asset.id}-${variantWidth}"`,
+                "X-Image-Width": String(result.width || asset.width),
+                "X-Image-Height": String(result.height || asset.height),
                 "X-Content-Type-Options": "nosniff",
                 "Content-Security-Policy": "default-src 'none'; sandbox",
             },

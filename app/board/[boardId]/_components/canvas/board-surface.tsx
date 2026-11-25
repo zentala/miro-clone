@@ -11,6 +11,7 @@ import { ResetCamera } from "../reset-camera";
 import { ZoomControls } from "../zoom-controls";
 import { gridBackground } from "../board-grid";
 import { isDefaultCamera, colorToCss } from "@/lib/utils";
+import { CameraZoomContext } from "../image";
 import type { Camera, Color, Side, XYWH } from "@/types/canvas";
 import type { RefObject } from "react";
 
@@ -89,11 +90,13 @@ export function BoardSurface({
                 onPointerDown={onPointerDown}
             >
                 <g data-board-camera="true" transform={`translate(${camera.x} ${camera.y}) scale(${camera.zoom})`}>
-                    <g data-board-layers="true">
-                        {layerIds.map((layerId) => (
-                            <LayerPreview key={layerId} id={layerId} onLayerPointerDown={onLayerPointerDown} />
-                        ))}
-                    </g>
+                    <CameraZoomContext.Provider value={camera.zoom}>
+                        <g data-board-layers="true">
+                            {layerIds.map((layerId) => (
+                                <LayerPreview key={layerId} id={layerId} onLayerPointerDown={onLayerPointerDown} />
+                            ))}
+                        </g>
+                    </CameraZoomContext.Provider>
                     <g data-editor-overlay="true">
                         <SelectionBox onResizeHandlePointerDown={onResizeHandlePointerDown} zoom={camera.zoom} />
                     </g>

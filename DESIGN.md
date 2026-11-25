@@ -22,6 +22,14 @@ Source inspection only; rendered appearance and accessibility are NOT_CHECKED.
   must not alter authored content, geometry, history, SVG rendering or PNG export.
 - Reuse existing Radix primitives and project buttons/inputs. Errors and save
   status must be readable text, with keyboard-accessible actions.
+- Board images begin with a neutral gradient, load a small visible preview, then
+  replace it with the smallest available WebP width that covers the rendered
+  CSS width multiplied by device pixel ratio. SVG camera zoom is already part
+  of rendered bounds and is not applied a second time. Off-screen image fetches
+  are cancelled; no more than eight image requests run at once. GIFs keep their
+  original animation and bytes. EXIF orientation affects reported image size
+  and generated pixels while the stored original remains byte-identical. The
+  first-fit preview is 48 pixels wide and cached as a rebuildable derivative.
 
 ## Decision ledger
 | Date | Decision | Previous behavior | Reason | Status |

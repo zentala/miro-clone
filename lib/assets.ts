@@ -16,6 +16,7 @@ import { mkdir, open, readdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import { Transformer } from "@napi-rs/image";
 import type { AssetErrorCode, AssetMediaType, AssetMetadata, AssetReport } from "../types/asset";
+import { orientedImageDimensions } from "../types/asset";
 import { assetReferences } from "./boards";
 import { getDatabase, getDatabasePath } from "./sqlite";
 
@@ -53,6 +54,12 @@ export function assetPath(id: string): string {
     const path = join(root, id.slice(0, 2), id);
     if (!path.startsWith(root + sep)) throw new AssetError("invalid-id", "Asset path escapes the asset root");
     return path;
+}
+
+/** Derived variants are outside canonical asset shards and are excluded from backups. */
+export function assetVariantCachePath(id: string, width: number): string {
+    if (!ASSET_ID.test(id)) throw new AssetError("invalid-id", "Asset IDs are 64 lowercase hexadecimal characters");
+    return join(assetsRoot(), ".variants", `${id}-${width}.webp`);
 }
 
 export function getAsset(id: string): AssetMetadata | null {
@@ -131,12 +138,12 @@ async function inspect(bytes: Buffer, declaredType: string | null) {
         return { mediaType: signature.mediaType, ...inspectGif(bytes) };
     }
     let metadata;
-    try { metadata = await new Transformer(bytes).metadata(); }
+    try { metadata = await new Transformer(bytes).metadata(true); }
     catch (error) { throw new AssetError("undecodable", `The image cannot be decoded: ${(error as Error).message}`); }
     if (metadata.format !== signature.format || !(metadata.width > 0 && metadata.height > 0)) {
         throw new AssetError("undecodable", `The content decodes as ${metadata.format}, not ${signature.format}`);
     }
-    return { mediaType: signature.mediaType, width: metadata.width, height: metadata.height };
+    return { mediaType: signature.mediaType, ...orientedImageDimensions(metadata.width, metadata.height, metadata.orientation) };
 }
 
 export async function syncDirectory(path: string) {
@@ -187,10 +194,20 @@ export async function ingestAsset(input: Uint8Array, declaredType: string | null
     const id = createHash("sha256").update(bytes).digest("hex");
     const existing = getAsset(id);
     await storeFile(id, bytes);
-    if (existing) return { asset: existing, created: false };
-    getDatabase().prepare("INSERT OR IGNORE INTO assets VALUES (?, ?, ?, ?, ?, ?)")
-        .run(id, mediaType, bytes.length, width, height, Date.now());
-    return { asset: getAsset(id)!, created: true };
+    if (!existing) {
+        getDatabase().prepare("INSERT OR IGNORE INTO assets VALUES (?, ?, ?, ?, ?, ?)")
+            .run(id, mediaType, bytes.length, width, height, Date.now());
+    }
+    const asset = getAsset(id)!;
+    if (mediaType !== "image/gif") {
+        try {
+            const { cacheImageVariant } = await import("./image-variants");
+            await cacheImageVariant(bytes, asset, 48);
+        } catch {
+            // The cache is optional; the image endpoint can generate a missing variant on demand.
+        }
+    }
+    return { asset, created: !existing };
 }
 
 /** Metadata and file path of a servable asset; a registered asset whose file is gone is `data-missing`. */
