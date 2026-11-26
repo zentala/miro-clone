@@ -15,14 +15,14 @@ executor: "t06-impl (candidate author; Herdr w57:pN)"
 write_set: ["lib/image-variants.ts", "lib/assets.ts", "types/asset.ts", "hooks/use-visible-assets.ts", "app/api/assets/[assetId]/route.ts", "app/board/[boardId]/_components/image.tsx", "app/board/[boardId]/_components/canvas/board-surface.tsx", "tests/progressive-images.test.cjs", "tests/critical-editor.test.cjs", "justfile", "DESIGN.md", ".plan/ARCH.md", "package.json", "package-lock.json"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
-commit: "feat(images): cache fitted image previews (3590bc4)"
+commit: "fix(images): retain rendered variant URLs (16c9227)"
 completion: "Yes"
-execution: "PO accepted 3590bc4 after independent source, build, progressive/image workflow, full-fit measurement and scoped visual review; fast-forward integrated and pushed to origin/main. Full just check completed with all reported checks/tests passing; the closed command session did not separately expose its shell exit code. Preserve that limitation and all earlier failures."
+execution: "The accepted 3590bc4 first failed the owning main just check with one uncancelled ERR_FILE_NOT_FOUND; preserve that historical failure. Corrected local blob-URL ownership and W2 final error assertions in 16c9227. Independent source review passed. The corrected candidate's full just check exited 0: 109 pass, 1 existing opt-in container test skipped, 0 fail; production artifact verified. Fast-forward integration and push are recorded separately in evidence."
 phase: 5
 completed_at: "2026-11-26"
-commits: ["3590bc4"]
-verification_evidence: ["/tmp/miro-resume-20261125/ROOT-T06-3590-INDEPENDENT-REVIEW.md: fresh build exit 0 with .next/standalone/server.js; focused progressive/image workflow exit 0, 17 passed; real 800/800 image fit, 633468 B in 2030.5 ms, 0 errors/pending/original fetches, peak concurrency 8; EXIF orientation 6, original bytes, GIF, geometry, export and reload passed; wide 1280 and narrow 390 scoped visual review passed", "Final owning just check ran against this unchanged source tree: build produced .next/standalone/server.js; critical editor 11/11, image workflow 12/12, progressive images 5/5, navigation/capacity 10/10, exporter 16/16, document model 7/7, board store 4/4 and remaining visible suites passed; packaging container-only test skipped by its existing opt-in; final selector regression PASS. Session closed before shell exit code could be queried, so the aggregate exit code is not separately observed."]
-evidence: ["PO acceptance 2026-11-26; old 15,051,756 B / ~5.1 s first-fit failure is closed on this candidate and retained above as history", "Fast-forward integrated commit 3590bc4 and pushed origin/main", "Limits: synthetic images are 490,000 pixels from 9 templates; decoded memory NOT_CHECKED; full mixed W2 workload not measured"]
+commits: ["3590bc4", "16c9227"]
+verification_evidence: ["/tmp/miro-resume-20261125/ROOT-T06-3590-INDEPENDENT-REVIEW.md: fresh build exit 0; focused progressive/image workflow 17 passed; 800/800 loaded, first fit 633,468 B / 2,030.5 ms, no errors/pending/original fetches, peak concurrency 8; EXIF 6, original bytes, GIF, geometry, export/reload and scoped wide/narrow visual checks passed", "Corrected candidate: independent source review PASS; held-replacement test exit 0; final W2 exit 0 (800/800 decoded, 0 failures/pending, 623,720 B / 2,199.3 ms, 0 original fetches, peak 8, zero revoke-while-referenced); T25 exit 0 (undo 21.4 ms, drag p95/max 16.7 ms at 2,000 objects)", "Owning just check exit 0: 109 pass / 1 existing opt-in container test skipped / 0 fail; log /tmp/miro-e001-t06-final-just-check-20261126.log and sibling exit /tmp/miro-e001-t06-final-just-check-20261126.exit; artifact miro-clone/.plan/worktrees/e001-t06/.next/standalone/server.js (4,607 bytes)"]
+evidence: ["The historical 3590bc4 main just check exit 1 and 15,051,756 B / ~5.1 s first fit remain recorded for that candidate; controlled held-replacement regression failed on 3590bc4 and passed on the corrected candidate", "Corrected source commit 16c9227 fast-forwarded and pushed to origin/main (5d5c3af..16c9227)", "Limits: synthetic images are 490,000 pixels from 9 templates; decoded memory NOT_CHECKED; full mixed W2 workload not measured"]
 ---
 # E001-T06: Generate variants and bound viewport image loading
 
@@ -66,6 +66,8 @@ paths remain serialized as recorded in the DM brief.
 - [ ] Generated variants preserve aspect ratio and never upscale beyond original pixels; originals remain byte-identical.
 - [ ] Visible images progress from gradient to preview to a variant selected from actual CSS display dimensions times DPR; zoom is not multiplied twice.
 - [ ] Off-screen culling, cancellation and bounded requests/cache apply during rapid pan/zoom. Immediate zoom jumps do not fetch every intermediate size in sequence.
+- [ ] A rendered image keeps its current blob URL usable until the replacement href has loaded and committed, or the image unmounts; held-replacement regression and W2 revoke-while-referenced count both pass, with the latter at zero. Ownership remains local to the image/current URL (or a small per-URL reference count); no document-wide observer or whole-SVG scan per image, and per-change cost does not grow with image count. Preserve late-response, preview and unmount cleanup, and real 404/image-failure assertions.
+- [ ] The image-lifecycle correction does not regress T25's measured undo or drag latency beyond 100 ms at 2,000 objects.
 - [ ] Measure transferred bytes, chosen dimensions, request concurrency and browser decoded-memory behavior on the T01 generated workload; meet the reviewed bounds with exact observations.
 - [ ] PNG/export may intentionally request adequate resolution without forcing full originals during ordinary navigation.
 
@@ -98,13 +100,20 @@ The full-fit observation closes the earlier unknown preview-load count for that 
 
 Independent ROOT acceptance review, 2026-11-26: candidate 3590bc4 contains the orientation correction and remains source-identical through acceptance. A fresh production build passed and produced `.next/standalone/server.js`; focused progressive/image workflow checks exited 0 with 17 passes. The fresh real-browser W2 image slice loaded 800/800 previews with 0 errors or pending requests, transferred 633,468 B at first fit in 2,030.5 ms, fetched 0 originals, and peaked at 8 concurrent requests. DPR, direct zoom to 1280, cancellation, original bytes, EXIF orientation 6, GIF without variants, geometry, export and reload passed. ROOT visually inspected the actual 1280px wide and 390px narrow states and marked the scoped visual review PASS. PO accepted the candidate. Preserve limits: 490,000-pixel images drawn from 9 templates; decoded memory NOT_CHECKED; the full mixed W2 board (frames/cards/text/code/tables) was not measured.
 
-Final gate and delivery, 2026-11-26: the owning `just check` ran in the candidate worktree before fast-forward integration, whose source tree was unchanged. Build output produced `.next/standalone/server.js`; all visible test suites and the final selector regression reported PASS. Packaging's existing container-only test remained skipped unless `just container-check` is explicitly selected. The command session closed before its aggregate shell exit code could be queried; this limitation is recorded in JOURNAL and the verification evidence. Commit 3590bc4 was fast-forwarded to main and pushed to origin/main.
+Final gate and delivery, 2026-11-26: the earlier `3590bc4` owning `just check` exited 1 and remains historical. After correction, independent source review passed and one full `just check` exited 0 with 109 pass, 1 existing opt-in container test skipped, and 0 failures. Build artifact `.next/standalone/server.js` was verified. Corrected commit `16c9227` was fast-forwarded and pushed to `origin/main`; the task receipt was updated in this record.
 
-Current state: done and PO-accepted on 2026-11-26. Earlier failed runs and the
-15,051,756 B / ~5.1 s measurement remain in this record as history. Points are
-estimates, not a numeric time/token limit.
+Current state: done on 2026-11-26 after local blob-URL ownership correction,
+independent source verification, focused regression/W2/T25 checks, and the
+corrected full `just check` exit 0. The first gate's uncancelled
+`net::ERR_FILE_NOT_FOUND` and the 15,051,756 B / ~5.1 s measurement remain as
+history for candidate 3590bc4. Points are estimates, not a numeric time/token
+limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
 limitations and independent review evidence. Attach accepted commits/evidence only after
 verified integration. No unsupported PASS or automatic deployment claim.
+
+Current local-ownership correction candidate, 2026-11-26: fresh production build exit 0 (`.plan/worktrees/e001-t06/.next/standalone/server.js`); held-replacement regression 1/1 PASS; W2 image slice 1/1 PASS with 800/800 decoded, 0 image errors/pending, zero revocations while referenced, first fit 623,720 B / 2,479.8 ms, peak pending 8. Existing T25 capacity measurement at 2,000 objects: undo 21.4 ms, drag p95/max 16.7 ms (all <=100 ms). Receipts: `/tmp/miro-e001-t06-current-build-after-set-fix-20261126.log`, `/tmp/miro-e001-t06-held-current-20261126.log`, `/tmp/miro-e001-t06-w2-current-20261126.log`, `/tmp/miro-e001-t06-t25-capacity-current-20261126.log` and matching `.exit` files. Final W2 assertions correction and independent review passed. The corrected full `just check` closed this candidate gate at exit 0; the earlier main exit 1 remains preserved as the pre-correction result.
+
+Independent source review, 2026-11-26: round 1 found an assertion gap in the existing W2 error/pending arrays; completed HTTP 404 and final SVG decoder errors were diagnostic-only. The minimal test-only correction now asserts uncancelled failed/active requests and images, non-2xx responses, decoder failures and zero revoke-while-referenced, while excluding legitimate cancellations. The same independent Herdr verifier re-reviewed the corrected diff and passed; no negative-path exercise is claimed. The corrected owning `just check` passed at exit 0. Preserve the earlier candidate's exit 1 and round 1 finding as history.
