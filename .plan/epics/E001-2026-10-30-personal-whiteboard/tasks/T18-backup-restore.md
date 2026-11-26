@@ -16,7 +16,7 @@ write_set: ["scripts/backup.mjs", "scripts/restore-test.mjs", "tests/backup-rest
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(backup): [E001-T18] coordinate SQLite and asset backup with verified restore"
-completion: "No"
+completion: "Yes"
 execution: "PO accepted independent PASS; rebased after T23; fresh just check passed; integrated on main"
 completed_at: "2026-11-25"
 phase: 4

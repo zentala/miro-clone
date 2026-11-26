@@ -358,3 +358,196 @@ change or product edit follows from these corrections.
 - The inherited viewport-sized PNG export observation remains Low/2p and
   nonblocking. T05 is marked done; next ready authoring is T06/T10 on disjoint
   worktree paths, with their shared check/docs/package paths serialized.
+
+- The initial root worktree-config check ran `cat .giter.yaml` and exited 1
+  because this repository has no root config file. No worktree was created by
+  that command; use the installed `wt-add` default placement helper.
+
+- T06's first visible Codex launch showed the default model instead of the
+  required delivery profile. Its preflight completed without product edits and
+  reported a shell working-directory variable expansion during instruction
+  lookup, contrary to the no-variable-read instruction. The initial session is
+  held; relaunch with the required explicit role flags and literal paths before
+  any edit release.
+
+- T10 preflight used an unnecessarily broad file-name search outside the
+  owning repository, contrary to bounded source discovery. No unrelated file
+  contents or product files were read or changed; the author has been told to
+  keep further discovery inside this repository.
+
+- T06 WIP review found an EXIF orientation mismatch in generated image
+  variants: a synthetic orientation-6 JPEG changes from portrait to landscape
+  between the original and resized WebP. The original remains byte-preserved;
+  the author is correcting oriented dimensions/metadata and adding a regression
+  with the existing image library. This is not a final review verdict.
+
+- The host roster briefly rose above its ceiling during concurrent work. DM
+  interrupted only the newly started T10 source turn before edits; T10's
+  worktree remained clean and foreign sessions were untouched. A fresh roster
+  briefly returned within the stated limit, but later concurrent starts raised
+  it again. The latest observed roster is 13 active agents plus ROOT, above the
+  host ceiling; further own worker turns wait for an observed slot.
+
+- During T06 work, an unnecessary agent-routing detour called
+  `codex_tui.list_threads`; the tool returned `limit must be between 1 and 50`.
+  DM interrupted the detour and redirected the author to the existing `dm-miro`
+  Herdr route. No new agent or hidden delegation was started.
+
+- The first T06 browser-test attempt could not load the existing Next.js
+  dependency because the task worktree has no installed `node_modules` yet.
+  `node --test --test-concurrency=1 tests/critical-editor.test.cjs` exited 1.
+  The worktree has a local `node_modules` directory, not a symlink, but Next.js
+  is absent; `.next` is absent too. This first setup/test failure is retained.
+
+- DM ran `npm ci` in the owned T06 worktree using its existing committed
+  lockfile. It exited 0 and installed 423 packages; the local `node_modules`
+  path was not a shared link. No product manifest changed. ROOT now owns the
+  bounded draft build/browser check, so DM is not running a concurrent Miro
+  build or gate.
+
+- T06's first `node --test --test-concurrency=1 tests/progressive-images.test.cjs`
+  exited 1 because the new orientation test loader stub omitted the oriented-
+  dimensions export. The author corrected the mock in the same test file; a
+  later focused run passed. Keep that first test failure separate from the
+  missing-Next browser-test failure.
+
+- ROOT's independent build of a stable T06 draft passed and produced the
+  standalone server. The real `critical-editor` run exited 1 with 9 passes and
+  2 failures: the zoom network step and EXIF upload/original-byte assertions
+  passed, but the final asset-report assertion still expected the old single
+  reference and an empty unused-assets list. The new zoom asset is referenced;
+  the EXIF fixture is intentionally unused. ROOT found no dangling, missing or
+  unregistered entries. Preserve this test FAIL and correct only the fixture
+  expectation when author work resumes; it is not evidence of corrupted product
+  data. ROOT's existing `image-workflow` run exited 0 with 12 passes; its actual
+  wide and narrow screenshots passed for the pictured states. Its 20-image
+  sample transferred 14,006,463 bytes and observed 8 positive-transfer
+  concurrent requests. ResourceTiming's raw peak 12 includes eight aborted
+  zero-byte intervals; decoded memory remains NOT_CHECKED. This is sample
+  evidence, not complete T06 workload acceptance. ROOT's temporary checks are
+  complete; DM ran no concurrent build or gate.
+
+- The first DM handoff submission to the restored T06 author did not run:
+  Bash reported `unexpected EOF while looking for matching \"` because the
+  shell-quoted Python command contained an apostrophe. Herdr received no prompt;
+  the accepted handoff is being resubmitted through a safe argv call.
+
+- W2 image measurement is traced to the existing ARCH representative workload
+  and independent ROOT review, not a new operator decision. The task note now
+  records that source; existing proposed thresholds and PO dispositions remain
+  unchanged.
+
+- Independent source review of the T10 draft found Bold, Italic and Done controls
+  wired only to mouse-down, so native keyboard activation does not perform the
+  action. The focused rich-text unit test passed 3/3 but does not cover this
+  browser behavior. Keep the finding open for mouse/keyboard regression and
+  canvas-shortcut isolation; no build or runtime acceptance has been claimed.
+
+- T06's first W2 image-slice test exited 1 before fixture generation because the
+  disposable SQLite database had not initialized its `assets` table. The author
+  added initialization through the existing boards API before the retry. Retain
+  the initial failure separately from any later result; no application database
+  was used.
+
+- Independent ROOT review of the active T06 W2 measurement found its 800 images
+  are all 490,000 pixels each, below ARCH's 0.3–24 MP representative range; report
+  this reduced source-size coverage and actual bytes without claiming 24 MP.
+  The 250 ms fit and 500 ms final snapshots can pass while visible requests remain
+  outstanding, so they do not establish completed preview bytes or stable cache
+  behavior. After the active run finishes, retain loaded/rendered/failed and
+  active/pending counts at bounded checkpoints, distinguish cancellations from
+  failures, and correct the measurement if the preview is still outstanding.
+  This is an existing-criterion measurement correction, not a new threshold.
+
+- The next T06 W2 measurement run exited 1 after fixture generation: its rendered-
+  object assertion waited for 2,000 `<g>` groups, but 1,200 of the synthetic
+  non-image objects render as `<rect>`. This was a test selector mismatch, not an
+  application result. Preserve the failed run; the author is correcting the
+  selector and reducing deterministic fixture-generation cost before a retry.
+
+- The corrected T06 W2 image-slice test passed 1/1 with 800 image sources among
+  2,000 objects. Sources were 490,000 pixels each and totaled 786,757,308 bytes,
+  below ARCH's source-size range; the report does not claim 24 MP coverage. At
+  the manually selected 10% camera scale, the 250 ms snapshot had 73 requests
+  started and 8 active, but did not count loaded/rendered previews. Across later
+  zoom, pan and DPR changes, the run saw 175 requests, 108 complete bodies, 67
+  cancellations and final active=0; those totals do not establish first-view
+  completion. Decoded memory remains NOT_CHECKED. ROOT is independently checking
+  actual SVG image loads at the first-view checkpoint before the next scoped test
+  correction; no full W2 or whole-task acceptance is claimed.
+
+- ROOT's independent full-fit run then observed all 800 SVG images loaded with
+  zero errors and zero active requests. At width 160, first-view bodies were
+  15,051,756 bytes, Resource Timing transfer was 15.29 MB, and the full preview
+  took about 5.1 seconds. This exceeds the existing proposed W2 bounds of 8 MB
+  and 4 seconds. The current minimum preview is too large; T06 remains open for
+  a smaller real preview and a durable first-fit checkpoint. Do not change the
+  thresholds or accept the task on the passing diagnostic exit alone.
+
+- Resume check: `herdr agent list --workspace w57` returned usage because this
+  command accepts no workspace option; the unfiltered list worked and was
+  filtered locally. `herdr agent get t06-impl` returned `agent_not_found`; no old
+  worker history was opened. The preserved T06 worktree is unchanged and will be
+  resumed in a new visible session after its filesystem preflight.
+
+- T06 resumed in its preserved isolated worktree after a fresh compatible
+  filesystem preflight. The prior author binding was no longer live; no old
+  history or task source was discarded. The current author received the scoped
+  correction for the undersized first preview and a real first-fit 800-image
+  load/bytes/time checkpoint. Existing limits, original bytes, orientation, GIF
+  behavior and prior measurements remain in force; independent verification is
+  still pending.
+- 2026-11-26 DM integration preflight: `git fetch origin` succeeded. The
+  combined lookup `git rev-parse --short HEAD origin/main` exited nonzero
+  (`fatal: Needed a single revision`) because it passed two revisions to one
+  single-revision command. No repository state changed; retry with separate
+  lookups and keep this command error in the record.
+- 2026-11-26 T06 final gate: `just check` ran in the clean candidate worktree
+  at `3590bc4`. Build output completed and produced
+  `.next/standalone/server.js`; critical editor passed 11/11, image workflow
+  12/12, progressive images 5/5, navigation/capacity 10/10, exporter 16/16,
+  document model 7/7, board store 4/4, and remaining reported suites passed.
+  The packaging suite had its existing container-only test skipped. The final
+  selector regression reported PASS. After process completion,
+  `write_stdin` returned `Unknown process id 8346` while retrieving the closed
+  session, so the shell exit code was not separately surfaced. No test failure
+  appeared in the completed output.
+- 2026-11-26 T10 capacity preflight: the first `herdr agent list | jq` filter
+  failed to compile (`jq: error: syntax error, unexpected INVALID_CHARACTER`)
+  because the `select(...)` expression lacked a closing parenthesis. No agent
+  was started and no repository state changed; rerun the read with a corrected
+  filter before any model start.
+- 2026-11-26 T10 capacity preflight retry: the second `jq` expression printed
+  `6` for its first count, then failed on the second expression with
+  `Cannot index array with string "result"` due to filter precedence. No
+  agent was started. Preserve this parser error and obtain a single correctly
+  composed JSON count before starting.
+- 2026-11-26 T10 worker preflight: the worker's initial read command also ran
+  `hostname`, which the brief did not include in its explicit preflight
+  allowlist. No product edits were reported. A `herdr agent read ... --source
+  recent --lines 60` attempt while the worker was active returned
+  `agent_not_idle`; this is a tool lifecycle restriction, not a worker failure.
+  Wait for the existing preflight to finish, preserve its exact receipt, and
+  do not release source edits until effective mode and roots are confirmed.
+
+- 2026-11-26 T06 accepted delivery: PO accepted candidate 3590bc4 after ROOT's
+  fresh-build and 17-pass independent focused review (first fit 633,468 B /
+  2,030.5 ms; 800/800 loaded, no errors/pending/original fetches; peak 8;
+  scoped wide/narrow visual PASS). Earlier 15,051,756 B / ~5.1 s and fixture
+  failures remain as historical findings, resolved for this candidate. The
+  candidate was a clean fast-forward over origin/main, integrated on main and
+  pushed to origin/main. Coverage limits remain 490,000-pixel sources from 9
+  templates, decoded memory NOT_CHECKED and full mixed W2 NOT_MEASURED.
+- 2026-11-26 T10 preflight receipt: author reported UID 1000, correct worktree
+  Git root and branch, preserved dirty files, and a successful in-worktree
+  touch/check/remove probe. Runtime reported `permission_profile=disabled` and
+  `file_system=unrestricted`, with the required worktree as workspace root;
+  this is compatible with the released paths. The extra `hostname` invocation
+  was disclosed, with no product edit. DM released only local-font and
+  keyboard-action corrections; the author is active in visible tab `w5F:t3`,
+  worktree `.plan/worktrees/e001-t10`, and has been told to preserve WIP, use
+  focused T10 checks only, and wait for explicit release before any build/full
+  `just check`.
+- 2026-11-26 JOURNAL patch attempts: two context-based `apply_patch` attempts
+  failed without changing the file because their expected trailing context did
+  not match. The receipts above were then appended directly.

@@ -16,7 +16,7 @@ write_set: ["Dockerfile", "tests/critical-editor.test.cjs", "tests/critical-edit
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "test(editor): [E001-T23] split the editor browser test and lint tools and tests"
-completion: "No"
+completion: "Yes"
 execution: "accepted by PO; integrated on main; fresh just check and required container-check passed"
 completed_at: "2026-11-25"
 phase: 2
