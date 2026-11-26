@@ -127,7 +127,7 @@ export function ProductCard({ id, layer, onPointerDown, selectionColor }: Produc
         <ProductCardCover assetId={layer.assetId} x={layer.x} y={layer.y} width={layer.width} height={COVER_HEIGHT} zoom={zoom} />
         {!layer.assetId && <text x={layer.x + layer.width / 2} y={layer.y + COVER_HEIGHT / 2 + 4} textAnchor="middle" className="fill-neutral-500 text-xs">No local preview</text>}
         <foreignObject x={layer.x} y={bodyY} width={layer.width} height={Math.max(0, layer.height - COVER_HEIGHT)}>
-            <div xmlns="http://www.w3.org/1999/xhtml" className="h-full w-full rounded-b-lg border border-t-0 border-neutral-200 bg-white p-2 flex flex-col gap-1.5 font-sans">
+            <div className="h-full w-full rounded-b-lg border border-t-0 border-neutral-200 bg-white p-2 flex flex-col gap-1.5 font-sans">
                 <Input
                     aria-label="Product title"
                     value={title}

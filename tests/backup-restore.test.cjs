@@ -218,7 +218,7 @@ test('asset publication fsyncs the renamed shard and assets directory before ret
   const data = source('asset-fsync');
   const database = join(data, 'miro.sqlite');
   const originalDatabase = process.env.MIRO_SQLITE_PATH;
-  const files = ['types/canvas.ts', 'types/board.ts', 'types/asset.ts', 'lib/sqlite.ts', 'lib/document-version.ts',
+  const files = ['types/canvas.ts', 'types/board.ts', 'types/asset.ts', 'types/extraction.ts', 'lib/sqlite.ts', 'lib/document-version.ts',
     'lib/document-migrations.ts', 'lib/boards.ts', 'lib/assets.ts'];
   const outDir = join(compiled, 'build');
   for (const file of files) {

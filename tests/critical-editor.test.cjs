@@ -74,7 +74,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             const data = new DataTransfer();
             data.setData('text/plain', ${JSON.stringify(sourceUrl)});
             const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true });
-            document.dispatchEvent(event);
+            document.querySelector('svg').dispatchEvent(event);
             return event.defaultPrevented;
         })()`);
         await until('pasted URL product card', () => evaluate('!!document.querySelector("g[data-product-card] a")'));

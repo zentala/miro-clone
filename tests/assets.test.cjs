@@ -16,7 +16,7 @@ const owned = mkdtempSync(join(tmpdir(), 'miro-assets-'));
 mkdirSync(join(root, 'node_modules', '.cache'), { recursive: true });
 const compiled = mkdtempSync(join(root, 'node_modules', '.cache', 'miro-assets-test-'));
 after(() => { rmSync(owned, { recursive: true, force: true }); rmSync(compiled, { recursive: true, force: true }); });
-const SOURCES = ['types/canvas.ts', 'types/board.ts', 'types/asset.ts', 'lib/sqlite.ts', 'lib/document-version.ts',
+const SOURCES = ['types/canvas.ts', 'types/board.ts', 'types/asset.ts', 'types/extraction.ts', 'lib/sqlite.ts', 'lib/document-version.ts',
     'lib/document-migrations.ts', 'lib/boards.ts', 'lib/image-variants.ts', 'lib/assets.ts'];
 
 let builds = 0;

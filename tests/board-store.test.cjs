@@ -9,7 +9,7 @@ const ts = require('typescript');
 const root = resolve(__dirname, '..');
 const owned = mkdtempSync(join(tmpdir(), 'miro-board-store-'));
 after(() => rmSync(owned, { recursive: true, force: true }));
-for (const file of ['types/canvas.ts', 'types/board.ts', 'lib/document-version.ts', 'store/use-board-store.ts']) {
+for (const file of ['types/canvas.ts', 'types/board.ts', 'types/extraction.ts', 'lib/document-version.ts', 'store/use-board-store.ts']) {
     const { outputText } = ts.transpileModule(readFileSync(join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
     const target = join(owned, file.replace(/\.ts$/, '.js'));
     mkdirSync(dirname(target), { recursive: true });
