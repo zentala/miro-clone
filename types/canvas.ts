@@ -17,6 +17,8 @@ export type Camera = {
 export type ObjectRelations = {
     /** Containing object; absent means the layer sits at the board root. */
     parentId?: string;
+    /** Inactive pre-v5 parent; retained for compatibility and never containment. */
+    legacyParentId?: string;
     /** The layer's own lock bit. Effective protection also inherits from every ancestor. */
     locked?: boolean;
 };

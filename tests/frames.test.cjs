@@ -101,7 +101,7 @@ test('nested frame assignment orders ancestors first; shrink, move, undo and red
             'Nested frame names, relations, bounds and geometry survive a serialized reload');
         assert.deepEqual(version.framesBehindLayers(reloaded.layerIds, new Map(Object.entries(reloaded.layers))), ['outer', 'inner', 'shape'],
             'Reload keeps the ancestor before its descendant in paint order');
-        assert.throws(() => board.mutate(({ storage }) => storage.get('layers').get('outer').set('parentId', 'shape')),
+        assert.throws(() => board.mutate(({ storage }) => storage.get('layers').get('outer').set('parentId', 'inner')),
             error => error.code === 'cycle');
         await board.queue;
     } finally {

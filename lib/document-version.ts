@@ -94,6 +94,9 @@ function validateLayer(id: string, value: unknown) {
     if (layer.parentId !== undefined && (typeof layer.parentId !== "string" || !layer.parentId)) {
         fail("invalid-schema", `Layer ${id} has an invalid parent ID`);
     }
+    if (layer.legacyParentId !== undefined && (typeof layer.legacyParentId !== "string" || !layer.legacyParentId)) {
+        fail("invalid-schema", `Layer ${id} has an invalid legacy parent ID`);
+    }
     if (layer.locked !== undefined && typeof layer.locked !== "boolean") {
         fail("invalid-schema", `Layer ${id} has a non-boolean lock`);
     }

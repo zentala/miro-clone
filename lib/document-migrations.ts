@@ -18,8 +18,16 @@ const UPGRADES: Record<number, (document: RawDocument) => RawDocument> = {
     2: document => ({ ...document, schemaVersion: 3 }),
     // v3 -> v4: adds product cards; existing layer records are unchanged.
     3: document => ({ ...document, schemaVersion: 4 }),
-    // v4 -> v5: adds named frames; existing layer records are unchanged.
-    4: document => ({ ...document, schemaVersion: 5 }),
+    // v4 -> v5: parentId was never active containment; retain it as inactive legacy data.
+    4: document => ({
+        ...document,
+        schemaVersion: 5,
+        layers: isRecord(document.layers) ? Object.fromEntries(Object.entries(document.layers).map(([id, value]) => {
+            if (!isRecord(value) || typeof value.parentId !== "string") return [id, value];
+            const { parentId, ...layer } = value;
+            return [id, { ...layer, legacyParentId: parentId }];
+        })) : document.layers,
+    }),
 };
 
 /** Unversioned documents are version 1; any other value must be a positive integer. */

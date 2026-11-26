@@ -94,7 +94,9 @@ test('future schema versions are refused without rewriting the stored payload', 
 
 test('validation separates duplicate IDs, missing references, cycles and unsupported records from accepted schema', () => {
     const databasePath = join(owned, 'validation.sqlite');
-    const accepted = current({ frame: node(0, { locked: true }), inner: node(0, { parentId: 'frame' }), leaf: node(3, { parentId: 'inner', locked: false, value: 'x' }) });
+    const accepted = current({ frame: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Frame', locked: true },
+        inner: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Inner', parentId: 'frame' },
+        leaf: node(3, { parentId: 'inner', locked: false, value: 'x' }) });
     seed(databasePath, [['board', 'Validation', JSON.stringify(accepted)]]);
     const { boards, migrations } = loadApp(databasePath);
     assert.deepEqual(migrations.upgradeDocument(accepted), accepted);
@@ -104,10 +106,15 @@ test('validation separates duplicate IDs, missing references, cycles and unsuppo
         ['missing-reference', current({ a: node(0), b: node(0) }, ['a'])],
         ['missing-reference', current({ a: node(0, { parentId: 'ghost' }) })],
         ['cycle', current({ a: node(0, { parentId: 'a' }) })],
-        ['cycle', current({ a: node(0, { parentId: 'c' }), b: node(0, { parentId: 'a' }), c: node(0, { parentId: 'b' }), d: node(0, { parentId: 'b' }) })],
+        ['cycle', current({ a: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'A', parentId: 'c' },
+            b: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'B', parentId: 'a' },
+            c: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'C', parentId: 'b' },
+            d: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'D', parentId: 'b' } })],
         ['unsupported-record', current({ a: node(9) })],
         ['invalid-schema', current({ a: node(0, { locked: 'yes' }) })],
         ['invalid-schema', current({ a: node(0, { parentId: '' }) })],
+        ['invalid-schema', current({ a: node(0, { legacyParentId: '' }) })],
+        ['invalid-schema', current({ a: node(0, { legacyParentId: 42 }) })],
         ['invalid-schema', current({ a: node(2, { points: [[0, 0, 0]] }) })],
         ['invalid-schema', { schemaVersion: 0, layerIds: [], layers: {} }],
     ];
@@ -128,6 +135,28 @@ test('v1 through v4 documents upgrade to v5; image, product card and frame field
     assert.deepEqual(migrations.upgradeDocument(v3), { ...v3, schemaVersion: 5 });
     const v4 = { schemaVersion: 4, layerIds: ['old'], layers: { old: node(0) } };
     assert.deepEqual(migrations.upgradeDocument(v4), { ...v4, schemaVersion: 5 });
+    const unversioned = { layerIds: ['child', 'parent'], layers: {
+        child: node(3, { parentId: 'parent', locked: true, x: 18, y: 29, value: 'legacy' }),
+        parent: node(0, { x: 40, y: 50 }),
+    } };
+    const unversionedBefore = structuredClone(unversioned);
+    const upgradedUnversioned = migrations.upgradeDocument(unversioned);
+    assert.deepEqual(unversioned, unversionedBefore, 'Unversioned migration does not mutate its input');
+    assert.deepEqual(upgradedUnversioned.layerIds, unversioned.layerIds);
+    assert.deepEqual(upgradedUnversioned.layers.child, { ...unversioned.layers.child, legacyParentId: 'parent' });
+    assert.equal(Object.hasOwn(upgradedUnversioned.layers.child, 'parentId'), false);
+    assert.deepEqual(upgradedUnversioned.layers.parent, unversioned.layers.parent);
+    const dangling = { schemaVersion: 2, layerIds: ['child'], layers: { child: node(4, { parentId: 'deleted', locked: true, x: 73 }) } };
+    const upgradedDangling = migrations.upgradeDocument(dangling);
+    assert.deepEqual(upgradedDangling.layers.child, { ...dangling.layers.child, legacyParentId: 'deleted' });
+    assert.equal(Object.hasOwn(upgradedDangling.layers.child, 'parentId'), false);
+    const cyclic = { schemaVersion: 4, layerIds: ['a', 'b'], layers: {
+        a: node(0, { parentId: 'b', locked: true, x: 12 }), b: node(3, { parentId: 'a', value: 'cycle' }),
+    } };
+    const upgradedCycle = migrations.upgradeDocument(cyclic);
+    assert.deepEqual(upgradedCycle.layers.a, { ...cyclic.layers.a, legacyParentId: 'b' });
+    assert.deepEqual(upgradedCycle.layers.b, { ...cyclic.layers.b, legacyParentId: 'a' });
+    assert.deepEqual(upgradedCycle.layerIds, cyclic.layerIds);
     const image = { type: 5, x: 12, y: 24, width: 160, height: 90, assetId: 'a'.repeat(64) };
     const document = { schemaVersion: 5, layerIds: ['image'], layers: { image } };
     assert.deepEqual(migrations.upgradeDocument(document), document);
@@ -166,7 +195,8 @@ test('v1 through v4 documents upgrade to v5; image, product card and frame field
 
 test('effective lock inherits from every ancestor without copying own lock bits', () => {
     const { version, boards } = loadApp(join(owned, 'locks.sqlite'));
-    const doc = current({ outer: node(0, { locked: true }), inner: node(0, { parentId: 'outer' }),
+    const doc = current({ outer: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Outer', locked: true },
+        inner: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Inner', parentId: 'outer' },
         ownLocked: node(3, { parentId: 'inner', locked: true }), free: node(3, { parentId: 'inner' }), root: node(1) });
     const effective = () => Object.fromEntries(doc.layerIds.map(id => [id, version.isEffectivelyLocked(doc, id)]));
     assert.deepEqual(effective(), { outer: true, inner: true, ownLocked: true, free: true, root: false });
@@ -234,7 +264,9 @@ test('store deletes a parent without dangling references and rolls back relation
     const realFetch = globalThis.fetch;
     globalThis.fetch = async (url, init) => { saves.push(JSON.parse(init.body).document); return { ok: true }; };
     try {
-        const document = current({ outer: node(0, { locked: true }), inner: node(0, { parentId: 'outer', x: 50 }), leaf: node(4, { parentId: 'inner', y: 70 }) });
+        const document = current({ outer: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Outer', locked: true },
+            inner: { type: 7, x: 50, y: 0, width: 10, height: 10, name: 'Inner', parentId: 'outer' },
+            leaf: node(4, { parentId: 'inner', y: 70 }) });
         const board = new store.BoardStore({ id: 'b', title: 'Store', createdAt: 1, updatedAt: 1, document });
         board.mutate(({ storage }) => { storage.get('layers').delete('inner'); const ids = storage.get('layerIds'); ids.delete(ids.indexOf('inner')); });
         assert.deepEqual(board.document.layers.leaf, node(4, { parentId: 'outer', y: 70 }), 'Child moves up a level with unchanged geometry');
@@ -252,16 +284,28 @@ test('store deletes a parent without dangling references and rolls back relation
 
 test('upgrade, app rollback and backup recovery on synthetic database copies', () => {
     const original = join(owned, 'rollback-original.sqlite');
-    seed(original, [['one', 'First', JSON.stringify(legacyDocument())], ['two', 'Second', JSON.stringify({ layerIds: [], layers: {} })]]);
+    const v2Document = { schemaVersion: 2, ...legacyDocument(), layers: {
+        ...legacyDocument().layers,
+        'text-4': { ...legacyDocument().layers['text-4'], parentId: 'rect-1' },
+    } };
+    const v2Text = JSON.stringify(v2Document);
+    seed(original, [['one', 'First', v2Text], ['two', 'Second', JSON.stringify({ layerIds: [], layers: {} })]]);
     const backup = join(owned, 'rollback-backup.sqlite');
     copyFileSync(original, backup);
     const working = join(owned, 'rollback-working.sqlite');
     copyFileSync(original, working);
-    // Upgrade every board on the working copy and add v2-only relation fields.
+    // Opening upgrades in memory; only the later accepted save changes stored bytes.
     const upgraded = loadApp(working).boards;
-    for (const id of ['one', 'two']) upgraded.updateBoard(id, { document: upgraded.getBoard(id).document });
+    const opened = upgraded.getBoard('one').document;
+    assert.equal(row(working, 'one').document, v2Text, 'Opening must not rewrite the stored payload');
+    assert.equal(opened.layers['text-4'].legacyParentId, 'rect-1');
+    assert.equal(Object.hasOwn(opened.layers['text-4'], 'parentId'), false);
+    upgraded.updateBoard('one', { document: opened });
+    upgraded.updateBoard('two', { document: upgraded.getBoard('two').document });
+    const savedLegacy = loadApp(working).boards.getBoard('one').document;
+    assert.equal(savedLegacy.layers['text-4'].legacyParentId, 'rect-1');
+    assert.equal(Object.hasOwn(savedLegacy.layers['text-4'], 'parentId'), false, 'Accepted save and reload keep the legacy parent inactive');
     const withRelations = upgraded.getBoard('one').document;
-    withRelations.layers['text-4'].parentId = 'rect-1';
     withRelations.layers['rect-1'].locked = true;
     upgraded.updateBoard('one', { document: withRelations });
     // Rollback: the pre-version validator still accepts v2 payloads and keeps the unknown fields it saves back.
@@ -271,8 +315,12 @@ test('upgrade, app rollback and backup recovery on synthetic database copies', (
     assert.deepEqual(JSON.parse(resaved), withRelations);
     assert.deepEqual(loadApp(working).boards.getBoard('one').document, withRelations, 'Upgraded app reopens the rolled-back save');
     // Recovery: the pre-upgrade copy is untouched and opens with the same content.
-    assert.equal(row(backup, 'one').document, JSON.stringify(legacyDocument()));
+    assert.equal(row(backup, 'one').document, v2Text);
     const restored = loadApp(backup).boards;
-    assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 5, ...legacyDocument() });
+    const expectedRestored = structuredClone(v2Document);
+    expectedRestored.schemaVersion = 5;
+    delete expectedRestored.layers['text-4'].parentId;
+    expectedRestored.layers['text-4'].legacyParentId = 'rect-1';
+    assert.deepEqual(restored.getBoard('one').document, expectedRestored);
     assert.equal(restored.getBoard('two').title, 'Second');
 });
