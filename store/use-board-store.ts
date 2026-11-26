@@ -112,7 +112,7 @@ export class LayerList {
 export function moveLayerSubtrees(layers: LayerMap, layerIds: readonly string[], selectedIds: readonly string[], offset: { x: number; y: number }) {
     const snapshot = layers.toImmutable();
     const movedIds = new Set(selectedIds.flatMap(id => getDescendantLayerIds(id, layerIds, snapshot)));
-    for (const id of [...movedIds]) {
+    for (const id of Array.from(movedIds)) {
         const layer = layers.get(id);
         if (layer) layer.update({ x: layer.get("x") + offset.x, y: layer.get("y") + offset.y });
     }
