@@ -3,6 +3,8 @@
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
 import { useMutation, useSelf, useStorage } from "@/hooks/use-local-board";
 import { Camera, Color, LayerType } from "@/types/canvas";
+import type { FrameLayer } from "@/types/canvas";
+import type { LocalObject } from "@/store/use-board-store";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
@@ -47,7 +49,11 @@ export const SelectionTools = memo(
             }
         }, [selection]);
         const renameFrame = useMutation(({ storage }, name: string) => {
-            if (activeFrameId && name.trim()) storage.get("layers").get(activeFrameId)?.set("name", name.trim());
+            if (!activeFrameId || !name.trim()) return;
+            const layer = storage.get("layers").get(activeFrameId);
+            if (layer?.get("type") === LayerType.Frame) {
+                (layer as LocalObject<FrameLayer>).set("name", name.trim());
+            }
         }, [activeFrameId]);
         const containsImage = useStorage((root) =>
             selection.some(id => root.layers.get(id)?.type === LayerType.Image)
