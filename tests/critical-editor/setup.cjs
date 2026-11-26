@@ -162,9 +162,16 @@ async function createCriticalEditor(t) {
     const { targetId } = await cdp.call('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await cdp.call('Target.attachToTarget', { targetId, flatten: true });
     const page = (method, params) => cdp.call(method, params, sessionId);
-    const exceptions = [], networkFailures = [], completedDownloads = new Set(), begunDownloads = [];
+    const exceptions = [], networkFailures = [], networkEvents = [], completedDownloads = new Set(), begunDownloads = [];
     cdp.on('Runtime.exceptionThrown', (event, session) => { if (session === sessionId) exceptions.push(event.exceptionDetails.text + ': ' + (event.exceptionDetails.exception?.description || '')); });
-    cdp.on('Network.loadingFailed', (event, session) => { if (session === sessionId && !event.canceled) networkFailures.push(event.errorText); });
+    cdp.on('Network.requestWillBeSent', (event, session) => { if (session === sessionId) networkEvents.push({ event: 'requestWillBeSent', requestId: event.requestId, timestamp: event.timestamp, wallTime: event.wallTime, url: event.request.url, type: event.type, method: event.request.method }); });
+    cdp.on('Network.responseReceived', (event, session) => { if (session === sessionId) networkEvents.push({ event: 'responseReceived', requestId: event.requestId, timestamp: event.timestamp, url: event.response.url, status: event.response.status, mimeType: event.response.mimeType }); });
+    cdp.on('Network.loadingFinished', (event, session) => { if (session === sessionId) networkEvents.push({ event: 'loadingFinished', requestId: event.requestId, timestamp: event.timestamp, encodedDataLength: event.encodedDataLength }); });
+    cdp.on('Network.loadingFailed', (event, session) => {
+        if (session !== sessionId) return;
+        networkEvents.push({ event: 'loadingFailed', requestId: event.requestId, timestamp: event.timestamp, canceled: event.canceled, errorText: event.errorText });
+        if (!event.canceled) networkFailures.push(event.errorText);
+    });
     cdp.on('Browser.downloadWillBegin', event => begunDownloads.push(event));
     cdp.on('Browser.downloadProgress', event => { if (event.state === 'completed') completedDownloads.add(event.guid); });
     await page('Page.enable'); await page('Runtime.enable'); await page('Network.enable');
@@ -218,6 +225,7 @@ async function createCriticalEditor(t) {
     context.completedDownloads = completedDownloads;
     context.exceptions = exceptions;
     context.networkFailures = networkFailures;
+    context.networkEvents = networkEvents;
     context.deadline = deadline;
     return context;
 }

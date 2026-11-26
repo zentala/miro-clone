@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type SyntheticEvent } from "react";
 import { chooseAssetVariantWidth } from "@/types/asset";
 
 const MAX_ACTIVE_REQUESTS = 8;
@@ -46,7 +46,80 @@ export function useVisibleAssets(assetId: string, cameraZoom: number) {
     const [variant, setVariant] = useState<string | null>(null);
     const [requestedWidth, setRequestedWidth] = useState(PREVIEW_WIDTH);
     const previewRef = useRef<{ assetId: string; url: string; mediaType: string } | null>(null);
+    const currentVariantRef = useRef<string | null>(null);
+    const ownedUrlsRef = useRef(new Set<string>());
+    const retiredUrlsRef = useRef(new Set<string>());
+    const replacementUrlsRef = useRef(new Map<string, string>());
+    const loadedUrlsRef = useRef(new Set<string>());
+    const imageElementRef = useRef<SVGImageElement | null>(null);
+    const renderedHrefRef = useRef<string | null>(null);
     const ref = useCallback((element: SVGRectElement | null) => setNode(element), []);
+
+    const collectRetiredUrls = useCallback(() => {
+        retiredUrlsRef.current.forEach(url => {
+            if (imageElementRef.current && renderedHrefRef.current === url) return;
+            const replacement = replacementUrlsRef.current.get(url);
+            const replacementIsRendered = replacement !== undefined && renderedHrefRef.current === replacement;
+            if (replacementIsRendered && !loadedUrlsRef.current.has(replacement)) return;
+            URL.revokeObjectURL(url);
+            retiredUrlsRef.current.delete(url);
+            ownedUrlsRef.current.delete(url);
+            loadedUrlsRef.current.delete(url);
+            replacementUrlsRef.current.delete(url);
+        });
+    }, []);
+
+    const retireUrl = useCallback((url: string | null) => {
+        if (!url || !ownedUrlsRef.current.has(url)) return;
+        retiredUrlsRef.current.add(url);
+        if (imageElementRef.current && renderedHrefRef.current === url) return;
+        queueMicrotask(collectRetiredUrls);
+    }, [collectRetiredUrls]);
+
+    const associateRetiredUrlsWithReplacement = useCallback((url: string) => {
+        retiredUrlsRef.current.forEach(retired => replacementUrlsRef.current.set(retired, url));
+    }, []);
+
+    const updateVariant = useCallback((url: string | null) => {
+        const previous = currentVariantRef.current;
+        if (previous && previous !== url) {
+            const replacement = url ?? previewRef.current?.url;
+            if (replacement) replacementUrlsRef.current.set(previous, replacement);
+            retireUrl(previous);
+        }
+        currentVariantRef.current = url;
+        setVariant(url);
+    }, [retireUrl]);
+
+    const onImageLoad = useCallback((event: SyntheticEvent<SVGImageElement>) => {
+        const url = event.currentTarget.href.baseVal;
+        if (!url.startsWith("blob:")) return;
+        loadedUrlsRef.current.add(url);
+        collectRetiredUrls();
+    }, [collectRetiredUrls]);
+
+    const onImageRef = useCallback((element: SVGImageElement | null) => {
+        imageElementRef.current = element;
+        if (element) return;
+        renderedHrefRef.current = null;
+        ownedUrlsRef.current.forEach(url => retiredUrlsRef.current.add(url));
+        replacementUrlsRef.current.clear();
+        queueMicrotask(collectRetiredUrls);
+    }, [collectRetiredUrls]);
+
+    const href = variant ?? preview;
+    useLayoutEffect(() => {
+        const previous = renderedHrefRef.current;
+        renderedHrefRef.current = href;
+        retiredUrlsRef.current.forEach(retired => {
+            const replacement = replacementUrlsRef.current.get(retired);
+            if (replacement === undefined || replacement === previous) {
+                if (href) replacementUrlsRef.current.set(retired, href);
+                else replacementUrlsRef.current.delete(retired);
+            }
+        });
+        collectRetiredUrls();
+    }, [href, collectRetiredUrls]);
 
     useEffect(() => {
         if (!node || typeof IntersectionObserver === "undefined") { setVisible(Boolean(node)); return; }
@@ -90,15 +163,17 @@ export function useVisibleAssets(assetId: string, cameraZoom: number) {
         let variantUrl: string | null = null;
         const load = async () => {
             try {
-                if (requestedWidth <= PREVIEW_WIDTH) setVariant(null);
+                if (requestedWidth <= PREVIEW_WIDTH) updateVariant(null);
                 if (previewRef.current?.assetId !== assetId) {
-                    if (previewRef.current) URL.revokeObjectURL(previewRef.current.url);
+                    retireUrl(previewRef.current?.url ?? null);
                     previewRef.current = null;
                     setPreview(null);
-                    setVariant(null);
+                    updateVariant(null);
                     const previewBlob = await boundedFetch(`/api/assets/${assetId}?width=${PREVIEW_WIDTH}`, controller.signal);
                     if (!live) return;
                     const url = URL.createObjectURL(previewBlob);
+                    ownedUrlsRef.current.add(url);
+                    associateRetiredUrlsWithReplacement(url);
                     previewRef.current = { assetId, url, mediaType: previewBlob.type };
                     setPreview(url);
                 }
@@ -106,8 +181,10 @@ export function useVisibleAssets(assetId: string, cameraZoom: number) {
                     const variantBlob = await boundedFetch(`/api/assets/${assetId}?width=${requestedWidth}`, controller.signal);
                     if (!live) return;
                     variantUrl = URL.createObjectURL(variantBlob);
-                    setVariant(variantUrl);
-                } else setVariant(null);
+                    ownedUrlsRef.current.add(variantUrl);
+                    associateRetiredUrlsWithReplacement(variantUrl);
+                    updateVariant(variantUrl);
+                } else updateVariant(null);
             } catch (error) {
                 if ((error as Error).name !== "AbortError") console.error("Unable to load board image", error);
             }
@@ -116,22 +193,23 @@ export function useVisibleAssets(assetId: string, cameraZoom: number) {
         return () => {
             live = false;
             controller.abort();
-            if (variantUrl) URL.revokeObjectURL(variantUrl);
+            retireUrl(variantUrl);
         };
-    }, [assetId, requestedWidth, visible]);
+    }, [assetId, requestedWidth, visible, associateRetiredUrlsWithReplacement, retireUrl, updateVariant]);
 
     useEffect(() => {
         if (!visible) {
-            if (previewRef.current) URL.revokeObjectURL(previewRef.current.url);
+            retireUrl(previewRef.current?.url ?? null);
             previewRef.current = null;
             setPreview(null);
-            setVariant(null);
+            updateVariant(null);
         }
-    }, [visible]);
+    }, [visible, retireUrl, updateVariant]);
 
     useEffect(() => () => {
-        if (previewRef.current) URL.revokeObjectURL(previewRef.current.url);
-    }, []);
+        retireUrl(previewRef.current?.url ?? null);
+        retireUrl(currentVariantRef.current);
+    }, [retireUrl]);
 
-    return { ref, href: variant ?? preview };
+    return { ref, href, onLoad: onImageLoad, imageRef: onImageRef };
 }

@@ -163,9 +163,125 @@ test('variants never upscale small sources and GIF responses retain original byt
     assert.deepEqual(gifVariant.bytes, gif);
 });
 
+test('a rendered image variant remains usable until a held replacement commits', { timeout: 120000 }, async t => {
+    const context = await createCriticalEditor(t);
+    const { page, evaluate, origin, until, networkFailures } = context;
+    const pixels = seededPixels(400, 200, 0x71c0ffee);
+    const imageBytes = await Transformer.fromRgbaPixels(pixels, 400, 200).png();
+    const upload = await fetch(`${origin}/api/assets`, {
+        method: 'POST', headers: { Origin: origin, 'Content-Type': 'image/png' }, body: imageBytes,
+    });
+    assert.equal(upload.status, 201, 'The deterministic regression image uploads through the existing endpoint');
+    const asset = await upload.json();
+    const created = await fetch(`${origin}/api/boards`, {
+        method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Variant lifetime regression' }),
+    });
+    assert.equal(created.status, 201);
+    const board = await created.json();
+    const document = {
+        schemaVersion: 3,
+        layerIds: ['regression-image'],
+        layers: { 'regression-image': { type: 5, x: 100, y: 100, width: 150, height: 75, assetId: asset.id } },
+    };
+    const patched = await fetch(`${origin}/api/boards/${board.id}`, {
+        method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ document }),
+    });
+    assert.equal(patched.status, 200);
+
+    await page('Page.addScriptToEvaluateOnNewDocument', { source: `
+        const originalFetch = window.fetch.bind(window);
+        let releaseHeldResponse;
+        const heldResponse = new Promise(resolve => { releaseHeldResponse = resolve; });
+        window.__variantLifetime = { events: [], heldStarted: false, heldSettled: false, release: () => releaseHeldResponse() };
+        window.fetch = async (input, init = {}) => {
+            const url = typeof input === 'string' ? input : input.url;
+            if (url.includes('/api/assets/${asset.id}?width=320') && !window.__variantLifetime.heldStarted) {
+                window.__variantLifetime.heldStarted = true;
+                const response = await originalFetch(input, init);
+                const body = await response.arrayBuffer();
+                window.__variantLifetime.responseReadyAt = performance.now();
+                await heldResponse;
+                window.__variantLifetime.heldSettled = true;
+                return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+            }
+            return originalFetch(input, init);
+        };
+        const loadedHrefs = new Set();
+        const imageOwner = image => ({ element: 'svg:image', layerId: image.closest('[data-image-layer]') ? 'regression-image' : null });
+        document.addEventListener('load', event => {
+            if (event.target?.tagName?.toLowerCase() !== 'image') return;
+            const href = event.target.href?.baseVal || event.target.getAttribute('href');
+            loadedHrefs.add(href);
+            window.__variantLifetime.events.push({ event: 'load', at: performance.now(), href, owner: imageOwner(event.target) });
+        }, true);
+        document.addEventListener('error', event => {
+            if (event.target?.tagName?.toLowerCase() === 'image') window.__variantLifetime.events.push({ event: 'image-error', at: performance.now(), href: event.target.href?.baseVal || event.target.getAttribute('href'), owner: imageOwner(event.target) });
+        }, true);
+        const originalCreate = URL.createObjectURL.bind(URL);
+        const originalRevoke = URL.revokeObjectURL.bind(URL);
+        URL.createObjectURL = blob => {
+            const href = originalCreate(blob);
+            window.__variantLifetime.events.push({ event: 'create', at: performance.now(), href, blobType: blob.type });
+            return href;
+        };
+        URL.revokeObjectURL = href => {
+            const referencedBy = [...document.querySelectorAll('[data-image-layer] image')]
+                .filter(image => (image.href?.baseVal || image.getAttribute('href')) === href)
+                .map(imageOwner);
+            window.__variantLifetime.events.push({ event: 'revoke', at: performance.now(), href, referencedBy, loadedBeforeRevoke: loadedHrefs.has(href) });
+            return originalRevoke(href);
+        };
+        new MutationObserver(records => {
+            for (const record of records) {
+                if (record.type !== 'attributes' || record.target?.tagName?.toLowerCase() !== 'image') continue;
+                window.__variantLifetime.events.push({ event: 'href-replaced', at: performance.now(), previous: record.oldValue, href: record.target.href?.baseVal || record.target.getAttribute('href'), owner: imageOwner(record.target) });
+            }
+        }).observe(document, { subtree: true, attributes: true, attributeOldValue: true, attributeFilter: ['href'] });
+    ` });
+    await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await page('Page.navigate', { url: `${origin}/board/${board.id}` });
+    await until('regression board image is rendered', () => evaluate('document.querySelector("[data-image-layer] image[aria-label]") !== null'));
+    const initial = await until('initial 160-pixel variant is rendered and loaded', () => evaluate(`(() => {
+        const image = document.querySelector('[data-image-layer] image[aria-label]');
+        const href = image?.href?.baseVal || image?.getAttribute('href') || null;
+        const entries = performance.getEntriesByType('resource').filter(entry => entry.name.includes('/api/assets/${asset.id}?width=160'));
+        const loaded = window.__variantLifetime.events.some(event => event.event === 'load' && event.href === href);
+        return href?.startsWith('blob:') && entries.length && loaded ? { href, entries: entries.length } : false;
+    })()`));
+
+    await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 2, mobile: false });
+    await evaluate('window.dispatchEvent(new Event("resize"))');
+    await until('320-pixel variant response is held after its body arrives', () => evaluate('window.__variantLifetime.heldStarted && !!window.__variantLifetime.responseReadyAt'));
+    const whileHeld = await evaluate(`(() => {
+        const image = document.querySelector('[data-image-layer] image[aria-label]');
+        const href = image?.href?.baseVal || image?.getAttribute('href') || null;
+        const revoke = window.__variantLifetime.events.find(event => event.event === 'revoke' && event.href === href);
+        return { href, referenced: Boolean(image?.isConnected), heldStarted: window.__variantLifetime.heldStarted, responseReadyAt: window.__variantLifetime.responseReadyAt, revoked: Boolean(revoke), revoke, events: window.__variantLifetime.events.filter(event => event.href === href || event.previous === href) };
+    })()`);
+    t.diagnostic(`Variant lifetime while replacement response is held: ${JSON.stringify({ initialHref: initial.href, ...whileHeld })}`);
+
+    try {
+        await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+        await evaluate('window.dispatchEvent(new Event("resize"))');
+        await until('fresh 160-pixel variant replaces the prior href', () => evaluate(`(() => {
+            const image = document.querySelector('[data-image-layer] image[aria-label]');
+            const href = image?.href?.baseVal || image?.getAttribute('href') || null;
+            return href?.startsWith('blob:') && href !== ${JSON.stringify(initial.href)} && window.__variantLifetime.events.some(event => event.event === 'load' && event.href === href);
+        })()`));
+    } finally {
+        await evaluate('window.__variantLifetime.release()');
+    }
+    await until('held stale response settles after the camera/DPR transition', () => evaluate('window.__variantLifetime.heldSettled'));
+    const lifecycle = await evaluate('window.__variantLifetime.events');
+    assert.deepEqual(networkFailures, [], 'Real uncancelled network failures remain visible');
+    assert.deepEqual(lifecycle.filter(event => event.event === 'image-error'), [], 'Real SVG image failures remain visible');
+    assert.equal(lifecycle.some(event => event.event === 'create' && event.href && event.href !== initial.href && event.blobType && event.at > whileHeld.responseReadyAt), true, 'The replacement response creates a new rendered object URL');
+    assert.equal(whileHeld.revoked, false, `The currently rendered href stays usable until replacement/removal: ${JSON.stringify(whileHeld)}`);
+});
+
 test('ARCH W2 image slice: 800 generated images in a 2,000-object browser workload', { timeout: 600000 }, async t => {
     const context = await createCriticalEditor(t);
-    const { page, evaluate, origin, until, click, databasePath, exceptions, networkFailures } = context;
+    const { page, evaluate, origin, until, click, databasePath, exceptions, networkFailures, networkEvents } = context;
     await fetch(`${origin}/api/boards`);
     const imageCount = 800;
     const otherObjectCount = 1200;
@@ -196,6 +312,7 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
     const boardId = randomUUID();
     const layerIds = [];
     const layers = {};
+    const assetOwnerById = new Map();
     let originalBytes = 0;
     try {
         const insertAsset = database.prepare('INSERT INTO assets (id, media_type, byte_size, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?)');
@@ -214,6 +331,7 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
             const column = index % 40;
             const row = Math.floor(index / 40);
             const layerId = `w2-image-${String(index).padStart(4, '0')}`;
+            assetOwnerById.set(assetId, layerId);
             layerIds.push(layerId);
             layers[layerId] = {
                 type: 5,
@@ -247,38 +365,134 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
 
     await page('Page.addScriptToEvaluateOnNewDocument', { source: `
         performance.setResourceTimingBufferSize(10000);
-        window.__w2ImageRequests = { active: 0, peakActive: 0, cancelled: 0, requests: [], loadedImages: new WeakSet(), decodedImages: new WeakSet(), erroredImages: new WeakSet(), imageErrors: 0 };
+        window.__w2ImageRequests = { active: 0, peakActive: 0, cancelled: 0, requests: [], imageEvents: [], blobEvents: [], loadedImages: new WeakSet(), decodedImages: new WeakSet(), erroredImages: new WeakSet(), imageErrors: 0 };
+        window.__w2LayerIds = ${JSON.stringify(layerIds)};
+        const blobSources = new WeakMap();
+        const blobSourceByUrl = new Map();
+        const blobOwners = new Map();
+        const imageHrefs = new WeakMap();
+        const imagesByHref = new Map();
+        const ownerForImage = image => {
+            const group = image?.closest?.('[data-image-layer]');
+            const board = document.querySelector('[data-board-layers]');
+            const index = board && group ? [...board.children].indexOf(group) : -1;
+            return { element: image?.tagName?.toLowerCase() || null, layerIndex: index, layerId: window.__w2LayerIds[index] || null };
+        };
+        const hrefForImage = image => image?.href?.baseVal || image?.getAttribute?.('href') || null;
+        const originalCreateObjectURL = URL.createObjectURL.bind(URL);
+        const originalRevokeObjectURL = URL.revokeObjectURL.bind(URL);
+        URL.createObjectURL = blob => {
+            const url = originalCreateObjectURL(blob);
+            const source = blobSources.get(blob) || null;
+            blobSourceByUrl.set(url, { sourceRequestSequence: source?.sequence ?? null, sourceUrl: source?.url ?? null });
+            window.__w2ImageRequests.blobEvents.push({ event: 'create', url, blobType: blob.type, at: performance.now(), sourceRequestSequence: source?.sequence ?? null, sourceUrl: source?.url ?? null });
+            return url;
+        };
+        URL.revokeObjectURL = url => {
+            const liveImages = [...(imagesByHref.get(url) || [])]
+                .filter(image => image.isConnected && hrefForImage(image) === url)
+                .map(ownerForImage);
+            const owner = blobOwners.get(url) || null;
+            const source = blobSourceByUrl.get(url) || null;
+            window.__w2ImageRequests.blobEvents.push({ event: 'revoke', url, at: performance.now(), sourceRequestSequence: source?.sourceRequestSequence ?? owner?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? owner?.sourceUrl ?? null, lastOwner: owner?.owner ?? null, liveImages });
+            blobSourceByUrl.delete(url);
+            blobOwners.delete(url);
+            return originalRevokeObjectURL(url);
+        };
+        const rememberImage = image => {
+            if (image?.tagName?.toLowerCase() !== 'image') return;
+            const href = hrefForImage(image);
+            const previous = imageHrefs.get(image) ?? null;
+            if (previous === href) return;
+            if (previous) {
+                const previousImages = imagesByHref.get(previous);
+                previousImages?.delete(image);
+                if (previousImages?.size === 0) imagesByHref.delete(previous);
+            }
+            imageHrefs.set(image, href);
+            if (href) {
+                if (!imagesByHref.has(href)) imagesByHref.set(href, new Set());
+                imagesByHref.get(href).add(image);
+            }
+            const source = href?.startsWith('blob:') ? window.__w2ImageRequests.blobEvents.findLast(event => event.event === 'create' && event.url === href) : null;
+            const owner = ownerForImage(image);
+            if (href?.startsWith('blob:')) blobOwners.set(href, { owner, sourceRequestSequence: source?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? null });
+            window.__w2ImageRequests.imageEvents.push({ event: previous === null ? 'href-set' : 'href-replaced', at: performance.now(), previous, href, owner, sourceRequestSequence: source?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? null });
+        };
+        const hrefObserver = new MutationObserver(records => {
+            for (const record of records) {
+                if (record.type === 'attributes') rememberImage(record.target);
+                for (const node of record.removedNodes || []) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                    if (node.tagName?.toLowerCase() === 'image') {
+                        const previous = imageHrefs.get(node);
+                        const previousImages = previous ? imagesByHref.get(previous) : null;
+                        previousImages?.delete(node);
+                        if (previousImages?.size === 0) imagesByHref.delete(previous);
+                        imageHrefs.delete(node);
+                    }
+                    node.querySelectorAll?.('image').forEach(image => {
+                        const previous = imageHrefs.get(image);
+                        const previousImages = previous ? imagesByHref.get(previous) : null;
+                        previousImages?.delete(image);
+                        if (previousImages?.size === 0) imagesByHref.delete(previous);
+                        imageHrefs.delete(image);
+                    });
+                }
+                for (const node of record.addedNodes || []) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                    if (node.tagName?.toLowerCase() === 'image') rememberImage(node);
+                    node.querySelectorAll?.('image').forEach(rememberImage);
+                }
+            }
+        });
+        hrefObserver.observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['href'] });
         document.addEventListener('load', async event => {
             const image = event.target;
             if (image?.tagName?.toLowerCase() !== 'image' || !image.href?.baseVal) return;
             const metrics = window.__w2ImageRequests;
             metrics.loadedImages.add(image);
             metrics.decodedImages.add(image);
+            const href = hrefForImage(image);
+            const source = href?.startsWith('blob:') ? blobOwners.get(href) : null;
+            metrics.imageEvents.push({ event: 'load', at: performance.now(), href, owner: ownerForImage(image), sourceRequestSequence: source?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? null });
         }, true);
         document.addEventListener('error', event => {
-            if (event.target?.tagName?.toLowerCase() === 'image') window.__w2ImageRequests.erroredImages.add(event.target);
+            if (event.target?.tagName?.toLowerCase() === 'image') {
+                const image = event.target;
+                const href = hrefForImage(image);
+                const source = href?.startsWith('blob:') ? blobOwners.get(href) : null;
+                window.__w2ImageRequests.erroredImages.add(image);
+                window.__w2ImageRequests.imageEvents.push({ event: 'error', at: performance.now(), href, owner: ownerForImage(image), sourceRequestSequence: source?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? null });
+            }
         }, true);
         const originalFetch = window.fetch.bind(window);
         window.fetch = (input, init = {}) => {
             const url = typeof input === 'string' ? input : input.url;
             if (!url.includes('/api/assets/')) return originalFetch(input, init);
-            const record = { url, startedAt: performance.now(), status: null, width: null, height: null, contentLength: null, cancelled: false };
+            const record = { sequence: window.__w2ImageRequests.requests.length + 1, type: 'fetch', url, startedAt: performance.now(), status: null, width: null, height: null, contentLength: null, cancelled: false, abortAt: null, responseAt: null, loadAt: null, errorAt: null };
             const metrics = window.__w2ImageRequests;
             metrics.requests.push(record);
             metrics.active++;
             metrics.peakActive = Math.max(metrics.peakActive, metrics.active);
             const signal = init.signal;
-            const onAbort = () => { record.cancelled = true; };
+            const onAbort = () => { record.cancelled = true; record.abortAt = performance.now(); };
             signal?.addEventListener('abort', onAbort, { once: true });
             return originalFetch(input, init).then(async response => {
                 record.status = response.status;
+                record.responseAt = performance.now();
                 record.width = Number(response.headers.get('x-image-width')) || null;
                 record.height = Number(response.headers.get('x-image-height')) || null;
                 record.contentLength = Number(response.headers.get('content-length')) || null;
                 record.bodyBytes = (await response.clone().arrayBuffer()).byteLength;
+                const originalBlob = response.blob.bind(response);
+                response.blob = async () => { const blob = await originalBlob(); blobSources.set(blob, record); record.loadAt = performance.now(); return blob; };
                 return response;
             }, error => {
                 record.cancelled = error?.name === 'AbortError';
+                record.errorAt = performance.now();
+                record.errorName = error?.name || 'Error';
+                record.errorMessage = String(error?.message || error);
                 throw error;
             }).finally(() => {
                 record.endedAt = performance.now();
@@ -402,6 +616,107 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
             decodedMemory: typeof performance.measureUserAgentSpecificMemory === 'function' ? 'API_PRESENT_BUT_NOT_MEASURED' : 'NOT_CHECKED',
         };
     })()`);
+    const browserLifecycle = await evaluate('JSON.stringify({ requests: window.__w2ImageRequests.requests, imageEvents: window.__w2ImageRequests.imageEvents, blobEvents: window.__w2ImageRequests.blobEvents, imageStates: [...document.querySelectorAll("[data-image-layer] image")].map(image => { const href = image.href?.baseVal || image.getAttribute("href") || null; const owner = image.closest("[data-image-layer]"); const board = document.querySelector("[data-board-layers]"); const index = board && owner ? [...board.children].indexOf(owner) : -1; const source = href?.startsWith("blob:") ? window.__w2ImageRequests.blobEvents.findLast(event => event.event === "create" && event.url === href) : null; return { href, owner: { element: "svg:image", layerIndex: index, layerId: window.__w2LayerIds[index] || null }, loaded: window.__w2ImageRequests.imageEvents.some(event => event.event === "load" && event.href === href), errored: window.__w2ImageRequests.imageEvents.some(event => event.event === "error" && event.href === href), sourceRequestSequence: source?.sourceRequestSequence ?? null, sourceUrl: source?.sourceUrl ?? null }; }) })').then(JSON.parse);
+    const assetIdFromUrl = url => url.match(/\/api\/assets\/([0-9a-f]{64})/)?.[1] || null;
+    const cdpRequests = networkEvents.filter(event => event.event === 'requestWillBeSent' && event.url);
+    const jsRequestsByUrl = new Map();
+    for (const request of browserLifecycle.requests) {
+        const records = jsRequestsByUrl.get(request.url) || [];
+        records.push(request);
+        jsRequestsByUrl.set(request.url, records);
+    }
+    for (const records of jsRequestsByUrl.values()) records.sort((a, b) => a.startedAt - b.startedAt);
+    const cdpByRequestId = new Map();
+    const cdpRequestIds = new Set(cdpRequests.map(event => event.requestId));
+    for (const event of networkEvents) {
+        if (!event.requestId || !cdpRequestIds.has(event.requestId)) continue;
+        const timeline = cdpByRequestId.get(event.requestId) || [];
+        timeline.push(event);
+        cdpByRequestId.set(event.requestId, timeline);
+    }
+    const sequenceByRequestId = new Map();
+    const requestIdBySequence = new Map();
+    const consumedSequence = new Set();
+    for (const event of cdpRequests) {
+        const candidate = (jsRequestsByUrl.get(event.url) || []).find(request => !consumedSequence.has(request.sequence));
+        if (candidate) {
+            consumedSequence.add(candidate.sequence);
+            sequenceByRequestId.set(event.requestId, candidate.sequence);
+            requestIdBySequence.set(candidate.sequence, event.requestId);
+        }
+    }
+    const failedOrActiveRequests = [];
+    for (const [requestId, timeline] of cdpByRequestId) {
+        const start = timeline.find(event => event.event === 'requestWillBeSent');
+        if (!start) continue;
+        const failure = timeline.find(event => event.event === 'loadingFailed');
+        const finished = timeline.find(event => event.event === 'loadingFinished');
+        const relevantActive = !failure && !finished && (start.url.includes('/api/assets/') || start.url.startsWith('blob:'));
+        if (!(failure && !failure.canceled) && !relevantActive) continue;
+        const response = timeline.find(event => event.event === 'responseReceived');
+        const matchingBlobCreate = start.url.startsWith('blob:')
+            ? browserLifecycle.blobEvents.find(event => event.event === 'create' && event.url === start.url)
+            : null;
+        const sequence = sequenceByRequestId.get(requestId) ?? matchingBlobCreate?.sourceRequestSequence ?? null;
+        const browserRequest = sequence === null ? null : browserLifecycle.requests.find(request => request.sequence === sequence);
+        const assetId = assetIdFromUrl(start.url);
+        const related = events => events.filter(event => event.url === start.url || event.href === start.url || event.previous === start.url || (sequence !== null && event.sourceRequestSequence === sequence) || (event.sourceRequestSequence == null && event.sourceUrl === start.url));
+        const owners = [...new Map(browserLifecycle.imageEvents
+            .filter(event => event.href === start.url || event.previous === start.url || (sequence !== null && event.sourceRequestSequence === sequence))
+            .map(event => [event.owner?.layerId, event.owner])
+            .filter(([layerId]) => layerId)).values()];
+        const owningLayerId = assetOwnerById.get(assetId) ?? owners[0]?.layerId ?? null;
+        failedOrActiveRequests.push({
+            url: start.url,
+            type: start.type,
+            fetchType: browserRequest?.type ?? null,
+            requestId,
+            requestSequence: sequence,
+            imageElement: start.url.includes('/api/assets/') || start.url.startsWith('blob:') ? 'svg:image' : null,
+            layerId: owningLayerId,
+            owningImageElements: owners,
+            assetId,
+            state: failure ? (failure.canceled ? 'cancelled' : 'failed') : (browserRequest?.cancelled ? 'cancelled' : 'still-active'),
+            errorText: failure?.errorText ?? browserRequest?.errorMessage ?? null,
+            status: response?.status ?? browserRequest?.status ?? null,
+            times: {
+                startPageMs: browserRequest?.startedAt ?? null,
+                startWallTimeMs: start.wallTime == null ? null : start.wallTime * 1000,
+                responsePageMs: browserRequest?.responseAt ?? null,
+                loadPageMs: browserRequest?.loadAt ?? null,
+                networkFinishMonotonicSeconds: finished?.timestamp ?? null,
+                errorPageMs: browserRequest?.errorAt ?? null,
+                errorMonotonicSeconds: failure?.timestamp ?? null,
+                abortPageMs: browserRequest?.abortAt ?? null,
+            },
+            imageEvents: related(browserLifecycle.imageEvents),
+            blobUrlEvents: related(browserLifecycle.blobEvents),
+        });
+    }
+    t.diagnostic(`W2 failed or still-active image requests: ${JSON.stringify(failedOrActiveRequests)}`);
+    const failedOrActiveImageElements = browserLifecycle.imageStates.filter(image => image.errored || (image.href && !image.loaded)).map(image => ({
+        url: image.href,
+        type: 'svg:image',
+        requestId: image.sourceRequestSequence == null ? null : requestIdBySequence.get(image.sourceRequestSequence) ?? null,
+        requestSequence: image.sourceRequestSequence,
+        owner: image.owner,
+        state: image.errored ? 'failed' : 'still-active',
+        imageEvents: browserLifecycle.imageEvents.filter(event => event.owner?.layerId === image.owner.layerId),
+        blobUrlEvents: browserLifecycle.blobEvents.filter(event => event.url === image.href || event.sourceRequestSequence === image.sourceRequestSequence),
+    }));
+    const cancelledRequestSequences = new Set(browserLifecycle.requests.filter(request => request.cancelled).map(request => request.sequence));
+    const unexpectedFailedOrActiveRequests = failedOrActiveRequests.filter(request => request.state !== 'cancelled');
+    const unexpectedFailedOrActiveImageElements = failedOrActiveImageElements.filter(image =>
+        image.requestSequence == null || !cancelledRequestSequences.has(image.requestSequence));
+    const nonSuccessHttpResponses = browserLifecycle.requests.filter(request =>
+        request.status !== null && (request.status < 200 || request.status >= 300));
+    const uncancelledImageDecodeFailures = browserLifecycle.imageEvents.filter(event =>
+        event.event === 'error' && (event.sourceRequestSequence == null || !cancelledRequestSequences.has(event.sourceRequestSequence)));
+    t.diagnostic(`W2 failed or still-active SVG image elements: ${JSON.stringify(failedOrActiveImageElements)}`);
+    t.diagnostic(`W2 non-2xx asset responses: ${JSON.stringify(nonSuccessHttpResponses)}`);
+    t.diagnostic(`W2 uncancelled SVG image decode failures: ${JSON.stringify(uncancelledImageDecodeFailures)}`);
+    const revokedWhileReferenced = browserLifecycle.blobEvents.filter(event => event.event === 'revoke' && event.liveImages?.length);
+    t.diagnostic(`W2 blob URLs revoked while still referenced by SVG images: ${JSON.stringify({ count: revokedWhileReferenced.length, examples: revokedWhileReferenced.slice(0, 5) })}`);
     const fixture = {
         objects: layerIds.length,
         images: imageCount,
@@ -422,6 +737,9 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
         final,
         browserExceptions: exceptions.length,
         uncancelledNetworkFailures: networkFailures.length,
+        failedOrActiveRequests: failedOrActiveRequests.length,
+        failedOrActiveImageElements: failedOrActiveImageElements.length,
+        revokedWhileReferenced: revokedWhileReferenced.length,
     };
     t.diagnostic(`ARCH W2 synthetic image slice: ${JSON.stringify(fixture)}`);
     assert.equal(layerIds.length, 2000);
@@ -441,6 +759,11 @@ test('ARCH W2 image slice: 800 generated images in a 2,000-object browser worklo
     assert.equal(final.originalFetches, 0, 'Ordinary navigation never fetches an original');
     assert.ok(final.peakFetchConcurrency <= 8, 'Application fetch concurrency stays within its implementation bound');
     assert.ok(final.transferredBytes > 0);
+    assert.equal(revokedWhileReferenced.length, 0, `No rendered SVG image references a revoked blob URL: ${JSON.stringify(revokedWhileReferenced.slice(0, 5))}`);
+    assert.deepEqual(unexpectedFailedOrActiveRequests, [], `Every uncancelled network failure and final active asset request fails W2: ${JSON.stringify(unexpectedFailedOrActiveRequests)}`);
+    assert.deepEqual(unexpectedFailedOrActiveImageElements, [], `No uncancelled SVG image is failed or still pending at the final checkpoint: ${JSON.stringify(unexpectedFailedOrActiveImageElements)}`);
+    assert.deepEqual(nonSuccessHttpResponses, [], `Real non-2xx asset responses, including HTTP 404, fail W2: ${JSON.stringify(nonSuccessHttpResponses)}`);
+    assert.deepEqual(uncancelledImageDecodeFailures, [], `Real uncancelled SVG decoder failures fail W2: ${JSON.stringify(uncancelledImageDecodeFailures)}`);
     assert.deepEqual(exceptions, [], 'The W2 browser run has no uncaught exceptions');
     assert.deepEqual(networkFailures, [], 'The W2 browser run has no uncancelled request failures');
 });

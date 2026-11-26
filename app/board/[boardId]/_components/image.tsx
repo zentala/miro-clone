@@ -16,7 +16,7 @@ export function Image({ id, alt, layer, onPointerDown, selectionColor }: ImagePr
     const { x, y, width, height, assetId } = layer;
     const gradientId = useId();
     const zoom = useContext(CameraZoomContext);
-    const { ref, href } = useVisibleAssets(assetId, zoom);
+    const { ref, href, onLoad, imageRef } = useVisibleAssets(assetId, zoom);
     return (
         <g onPointerDown={event => onPointerDown(event, id)} data-image-layer="true">
             <defs>
@@ -28,6 +28,7 @@ export function Image({ id, alt, layer, onPointerDown, selectionColor }: ImagePr
             </defs>
             <rect ref={ref} x={x} y={y} width={width} height={height} fill={`url(#${gradientId})`} />
             {href && <image
+                ref={imageRef}
                 href={href}
                 x={x}
                 y={y}
@@ -36,6 +37,7 @@ export function Image({ id, alt, layer, onPointerDown, selectionColor }: ImagePr
                 preserveAspectRatio="xMidYMid meet"
                 aria-label={alt}
                 role="img"
+                onLoad={onLoad}
             />}
             {selectionColor && (
                 <rect
