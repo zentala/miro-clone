@@ -13,6 +13,7 @@ import {
     pointerEventToCanvasPoint,
     resizeBounds,
 } from "@/lib/utils";
+import { moveLayerSubtrees } from "@/store/use-board-store";
 
 const MIN_IMAGE_EDGE = 1;
 
@@ -70,13 +71,9 @@ export function useCanvasLayerActions(
         const from = translatePointRef.current ?? canvasState.current;
         translatePointRef.current = point;
         const offset = { x: point.x - from.x, y: point.y - from.y };
-        const liveLayers = storage.get("layers");
-        for (const id of self.presence.selection) {
-            const layer = liveLayers.get(id);
-            if (layer) layer.update({ x: layer.get("x") + offset.x, y: layer.get("y") + offset.y });
-        }
+        moveLayerSubtrees(storage.get("layers"), layerIds, self.presence.selection, offset);
         setCanvasState({ mode: CanvasMode.Translating, current: point });
-    }, [canvasState]);
+    }, [canvasState, layerIds]);
 
     const unSelectLayers = useMutation(({ setMyPresence, self }) => {
         if (self.presence.selection.length > 0) setMyPresence({ selection: [] }, { addToHistory: true });
@@ -115,15 +112,11 @@ export function useCanvasLayerActions(
     }, [setCanvasState, history, camera, canvasState.mode]);
 
     const moveSelectedLayers = useMutation(({ storage, self, setMyPresence }, offset: Point) => {
-        const liveLayers = storage.get("layers");
         const selection = self.presence.selection;
         if (selection.length === 0) return;
-        for (const id of selection) {
-            const layer = liveLayers.get(id);
-            if (layer) layer.update({ x: layer.get("x") + offset.x, y: layer.get("y") + offset.y });
-        }
+        moveLayerSubtrees(storage.get("layers"), layerIds, selection, offset);
         setMyPresence({ selection }, { addToHistory: true });
-    }, [canvasState, history]);
+    }, [canvasState, history, layerIds]);
 
     return { translateSelectedLayers, unSelectLayers, updateSelectionNet, resizeSelectedLayer, onResizeHandlePointerDown, onLayerPointerDown, moveSelectedLayers };
 }

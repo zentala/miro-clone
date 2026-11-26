@@ -168,7 +168,7 @@ test('standalone bundle, copied as the container copies it, serves the app and p
     });
     await checkServedApp(origin);
     const board = await createSyntheticBoard(origin);
-    assert.deepEqual(storedBoards(databasePath), [{ id: board.id, title: TITLE, document: { ...board.document, schemaVersion: 4 } }]);
+    assert.deepEqual(storedBoards(databasePath), [{ id: board.id, title: TITLE, document: { ...board.document, schemaVersion: 5 } }]);
     await renderedBoard(origin, board.id, owned);
     assert.doesNotMatch(server.log, /sharp|Error/i, 'Standalone server must not log runtime errors');
 });

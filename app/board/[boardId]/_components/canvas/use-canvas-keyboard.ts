@@ -14,7 +14,7 @@ export function useCanvasKeyboard(
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             const target = e.target as HTMLElement;
-            if (target.isContentEditable || target.closest("input, textarea")) return;
+            if (target.isContentEditable || target.closest("input, textarea, select")) return;
             if ((e.ctrlKey || e.metaKey) && ["z", "d"].includes(e.key.toLowerCase())) e.preventDefault();
             let offset: Point = { x: 0, y: 0 };
             switch (e.key.length === 1 ? e.key.toLowerCase() : e.key) {

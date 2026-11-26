@@ -21,6 +21,34 @@ interface SelectionToolsProps {
 export const SelectionTools = memo(
     ({ camera, setLastUsedColor, onDuplicate, lastUsedColor }: SelectionToolsProps) => {
         const selection = useSelf((me) => me.presence.selection);
+        const selectedFrames = useStorage(root => selection.filter(id => root.layers.get(id)?.type === LayerType.Frame));
+        const selectedParentId = useStorage(root => {
+            const parents = selection.map(id => root.layers.get(id)?.parentId);
+            if (!parents.length || parents.some(parentId => parentId !== parents[0])) return null;
+            return parents[0] ?? "";
+        });
+        const frames = useStorage(root => root.layerIds.flatMap(id => {
+            const layer = root.layers.get(id);
+            return layer?.type === LayerType.Frame ? [{ id, name: layer.name, parentId: layer.parentId }] : [];
+        }));
+        const activeFrameId = selectedFrames.length === 1 ? selectedFrames[0] : null;
+        const activeFrameName = useStorage(root => {
+            const layer = activeFrameId ? root.layers.get(activeFrameId) : undefined;
+            return layer?.type === LayerType.Frame ? layer.name : undefined;
+        });
+        const assignToFrame = useMutation(({ storage }, targetId: string) => {
+            if (!selection.length) return;
+            const target = targetId || undefined;
+            if (targetId === "__mixed__") return;
+            const layers = storage.get("layers");
+            for (const id of selection) {
+                if (id === target) continue;
+                layers.get(id)?.set("parentId", target);
+            }
+        }, [selection]);
+        const renameFrame = useMutation(({ storage }, name: string) => {
+            if (activeFrameId && name.trim()) storage.get("layers").get(activeFrameId)?.set("name", name.trim());
+        }, [activeFrameId]);
         const containsImage = useStorage((root) =>
             selection.some(id => root.layers.get(id)?.type === LayerType.Image)
         );
@@ -75,7 +103,7 @@ export const SelectionTools = memo(
                 }
                 selection.forEach((id) => {
                     const layer = liveLayers.get(id);
-                    if (layer?.get("type") !== LayerType.Image) layer?.set("fill", fill);
+                    if (layer?.get("type") !== LayerType.Image && layer?.get("type") !== LayerType.Frame) layer?.set("fill", fill);
                 });
             },
             [selection, setLastUsedColor]
@@ -103,6 +131,20 @@ export const SelectionTools = memo(
                 }}
             >
                 {!containsImage && <ColorPicker onChange={setFill} lastUsedColor={lastUsedColor} />}
+                {activeFrameId && <input aria-label="Frame name" className="h-10 w-32 border rounded px-2 text-sm" value={activeFrameName ?? ""} onChange={event => renameFrame(event.target.value)} />}
+                {frames.length > 0 && <select aria-label="Containing frame" className="h-10 max-w-40 border rounded px-2 text-sm"
+                    value={selectedParentId ?? "__mixed__"} onChange={event => assignToFrame(event.currentTarget.value)}>
+                    {selectedParentId === null && <option value="__mixed__" disabled>Multiple frames</option>}
+                    <option value="">Board root</option>
+                    {frames.filter(frame => !selection.includes(frame.id) && !selection.some(selectedId => {
+                        let parentId: string | undefined = frame.parentId;
+                        while (parentId) {
+                            if (parentId === selectedId) return true;
+                            parentId = frames.find(candidate => candidate.id === parentId)?.parentId;
+                        }
+                        return false;
+                    })).map(frame => <option key={frame.id} value={frame.id}>{frame.name}</option>)}
+                </select>}
                 <div className="flex flex-col gap-y-0.5">
                     <Hint label="Bring to front">
                         <Button

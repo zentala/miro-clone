@@ -1,6 +1,6 @@
 import type { Board, BoardDocument } from "../types/board";
 import type { Color, Layer } from "../types/canvas";
-import { assertRelations } from "../lib/document-version";
+import { assertRelations, getDescendantLayerIds } from "../lib/document-version";
 
 /**
  * Copy-on-write edit of one board document during a single mutation.
@@ -106,6 +106,16 @@ export class LayerList {
     delete(index: number) { this.edit.writableLayerIds().splice(index, 1); }
     move(from: number, to: number) { const ids = this.edit.writableLayerIds(); const [id] = ids.splice(from, 1); ids.splice(to, 0, id); }
     toImmutable(): readonly string[] { return [...this.ids]; }
+}
+
+/** Moves selected objects and every descendant once, keeping all relative geometry. */
+export function moveLayerSubtrees(layers: LayerMap, layerIds: readonly string[], selectedIds: readonly string[], offset: { x: number; y: number }) {
+    const snapshot = layers.toImmutable();
+    const movedIds = new Set(selectedIds.flatMap(id => getDescendantLayerIds(id, layerIds, snapshot)));
+    for (const id of movedIds) {
+        const layer = layers.get(id);
+        if (layer) layer.update({ x: layer.get("x") + offset.x, y: layer.get("y") + offset.y });
+    }
 }
 
 export type Presence = {

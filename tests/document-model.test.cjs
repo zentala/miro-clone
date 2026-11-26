@@ -52,44 +52,44 @@ function row(databasePath, id) {
     try { return { ...db.prepare('SELECT * FROM boards WHERE id = ?').get(id) }; } finally { db.close(); }
 }
 const node = (type, extra = {}) => ({ type, x: 0, y: 0, width: 10, height: 10, fill, ...extra });
-const current = (layers, layerIds = Object.keys(layers)) => ({ schemaVersion: 4, layerIds, layers });
+const current = (layers, layerIds = Object.keys(layers)) => ({ schemaVersion: 5, layerIds, layers });
 
-test('pre-version documents open unchanged and save as v4 without losing IDs, order, title, geometry or content', () => {
+test('pre-version documents open unchanged and save as v5 without losing IDs, order, title, geometry or content', () => {
     const databasePath = join(owned, 'upgrade.sqlite');
     const storedText = JSON.stringify(legacyDocument());
     seed(databasePath, [['legacy', 'Legacy board', storedText]]);
     const { boards } = loadApp(databasePath);
     const opened = boards.getBoard('legacy');
     assert.equal(opened.title, 'Legacy board');
-    assert.deepEqual(opened.document, { schemaVersion: 4, ...legacyDocument() });
+    assert.deepEqual(opened.document, { schemaVersion: 5, ...legacyDocument() });
     assert.equal(row(databasePath, 'legacy').document, storedText, 'Opening must not rewrite the stored payload');
     boards.updateBoard('legacy', { document: opened.document });
     const saved = row(databasePath, 'legacy');
     assert.equal(saved.title, 'Legacy board');
-    assert.deepEqual(JSON.parse(saved.document), { schemaVersion: 4, ...legacyDocument() });
+    assert.deepEqual(JSON.parse(saved.document), { schemaVersion: 5, ...legacyDocument() });
     // An unversioned submission (for example from a client loaded before the upgrade) is upgraded, not refused.
-    assert.equal(boards.updateBoard('legacy', { document: legacyDocument() }).document.schemaVersion, 4);
-    assert.deepEqual(boards.createBoard('Fresh').document, { schemaVersion: 4, layerIds: [], layers: {} });
+    assert.equal(boards.updateBoard('legacy', { document: legacyDocument() }).document.schemaVersion, 5);
+    assert.deepEqual(boards.createBoard('Fresh').document, { schemaVersion: 5, layerIds: [], layers: {} });
 });
 
 test('future schema versions are refused without rewriting the stored payload', () => {
     const databasePath = join(owned, 'future.sqlite');
-    const futureText = '{"schemaVersion": 5, "layerIds": ["a"], "layers": {"a": {"type": 42, "shape": "unknown"}}}';
+    const futureText = '{"schemaVersion": 6, "layerIds": ["a"], "layers": {"a": {"type": 42, "shape": "unknown"}}}';
     seed(databasePath, [['future', 'Future board', futureText], ['ok', 'Readable', JSON.stringify(legacyDocument())]]);
     const { boards } = loadApp(databasePath);
     const before = row(databasePath, 'future');
     const refused = error => error instanceof boards.UnreadableBoardError && error.reason.code === 'unsupported-version' &&
-        /version 5 is newer than supported version 4/.test(error.message);
+        /version 6 is newer than supported version 5/.test(error.message);
     assert.throws(() => boards.getBoard('future'), refused);
     assert.throws(() => boards.updateBoard('future', { document: current({}) }), refused);
     assert.throws(() => boards.updateBoard('future', { title: 'Renamed' }), refused);
-    assert.throws(() => boards.updateBoard('ok', { document: { schemaVersion: 5, layerIds: [], layers: {} } }),
+    assert.throws(() => boards.updateBoard('ok', { document: { schemaVersion: 6, layerIds: [], layers: {} } }),
         error => error.code === 'unsupported-version');
     assert.deepEqual(row(databasePath, 'future'), before, 'Title, payload text and timestamp stay byte-identical');
     const listed = Object.fromEntries(boards.listBoards().map(entry => [entry.id, entry]));
     assert.equal(listed.future.document, null);
     assert.equal(listed.future.documentError.code, 'unsupported-version');
-    assert.equal(listed.ok.document.schemaVersion, 4);
+    assert.equal(listed.ok.document.schemaVersion, 5);
 });
 
 test('validation separates duplicate IDs, missing references, cycles and unsupported records from accepted schema', () => {
@@ -120,14 +120,16 @@ test('validation separates duplicate IDs, missing references, cycles and unsuppo
     assert.equal(boards.getBoard('board').document.layers.leaf.parentId, 'inner');
 });
 
-test('v1, v2 and v3 documents upgrade to v4; image and product card fields validate', () => {
+test('v1 through v4 documents upgrade to v5; image, product card and frame fields validate', () => {
     const { migrations, version } = loadApp(join(owned, 'images.sqlite'));
     const legacy = { schemaVersion: 2, layerIds: ['old'], layers: { old: node(0) } };
-    assert.deepEqual(migrations.upgradeDocument(legacy), { ...legacy, schemaVersion: 4 });
+    assert.deepEqual(migrations.upgradeDocument(legacy), { ...legacy, schemaVersion: 5 });
     const v3 = { schemaVersion: 3, layerIds: ['old'], layers: { old: node(0) } };
-    assert.deepEqual(migrations.upgradeDocument(v3), { ...v3, schemaVersion: 4 });
+    assert.deepEqual(migrations.upgradeDocument(v3), { ...v3, schemaVersion: 5 });
+    const v4 = { schemaVersion: 4, layerIds: ['old'], layers: { old: node(0) } };
+    assert.deepEqual(migrations.upgradeDocument(v4), { ...v4, schemaVersion: 5 });
     const image = { type: 5, x: 12, y: 24, width: 160, height: 90, assetId: 'a'.repeat(64) };
-    const document = { schemaVersion: 4, layerIds: ['image'], layers: { image } };
+    const document = { schemaVersion: 5, layerIds: ['image'], layers: { image } };
     assert.deepEqual(migrations.upgradeDocument(document), document);
     for (const assetId of ['', '../unsafe', 'A'.repeat(64)]) {
         assert.throws(() => version.validateDocument({ ...document, layers: { image: { ...image, assetId } } }),
@@ -144,6 +146,13 @@ test('v1, v2 and v3 documents upgrade to v4; image and product card fields valid
         titleSource: 'manual', imageSource: 'manual', extractionStatus: 'unsupported' };
     const cardDocument = current({ card });
     assert.deepEqual(migrations.upgradeDocument(cardDocument), cardDocument);
+    const frame = { type: 7, x: -20, y: 10, width: 240, height: 180, name: 'Outer' };
+    const framed = current({ frame, child: node(0, { parentId: 'frame', x: 500, y: 600 }) });
+    assert.deepEqual(migrations.upgradeDocument(framed), framed);
+    for (const name of ['', '   ', 4]) {
+        assert.throws(() => version.validateDocument({ ...framed, layers: { ...framed.layers, frame: { ...frame, name } } }),
+            error => error.code === 'invalid-schema');
+    }
     for (const sourceUrl of ['javascript:alert(1)', 'data:text/html,unsafe']) {
         assert.throws(() => version.validateDocument({ ...cardDocument, layers: { card: { ...card, sourceUrl } } }),
             error => error.code === 'invalid-schema');
@@ -264,6 +273,6 @@ test('upgrade, app rollback and backup recovery on synthetic database copies', (
     // Recovery: the pre-upgrade copy is untouched and opens with the same content.
     assert.equal(row(backup, 'one').document, JSON.stringify(legacyDocument()));
     const restored = loadApp(backup).boards;
-    assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 4, ...legacyDocument() });
+    assert.deepEqual(restored.getBoard('one').document, { schemaVersion: 5, ...legacyDocument() });
     assert.equal(restored.getBoard('two').title, 'Second');
 });

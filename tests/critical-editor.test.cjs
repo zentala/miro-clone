@@ -1,7 +1,7 @@
 // The entrypoint shares browser setup with the split workflow helper.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { readFile } = require('node:fs/promises');
+const { readFile, writeFile } = require('node:fs/promises');
 const { join } = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { isDeepStrictEqual } = require('node:util');
@@ -21,7 +21,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal(response.status, 200);
         const boards = await response.json();
         assert.equal(boards.length, 1); assert.equal(boards[0].title, 'Untitled board');
-        assert.deepEqual(boards[0].document, { schemaVersion: 4, layers: {}, layerIds: [] });
+        assert.deepEqual(boards[0].document, { schemaVersion: 5, layers: {}, layerIds: [] });
         assert.equal(await renderedStroke(), '');
         for (const method of ['PATCH', 'DELETE']) {
             const response = await fetch(boardUrl.replace('/board/', '/api/boards/'), {
@@ -59,7 +59,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         await until('stroke removed by undo', async () => (await renderedStroke()) === '');
         await saved();
         const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
-        assert.deepEqual(board.document, { schemaVersion: 4, layerIds: [], layers: {} });
+        assert.deepEqual(board.document, { schemaVersion: 5, layerIds: [], layers: {} });
     });
     await step('redo restores identical stroke geometry', async () => {
         await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
@@ -134,6 +134,186 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
         assert.deepEqual(board.document, originalDocument);
     });
+    await step('nested frames drag, resize, detach, reload and keep an outside child visible', async () => {
+        const apiUrl = boardUrl.replace('/board/', '/api/boards/');
+        const readDocument = async () => (await (await fetch(apiUrl)).json()).document;
+        const key = async (value, code, windowsVirtualKeyCode, modifiers = 0) => {
+            await page('Input.dispatchKeyEvent', { type: 'keyDown', key: value, code, windowsVirtualKeyCode, modifiers });
+            await page('Input.dispatchKeyEvent', { type: 'keyUp', key: value, code, windowsVirtualKeyCode, modifiers });
+        };
+        const drag = async (from, to) => {
+            await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...from });
+            await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...from, button: 'left', buttons: 1, clickCount: 1 });
+            for (let index = 1; index <= 8; index++) {
+                const progress = index / 8;
+                await page('Input.dispatchMouseEvent', { type: 'mouseMoved',
+                    x: from.x + (to.x - from.x) * progress, y: from.y + (to.y - from.y) * progress,
+                    button: 'left', buttons: 1 });
+            }
+            await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1 });
+        };
+        const renameSelectedFrame = async name => {
+            await click('input[aria-label="Frame name"]');
+            await key('a', 'KeyA', 65, 2);
+            await page('Input.insertText', { text: name });
+            await key('Tab', 'Tab', 9);
+            await saved();
+        };
+        const selectByArrow = async (direction, code, windowsVirtualKeyCode) => {
+            await click('select[aria-label="Containing frame"]');
+            await key(direction, code, windowsVirtualKeyCode);
+            await key('Enter', 'Enter', 13);
+        };
+
+        await click('button[aria-label="New frame"]');
+        await until('new frame selected', () => evaluate(`!!document.querySelector("input[aria-label='Frame name']")`));
+        await renameSelectedFrame('Outer frame');
+        await click('button[aria-label="New frame"]');
+        await until('second frame selected', () => evaluate(`!!document.querySelector("input[aria-label='Frame name']")`));
+        await renameSelectedFrame('Inner frame');
+
+        const created = await readDocument();
+        const frameIds = created.layerIds.filter(id => created.layers[id].type === 7);
+        assert.equal(frameIds.length, 2);
+        const [outerId, innerId] = frameIds;
+        const innerBeforeParent = { x: created.layers[innerId].x, y: created.layers[innerId].y };
+        await selectByArrow('ArrowDown', 'ArrowDown', 40);
+        await saved();
+        let document = await readDocument();
+        assert.equal(document.layers[innerId].parentId, outerId, 'Native arrow selection assigns the inner frame');
+        assert.deepEqual({ x: document.layers[innerId].x, y: document.layers[innerId].y }, innerBeforeParent,
+            'Containment-select arrows do not move the selected frame');
+        assert.equal(await evaluate(`document.querySelector("select[aria-label='Containing frame']")?.value`), outerId,
+            'The control reflects the selected frame parent');
+
+        await click('button[aria-label="Rectangle (Ctrl+R)"]');
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 420 });
+        await page('Input.dispatchMouseEvent', { type: 'mousePressed', x: 600, y: 420, button: 'left', buttons: 1, clickCount: 1 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 600, y: 420, button: 'left', buttons: 0, clickCount: 1 });
+        await saved();
+        document = await readDocument();
+        const childId = document.layerIds.find(id => document.layers[id].type === 0);
+        assert.ok(childId);
+        const childBeforeAssign = { x: document.layers[childId].x, y: document.layers[childId].y };
+        await selectByArrow('ArrowDown', 'ArrowDown', 40);
+        await saved();
+        document = await readDocument();
+        assert.equal(document.layers[childId].parentId, outerId, 'The native frame select assigns the child');
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, childBeforeAssign,
+            'Native arrow navigation leaves descendant geometry unchanged');
+        assert.equal(await evaluate(`document.querySelector("select[aria-label='Containing frame']")?.value`), outerId,
+            'Changing selection to a child reflects its saved parent');
+
+        await selectByArrow('Home', 'Home', 36);
+        await saved();
+        document = await readDocument();
+        assert.equal(document.layers[childId].parentId, undefined, 'Selecting Board root directly detaches the child');
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, childBeforeAssign);
+        await selectByArrow('ArrowDown', 'ArrowDown', 40);
+        await saved();
+        document = await readDocument();
+        assert.equal(document.layers[childId].parentId, outerId, 'The child can be reassigned after detaching');
+        await selectByArrow('ArrowDown', 'ArrowDown', 40);
+        await saved();
+        document = await readDocument();
+        assert.equal(document.layers[childId].parentId, innerId, 'The child can be nested inside the inner frame');
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, childBeforeAssign);
+        assert.equal(await evaluate(`document.querySelector("select[aria-label='Containing frame']")?.value`), innerId,
+            'Changing the selected child updates the control to its new parent');
+        assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-board-layers]').children).slice(0, 2).map(node => node.getAttribute('data-frame-name'))`),
+            ['Outer frame', 'Inner frame'], 'The outer frame paints before its nested frame');
+
+        const clickAt = async point => {
+            await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+            await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
+            await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
+        };
+        await clickAt({ x: 500, y: 320 });
+        const innerScreen = await evaluate(`(() => {
+            const bounds = document.querySelector('[data-frame-name="Inner frame"] [data-frame-bounds]').getBoundingClientRect();
+            return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+        })()`);
+        await drag({ x: innerScreen.right - 1, y: innerScreen.bottom - 1 }, { x: innerScreen.left + 110, y: innerScreen.top + 90 });
+        await saved();
+        document = await readDocument();
+        const innerResized = document.layers[innerId];
+        assert.equal(innerResized.width, 110);
+        assert.equal(innerResized.height, 90);
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, childBeforeAssign,
+            'Resizing the inner frame does not scale its now-outside child');
+        assert.equal(document.layers[childId].parentId, innerId, 'Shrinking does not reparent an outside descendant');
+        assert.ok(document.layers[childId].x >= innerResized.x + innerResized.width ||
+            document.layers[childId].y >= innerResized.y + innerResized.height, 'The child remains outside the resized inner frame');
+        assert.equal(document.layers[innerId].parentId, outerId);
+
+        await clickAt({ x: 800, y: 580 });
+        const outerScreen = await evaluate(`(() => {
+            const bounds = document.querySelector('[data-frame-name="Outer frame"] [data-frame-bounds]').getBoundingClientRect();
+            return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+        })()`);
+        await drag({ x: outerScreen.right - 1, y: outerScreen.bottom - 1 }, { x: outerScreen.left + 130, y: outerScreen.top + 100 });
+        await saved();
+        document = await readDocument();
+        const resizedOuter = document.layers[outerId];
+        const resizedInner = document.layers[innerId];
+        const resizedChild = document.layers[childId];
+        assert.equal(resizedOuter.width, 130);
+        assert.equal(resizedOuter.height, 100);
+        assert.deepEqual({ x: resizedChild.x, y: resizedChild.y }, childBeforeAssign,
+            'Shrinking the outer frame leaves the child at its absolute geometry');
+        assert.ok(resizedChild.x >= resizedOuter.x + resizedOuter.width || resizedChild.y >= resizedOuter.y + resizedOuter.height,
+            'The child remains outside the resized outer frame');
+        assert.deepEqual({ x: resizedInner.x, y: resizedInner.y, width: resizedInner.width, height: resizedInner.height },
+            { x: innerResized.x, y: innerResized.y, width: innerResized.width, height: innerResized.height },
+            'Resizing the outer frame does not scale or move its nested frame');
+        assert.equal(resizedChild.parentId, innerId, 'Shrinking does not reparent the outside descendant');
+        assert.equal(resizedInner.parentId, outerId);
+
+        const childHit = { x: resizedChild.x + 50, y: resizedChild.y + 50 };
+        assert.ok(childHit.x < 1280 && childHit.y < 900, 'The outside child fixture is inside the visible viewport');
+        await clickAt(childHit);
+        await until('visible outside child selected by native pointer hit', () => evaluate(`Array.from(document.querySelectorAll('[data-editor-overlay] rect')).some(node => node.getAttribute('width') === '100' && node.getAttribute('height') === '100')`));
+
+        const dragOrigin = { x: resizedOuter.x + resizedOuter.width - 10, y: resizedOuter.y + 5 };
+        const movedTo = { x: dragOrigin.x + 20, y: dragOrigin.y + 15 };
+        await drag(dragOrigin, movedTo);
+        await saved();
+        document = await readDocument();
+        assert.deepEqual({ x: document.layers[outerId].x, y: document.layers[outerId].y }, { x: resizedOuter.x + 20, y: resizedOuter.y + 15 });
+        assert.deepEqual({ x: document.layers[innerId].x, y: document.layers[innerId].y }, { x: resizedInner.x + 20, y: resizedInner.y + 15 });
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, { x: resizedChild.x + 20, y: resizedChild.y + 15 },
+            'Dragging the outer frame moves every descendant exactly once');
+
+        await click('button[aria-label="Undo (Ctrl+Z)"]');
+        await saved();
+        document = await readDocument();
+        assert.deepEqual({ x: document.layers[outerId].x, y: document.layers[outerId].y }, { x: resizedOuter.x, y: resizedOuter.y });
+        assert.deepEqual({ x: document.layers[innerId].x, y: document.layers[innerId].y }, { x: resizedInner.x, y: resizedInner.y });
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, { x: resizedChild.x, y: resizedChild.y });
+        await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
+        await saved();
+        document = await readDocument();
+        assert.deepEqual({ x: document.layers[outerId].x, y: document.layers[outerId].y }, { x: resizedOuter.x + 20, y: resizedOuter.y + 15 });
+        assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, { x: resizedChild.x + 20, y: resizedChild.y + 15 });
+        await page('Page.reload', { ignoreCache: true });
+        await until('nested frame geometry and names after reload', async () => {
+            const current = await readDocument();
+            return current.layers[childId]?.x === resizedChild.x + 20 && current.layers[childId]?.parentId === innerId &&
+                current.layers[innerId]?.parentId === outerId && current.layers[outerId]?.name === 'Outer frame' &&
+                current.layers[innerId]?.name === 'Inner frame';
+        });
+        assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-board-layers]').children).slice(0, 2).map(node => node.getAttribute('data-frame-name'))`),
+            ['Outer frame', 'Inner frame'], 'Reload keeps ancestor-first frame paint order');
+
+        for (const viewport of [{ width: 1280, height: 900, label: 'wide' }, { width: 390, height: 844, label: 'narrow' }]) {
+            await page('Emulation.setDeviceMetricsOverride', { ...viewport, deviceScaleFactor: 1, mobile: false });
+            const screenshot = await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+            const screenshotBytes = Buffer.from(screenshot.data, 'base64');
+            assert.deepEqual(screenshotBytes.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+            await writeFile(join(downloads, `frames-${viewport.label}.png`), screenshotBytes);
+        }
+        await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    });
     await step('visible image requests follow committed camera zoom and rendered CSS pixels', async () => {
         const { Transformer } = require('@napi-rs/image');
         const pixels = Buffer.alloc(800 * 400 * 4);
@@ -177,7 +357,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.ok(measured.requested === 48 || Math.ceil(measured.width * measured.dpr) > [48, 160, 320, 640, 1280, 2560][[48, 160, 320, 640, 1280, 2560].indexOf(measured.requested) - 1]);
         assert.equal(await evaluate(`document.querySelector('image[aria-label="Board image"]')?.getAttribute('href')?.startsWith('blob:')`), true);
     });
-    await step('pre-version board with all five layer types opens, edits, undoes and saves as v4', async () => {
+    await step('pre-version board with all five layer types opens, edits, undoes and saves as v5', async () => {
         const fill = { r: 10, g: 20, b: 30 };
         // Unversioned synthetic document as stored before E001-T03; record order differs from paint order.
         const fixture = { layerIds: ['note-5', 'rect-1', 'path-3', 'ellipse-2', 'text-4'], layers: {
@@ -209,10 +389,10 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         for (const type of ['keyDown', 'keyUp']) await page('Input.dispatchKeyEvent', { type, key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
         await until('keyboard move saved with the current schema', () => {
             const document = JSON.parse(read().document);
-            return document.schemaVersion === 4 && document.layers['rect-1'].x === 405;
+            return document.schemaVersion === 5 && document.layers['rect-1'].x === 405;
         });
         await click('button[aria-label="Undo (Ctrl+Z)"]');
-        const expected = { schemaVersion: 4, ...fixture };
+        const expected = { schemaVersion: 5, ...fixture };
         await until('undo saved the original content', () => isDeepStrictEqual(JSON.parse(read().document), expected));
         await saved();
         assert.equal(read().title, 'Pre-version fixture');
@@ -234,7 +414,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             return { status: response.status, body: await response.json() };
         };
         const cycle = { schemaVersion: 2, layerIds: ['a'], layers: { a: { type: 0, x: 0, y: 0, width: 1, height: 1, fill: { r: 0, g: 0, b: 0 }, parentId: 'a' } } };
-        assert.deepEqual(await request('future', 'GET'), { status: 409, body: { error: 'Document schema version 99 is newer than supported version 4', code: 'unsupported-version' } });
+        assert.deepEqual(await request('future', 'GET'), { status: 409, body: { error: 'Document schema version 99 is newer than supported version 5', code: 'unsupported-version' } });
         assert.equal((await request('future', 'PATCH', { title: 'Renamed' })).status, 409);
         assert.equal((await request('pre-version', 'PATCH', { document: cycle })).body.code, 'cycle');
         assert.equal((await request('pre-version', 'PATCH', { document: cycle })).status, 400);
@@ -307,7 +487,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
         assert.deepEqual(Buffer.from(await served.arrayBuffer()), png, 'Same bytes after restart');
         assert.deepEqual((await (await fetch(`${origin}/api/boards/${board.id}`)).json()).document,
-            { ...document, schemaVersion: 4 });
+            { ...document, schemaVersion: 5 });
         const report = await (await fetch(`${origin}/api/assets`)).json();
         const mainBoardId = new URL(boardUrl).pathname.split('/').at(-1);
         assert.deepEqual(report.referenced, [

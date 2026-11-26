@@ -18,6 +18,8 @@ const UPGRADES: Record<number, (document: RawDocument) => RawDocument> = {
     2: document => ({ ...document, schemaVersion: 3 }),
     // v3 -> v4: adds product cards; existing layer records are unchanged.
     3: document => ({ ...document, schemaVersion: 4 }),
+    // v4 -> v5: adds named frames; existing layer records are unchanged.
+    4: document => ({ ...document, schemaVersion: 5 }),
 };
 
 /** Unversioned documents are version 1; any other value must be a positive integer. */

@@ -11,6 +11,7 @@ import { Path } from "./path";
 import { colorToCss } from "@/lib/utils";
 import { Image } from "./image";
 import { ProductCard } from "./product-card";
+import { Frame } from "./frame";
 
 interface LayerPreviewProps {
     id: string;
@@ -24,6 +25,8 @@ export const LayerPreview = memo(
         if (!layer) return null;
 
         switch (layer.type) {
+            case LayerType.Frame:
+                return <Frame id={id} layer={layer} onPointerDown={onLayerPointerDown} />;
             case LayerType.Path:
                 return (
                     <Path

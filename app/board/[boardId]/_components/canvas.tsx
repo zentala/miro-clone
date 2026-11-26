@@ -30,6 +30,8 @@ import { useCanvasContentActions } from "./canvas/use-canvas-content-actions";
 import { useCanvasPointerHandlers } from "./canvas/use-canvas-pointer-handlers";
 import { LocalObject } from "@/store/use-board-store";
 import { isHttpSourceUrl } from "@/types/extraction";
+import { framesBehindLayers } from "@/lib/document-version";
+import { Button } from "@/components/ui/button";
 
 const SELECTION_NET_THRESHOLD = 5;
 
@@ -44,6 +46,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const store = useLocalBoard();
     const history = useHistory();
     const layerIds = useStorage((root) => root.layerIds);
+    const paintLayerIds = useStorage(root => framesBehindLayers(root.layerIds, root.layers));
     const pencilDraft = useSelf((me) => me.presence.pencilDraft);
     const canUndo = useCanUndo();
     const canRedo = useCanRedo();
@@ -52,6 +55,28 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const layerActions = useCanvasLayerActions(canvasState, setCanvasState, layerIds, camera);
     const { insertImage: insertImageLayer, ...contentActions } = useCanvasContentActions(canvasState, setCanvasState, lastUsedColor, store);
     const duplicateLayers = useCanvasDuplicate(setCanvasState);
+
+    const createFrame = useCallback(() => {
+        if (layerIds.length >= MAX_LAYERS) {
+            store.refuse(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+            return;
+        }
+        const bounds = svgRef.current?.getBoundingClientRect();
+        if (!bounds) return;
+        const id = nanoid();
+        store.mutate(({ storage, setMyPresence }) => {
+            storage.get("layers").set(id, new LocalObject({
+                type: LayerType.Frame,
+                x: (bounds.width / 2 - camera.x) / camera.zoom - 200,
+                y: (bounds.height / 2 - camera.y) / camera.zoom - 150,
+                width: 400,
+                height: 300,
+                name: "Frame",
+            }));
+            storage.get("layerIds").push(id);
+            setMyPresence({ selection: [id] }, { addToHistory: true });
+        });
+    }, [camera, layerIds.length, store]);
 
     const importImage = useCallback(async (file: File) => {
         if (layerIds.length >= MAX_LAYERS) {
@@ -173,7 +198,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             <BoardSurface
                 boardId={boardId}
                 svgRef={svgRef}
-                layerIds={layerIds}
+                layerIds={paintLayerIds}
                 canvasState={canvasState}
                 setCanvasState={setCanvasState}
                 camera={camera}
@@ -198,6 +223,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 exportAsPng={exportAsPng}
                 onImportImage={importImage}
             />
+            <Button aria-label="New frame" className="fixed right-4 top-20 z-30" variant="board" onClick={createFrame}>New frame</Button>
             <div data-canvas-overlay="rich-text-toolbar" className="pointer-events-none fixed inset-0 z-50" />
         </>
     );

@@ -8,7 +8,7 @@ import { LayerType, type Layer } from "../types/canvas";
 import { isHttpSourceUrl } from "../types/extraction";
 
 /** Schema this application writes. Adding a layer type or field bumps it and adds an upgrade step. */
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 /** Documents saved before explicit versioning have no schemaVersion field. */
 export const LEGACY_SCHEMA_VERSION = 1;
 /**
@@ -18,7 +18,7 @@ export const LEGACY_SCHEMA_VERSION = 1;
 export const MAX_LAYERS = 5000;
 const MAX_PATH_POINTS = 100000;
 const SUPPORTED_LAYER_TYPES = new Set<number>([
-    LayerType.Rectangle, LayerType.Ellipse, LayerType.Path, LayerType.Text, LayerType.Note, LayerType.Image, LayerType.ProductCard,
+    LayerType.Rectangle, LayerType.Ellipse, LayerType.Path, LayerType.Text, LayerType.Note, LayerType.Image, LayerType.ProductCard, LayerType.Frame,
 ]);
 
 export type DocumentErrorCode =
@@ -65,6 +65,9 @@ function validateLayer(id: string, value: unknown) {
         fail("unsupported-record", `Layer ${id} has unsupported type ${value.type}`);
     }
     const layer = value as Layer;
+    const validFrame = layer.type === LayerType.Frame && typeof (layer as Extract<Layer, { type: LayerType.Frame }>).name === "string" &&
+        (layer as Extract<Layer, { type: LayerType.Frame }>).name.trim().length > 0 &&
+        !Object.hasOwn(value, "fill") && !Object.hasOwn(value, "value") && !Object.hasOwn(value, "points") && !Object.hasOwn(value, "assetId");
     const validImage = layer.type === LayerType.Image &&
         typeof (layer as Extract<Layer, { type: LayerType.Image }>).assetId === "string" &&
         /^[0-9a-f]{64}$/.test((layer as Extract<Layer, { type: LayerType.Image }>).assetId) &&
@@ -79,12 +82,12 @@ function validateLayer(id: string, value: unknown) {
         ["pending", "offline", "unsupported", "ready", "error"].includes(layer.extractionStatus) &&
         (layer.extractionMessage === undefined || typeof layer.extractionMessage === "string") &&
         !Object.hasOwn(value, "fill") && !Object.hasOwn(value, "value") && !Object.hasOwn(value, "points");
-    const validNonImage = layer.type !== LayerType.Image && layer.type !== LayerType.ProductCard && isColor(layer.fill) &&
+    const validNonImage = layer.type !== LayerType.Image && layer.type !== LayerType.ProductCard && layer.type !== LayerType.Frame && isColor(layer.fill) &&
         (layer.value === undefined || typeof layer.value === "string");
     if (![layer.x, layer.y, layer.width, layer.height].every(Number.isFinite) ||
         layer.width < 0 || layer.height < 0 ||
         ((layer.type === LayerType.Image || layer.type === LayerType.ProductCard) && (layer.width === 0 || layer.height === 0)) ||
-        !(validImage || validProductCard || validNonImage)) {
+        !(validImage || validProductCard || validFrame || validNonImage)) {
         fail("invalid-schema", `Layer ${id} has invalid geometry, fill or content`);
     }
     if (layer.type === LayerType.Path && !isStroke(layer.points)) fail("invalid-schema", `Layer ${id} has an invalid stroke`);
@@ -150,4 +153,46 @@ export function isEffectivelyLocked(document: BoardDocument, id: string): boolea
         if (document.layers[current]?.locked) return true;
     }
     return false;
+}
+
+/** Returns an object and every descendant once, in saved layer order. */
+export function getDescendantLayerIds(rootId: string, layerIds: readonly string[], layers: ReadonlyMap<string, Layer>): string[] {
+    const descendants = new Set([rootId]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const id of layerIds) {
+            const parentId = layers.get(id)?.parentId;
+            if (parentId && descendants.has(parentId) && !descendants.has(id)) {
+                descendants.add(id);
+                changed = true;
+            }
+        }
+    }
+    return layerIds.filter(id => descendants.has(id));
+}
+
+/** Frames form background surfaces; all other persisted paint order stays intact. */
+export function framesBehindLayers(layerIds: readonly string[], layers: ReadonlyMap<string, Layer>): string[] {
+    const frames = layerIds.filter(id => layers.get(id)?.type === LayerType.Frame);
+    const frameIds = new Set(frames);
+    const orderedFrames: string[] = [];
+    const visitedFrames = new Set<string>();
+    for (const id of frames) {
+        const path: string[] = [];
+        const pathIds = new Set<string>();
+        let current: string | undefined = id;
+        while (current && frameIds.has(current) && !visitedFrames.has(current) && !pathIds.has(current)) {
+            path.push(current);
+            pathIds.add(current);
+            const parentId = layers.get(current)?.parentId;
+            current = parentId && frameIds.has(parentId) ? parentId : undefined;
+        }
+        for (let index = path.length - 1; index >= 0; index--) {
+            const ancestorFirst = path[index];
+            visitedFrames.add(ancestorFirst);
+            orderedFrames.push(ancestorFirst);
+        }
+    }
+    return [...orderedFrames, ...layerIds.filter(id => layers.get(id)?.type !== LayerType.Frame)];
 }

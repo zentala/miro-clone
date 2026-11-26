@@ -30,6 +30,7 @@ export enum LayerType {
     Note,
     Image,
     ProductCard,
+    Frame,
 }
 
 export type RectangleLayer = ObjectRelations & {
@@ -119,6 +120,19 @@ export type ProductCardLayer = ObjectRelations & {
     extractionMessage?: string;
 };
 
+/** Persistent named containment surface; children retain absolute board geometry. */
+export type FrameLayer = ObjectRelations & {
+    type: LayerType.Frame;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    name: string;
+    /** Kept optional for shared editor accessors; frame fill is fixed by the UI. */
+    fill?: Color;
+    value?: string;
+};
+
 export type Point = {
     x: number;
     y: number;
@@ -189,4 +203,5 @@ export type Layer =
     | TextLayer
     | NoteLayer
     | ImageLayer
-    | ProductCardLayer;
+    | ProductCardLayer
+    | FrameLayer;
