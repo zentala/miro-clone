@@ -118,33 +118,36 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }, [layerIds.length, title]);
 
     return (
-        <BoardSurface
-            boardId={boardId}
-            svgRef={svgRef}
-            layerIds={layerIds}
-            canvasState={canvasState}
-            setCanvasState={setCanvasState}
-            camera={camera}
-            zoomIn={zoomIn}
-            zoomOut={zoomOut}
-            resetZoom={resetZoom}
-            resetCamera={resetCamera}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            undo={history.undo}
-            redo={history.redo}
-            lastUsedColor={lastUsedColor}
-            setLastUsedColor={setLastUsedColor}
-            onDuplicate={duplicateLayers}
-            pencilDraft={pencilDraft}
-            onPointerMove={pointerHandlers.onPointerMove}
-            onPointerLeave={pointerHandlers.onPointerLeave}
-            onPointerUp={pointerHandlers.onPointerUp}
-            onPointerDown={pointerHandlers.onPointerDown}
-            onLayerPointerDown={onStableLayerPointerDown}
-            onResizeHandlePointerDown={layerActions.onResizeHandlePointerDown}
-            exportAsPng={exportAsPng}
-            onImportImage={importImage}
-        />
+        <>
+            <BoardSurface
+                boardId={boardId}
+                svgRef={svgRef}
+                layerIds={layerIds}
+                canvasState={canvasState}
+                setCanvasState={setCanvasState}
+                camera={camera}
+                zoomIn={zoomIn}
+                zoomOut={zoomOut}
+                resetZoom={resetZoom}
+                resetCamera={resetCamera}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                undo={history.undo}
+                redo={history.redo}
+                lastUsedColor={lastUsedColor}
+                setLastUsedColor={setLastUsedColor}
+                onDuplicate={duplicateLayers}
+                pencilDraft={pencilDraft}
+                onPointerMove={pointerHandlers.onPointerMove}
+                onPointerLeave={pointerHandlers.onPointerLeave}
+                onPointerUp={pointerHandlers.onPointerUp}
+                onPointerDown={pointerHandlers.onPointerDown}
+                onLayerPointerDown={onStableLayerPointerDown}
+                onResizeHandlePointerDown={layerActions.onResizeHandlePointerDown}
+                exportAsPng={exportAsPng}
+                onImportImage={importImage}
+            />
+            <div data-canvas-overlay="rich-text-toolbar" className="pointer-events-none fixed inset-0 z-50" />
+        </>
     );
 };

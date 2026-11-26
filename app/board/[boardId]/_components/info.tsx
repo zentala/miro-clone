@@ -5,11 +5,9 @@ import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { cn } from "@/lib/utils";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { useBoardSelector, useLocalBoard } from "@/hooks/use-local-board";
 import { ImageDown, Menu } from "lucide-react";
-import { Poppins } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -17,11 +15,6 @@ interface InfoProps {
     boardId: string;
     exportAsPng?: () => void;
 }
-
-const font = Poppins({
-    subsets: ["latin"],
-    weight: ["600"],
-});
 
 const TabSeparator = () => {
     return <div className="text-neutral-300 px-1.5 pointer-events-none">|</div>;
@@ -48,12 +41,7 @@ const Info = ({ boardId, exportAsPng }: InfoProps) => {
                             height={40}
                             width={40}
                         />
-                        <span
-                            className={cn(
-                                "hidden sm:inline font-semibold text-xl ml-2 text-black",
-                                font.className
-                            )}
-                        >
+                        <span className="hidden sm:inline font-semibold text-xl ml-2 text-black">
                             Board
                         </span>
                     </Link>
