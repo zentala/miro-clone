@@ -21,7 +21,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal(response.status, 200);
         const boards = await response.json();
         assert.equal(boards.length, 1); assert.equal(boards[0].title, 'Untitled board');
-        assert.deepEqual(boards[0].document, { schemaVersion: 3, layers: {}, layerIds: [] });
+        assert.deepEqual(boards[0].document, { schemaVersion: 4, layers: {}, layerIds: [] });
         assert.equal(await renderedStroke(), '');
         for (const method of ['PATCH', 'DELETE']) {
             const response = await fetch(boardUrl.replace('/board/', '/api/boards/'), {
@@ -59,7 +59,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         await until('stroke removed by undo', async () => (await renderedStroke()) === '');
         await saved();
         const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
-        assert.deepEqual(board.document, { schemaVersion: 3, layerIds: [], layers: {} });
+        assert.deepEqual(board.document, { schemaVersion: 4, layerIds: [], layers: {} });
     });
     await step('redo restores identical stroke geometry', async () => {
         await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
@@ -67,6 +67,41 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         await saved();
         const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
         assert.deepEqual(board.document, originalDocument);
+    });
+    await step('pasting an unknown URL creates a durable local card with manual title fallback', async () => {
+        const sourceUrl = 'https://shop.example/products/coat?variant=blue';
+        await evaluate(`(() => {
+            const data = new DataTransfer();
+            data.setData('text/plain', ${JSON.stringify(sourceUrl)});
+            const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true });
+            document.dispatchEvent(event);
+            return event.defaultPrevented;
+        })()`);
+        await until('pasted URL product card', () => evaluate('!!document.querySelector("g[data-product-card] a")'));
+        const cardElement = await evaluate(`(() => {
+            const card = document.querySelector('g[data-product-card]');
+            const link = card?.querySelector('a');
+            const input = card?.querySelector('input[aria-label="Product title"]');
+            return { source: link?.getAttribute('href'), fallback: link?.textContent, input: !!input };
+        })()`);
+        assert.equal(cardElement.source, sourceUrl, 'The exact pasted source URL is retained');
+        assert.equal(cardElement.fallback, sourceUrl, 'The raw URL remains readable without extraction');
+        assert.equal(cardElement.input, true, 'The card exposes a manual title field');
+
+        await click('input[aria-label="Product title"]');
+        await page('Input.insertText', { text: 'Owner title' });
+        await page('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+        await page('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+        await saved();
+        const board = await (await fetch(boardUrl.replace('/board/', '/api/boards/'))).json();
+        const cardId = board.document.layerIds.find(id => board.document.layers[id].type === 6);
+        assert.ok(cardId, 'A product card is persisted in the board document');
+        const card = board.document.layers[cardId];
+        assert.equal(card.sourceUrl, sourceUrl);
+        assert.equal(card.title, 'Owner title');
+        assert.equal(card.titleSource, 'manual');
+        assert.equal(card.extractionStatus, 'unsupported');
+        originalDocument = board.document;
     });
     await step('export downloads a real nonempty PNG', async () => {
         await click('button:has(svg.lucide-image-down)');
@@ -142,7 +177,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.ok(measured.requested === 48 || Math.ceil(measured.width * measured.dpr) > [48, 160, 320, 640, 1280, 2560][[48, 160, 320, 640, 1280, 2560].indexOf(measured.requested) - 1]);
         assert.equal(await evaluate(`document.querySelector('image[aria-label="Board image"]')?.getAttribute('href')?.startsWith('blob:')`), true);
     });
-    await step('pre-version board with all five layer types opens, edits, undoes and saves as v3', async () => {
+    await step('pre-version board with all five layer types opens, edits, undoes and saves as v4', async () => {
         const fill = { r: 10, g: 20, b: 30 };
         // Unversioned synthetic document as stored before E001-T03; record order differs from paint order.
         const fixture = { layerIds: ['note-5', 'rect-1', 'path-3', 'ellipse-2', 'text-4'], layers: {
@@ -172,12 +207,12 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...rectangle, button: 'left', buttons: 1, clickCount: 1 });
         await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...rectangle, button: 'left', buttons: 0, clickCount: 1 });
         for (const type of ['keyDown', 'keyUp']) await page('Input.dispatchKeyEvent', { type, key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
-        await until('keyboard move saved as v2', () => {
+        await until('keyboard move saved with the current schema', () => {
             const document = JSON.parse(read().document);
-            return document.schemaVersion === 3 && document.layers['rect-1'].x === 405;
+            return document.schemaVersion === 4 && document.layers['rect-1'].x === 405;
         });
         await click('button[aria-label="Undo (Ctrl+Z)"]');
-        const expected = { schemaVersion: 3, ...fixture };
+        const expected = { schemaVersion: 4, ...fixture };
         await until('undo saved the original content', () => isDeepStrictEqual(JSON.parse(read().document), expected));
         await saved();
         assert.equal(read().title, 'Pre-version fixture');
@@ -199,7 +234,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             return { status: response.status, body: await response.json() };
         };
         const cycle = { schemaVersion: 2, layerIds: ['a'], layers: { a: { type: 0, x: 0, y: 0, width: 1, height: 1, fill: { r: 0, g: 0, b: 0 }, parentId: 'a' } } };
-        assert.deepEqual(await request('future', 'GET'), { status: 409, body: { error: 'Document schema version 99 is newer than supported version 3', code: 'unsupported-version' } });
+        assert.deepEqual(await request('future', 'GET'), { status: 409, body: { error: 'Document schema version 99 is newer than supported version 4', code: 'unsupported-version' } });
         assert.equal((await request('future', 'PATCH', { title: 'Renamed' })).status, 409);
         assert.equal((await request('pre-version', 'PATCH', { document: cycle })).body.code, 'cycle');
         assert.equal((await request('pre-version', 'PATCH', { document: cycle })).status, 400);
@@ -272,7 +307,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
         assert.deepEqual(Buffer.from(await served.arrayBuffer()), png, 'Same bytes after restart');
         assert.deepEqual((await (await fetch(`${origin}/api/boards/${board.id}`)).json()).document,
-            { ...document, schemaVersion: 3 });
+            { ...document, schemaVersion: 4 });
         const report = await (await fetch(`${origin}/api/assets`)).json();
         const mainBoardId = new URL(boardUrl).pathname.split('/').at(-1);
         assert.deepEqual(report.referenced, [

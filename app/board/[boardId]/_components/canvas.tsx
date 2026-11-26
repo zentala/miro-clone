@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { nanoid } from "nanoid";
 import {
     CanvasMode,
-    CanvasState,
-    Color,
-    Point,
+    LayerType,
+    type CanvasState,
+    type Color,
+    type Point,
 } from "@/types/canvas";
 import { MAX_LAYERS } from "@/lib/document-version";
 import {
@@ -26,6 +28,8 @@ import { useCanvasKeyboard } from "./canvas/use-canvas-keyboard";
 import { useCanvasLayerActions } from "./canvas/use-canvas-layer-actions";
 import { useCanvasContentActions } from "./canvas/use-canvas-content-actions";
 import { useCanvasPointerHandlers } from "./canvas/use-canvas-pointer-handlers";
+import { LocalObject } from "@/store/use-board-store";
+import { isHttpSourceUrl } from "@/types/extraction";
 
 const SELECTION_NET_THRESHOLD = 5;
 
@@ -85,6 +89,53 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             throw new Error(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
         }
     }, [camera, insertImageLayer, layerIds.length, store]);
+
+    const insertPastedUrl = useCallback((sourceUrl: string) => {
+        const svg = svgRef.current;
+        if (!svg) return;
+        if (layerIds.length >= MAX_LAYERS) {
+            store.refuse(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+            return;
+        }
+
+        const bounds = svg.getBoundingClientRect();
+        const center = {
+            x: (bounds.width / 2 - camera.x) / camera.zoom,
+            y: (bounds.height / 2 - camera.y) / camera.zoom,
+        };
+        const id = nanoid();
+        store.mutate(({ storage, setMyPresence }) => {
+            storage.get("layers").set(id, new LocalObject({
+                type: LayerType.ProductCard,
+                x: center.x - 160,
+                y: center.y - 136,
+                width: 320,
+                height: 272,
+                sourceUrl,
+                extractionStatus: "unsupported",
+                extractionMessage: "Automatic preview is not connected. The source URL and manual edits are saved.",
+            }));
+            storage.get("layerIds").push(id);
+            setMyPresence({ selection: [id] }, { addToHistory: true });
+        });
+        setCanvasState({ mode: CanvasMode.None });
+    }, [camera, layerIds.length, store]);
+
+    useEffect(() => {
+        const onPaste = (event: ClipboardEvent) => {
+            if (event.defaultPrevented) return;
+            const target = event.target;
+            if (target instanceof Element && target.closest("input, textarea, [contenteditable='true']")) return;
+            const pasted = event.clipboardData?.getData("text/plain");
+            const sourceUrl = pasted?.trim();
+            if (!isHttpSourceUrl(sourceUrl)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            insertPastedUrl(sourceUrl);
+        };
+        document.addEventListener("paste", onPaste);
+        return () => document.removeEventListener("paste", onPaste);
+    }, [insertPastedUrl]);
 
     useDisableScrollBounce();
 

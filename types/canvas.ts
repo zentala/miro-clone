@@ -1,3 +1,5 @@
+import type { ExtractionStatus, ProductFieldSource } from "./extraction";
+
 export type Color = {
     r: number;
     g: number;
@@ -27,6 +29,7 @@ export enum LayerType {
     Text,
     Note,
     Image,
+    ProductCard,
 }
 
 export type RectangleLayer = ObjectRelations & {
@@ -91,6 +94,29 @@ export type ImageLayer = ObjectRelations & {
     /** Optional compatibility keys keep existing generic LiveObject access typed. */
     fill?: Color;
     value?: string;
+};
+
+/** A local URL card; all image bytes remain in the existing durable asset store. */
+export type ProductCardLayer = ObjectRelations & {
+    type: LayerType.ProductCard;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    /** Exact HTTP(S) URL that was pasted or explicitly saved as the source. */
+    sourceUrl: string;
+    /** Optional product-specific URL captured independently of the source page. */
+    variantUrl?: string;
+    title?: string;
+    /** Current local preview asset. The server validates this through the shared asset reference path. */
+    assetId?: string;
+    /** Optional compatibility keys keep existing generic LiveObject access typed. */
+    fill?: Color;
+    value?: string;
+    titleSource?: ProductFieldSource;
+    imageSource?: ProductFieldSource;
+    extractionStatus: ExtractionStatus;
+    extractionMessage?: string;
 };
 
 export type Point = {
@@ -162,4 +188,5 @@ export type Layer =
     | PathLayer
     | TextLayer
     | NoteLayer
-    | ImageLayer;
+    | ImageLayer
+    | ProductCardLayer;

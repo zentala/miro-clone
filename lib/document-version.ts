@@ -5,9 +5,10 @@
  */
 import type { BoardDocument } from "../types/board";
 import { LayerType, type Layer } from "../types/canvas";
+import { isHttpSourceUrl } from "../types/extraction";
 
 /** Schema this application writes. Adding a layer type or field bumps it and adds an upgrade step. */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 /** Documents saved before explicit versioning have no schemaVersion field. */
 export const LEGACY_SCHEMA_VERSION = 1;
 /**
@@ -17,7 +18,7 @@ export const LEGACY_SCHEMA_VERSION = 1;
 export const MAX_LAYERS = 5000;
 const MAX_PATH_POINTS = 100000;
 const SUPPORTED_LAYER_TYPES = new Set<number>([
-    LayerType.Rectangle, LayerType.Ellipse, LayerType.Path, LayerType.Text, LayerType.Note, LayerType.Image,
+    LayerType.Rectangle, LayerType.Ellipse, LayerType.Path, LayerType.Text, LayerType.Note, LayerType.Image, LayerType.ProductCard,
 ]);
 
 export type DocumentErrorCode =
@@ -68,11 +69,22 @@ function validateLayer(id: string, value: unknown) {
         typeof (layer as Extract<Layer, { type: LayerType.Image }>).assetId === "string" &&
         /^[0-9a-f]{64}$/.test((layer as Extract<Layer, { type: LayerType.Image }>).assetId) &&
         !Object.hasOwn(value, "fill") && !Object.hasOwn(value, "value") && !Object.hasOwn(value, "points");
-    const validNonImage = layer.type !== LayerType.Image && isColor(layer.fill) &&
+    const validProductCard = layer.type === LayerType.ProductCard &&
+        isHttpSourceUrl(layer.sourceUrl) &&
+        (layer.variantUrl === undefined || isHttpSourceUrl(layer.variantUrl)) &&
+        (layer.title === undefined || typeof layer.title === "string") &&
+        (layer.assetId === undefined || (typeof layer.assetId === "string" && /^[0-9a-f]{64}$/.test(layer.assetId))) &&
+        (layer.titleSource === undefined || layer.titleSource === "extracted" || layer.titleSource === "manual") &&
+        (layer.imageSource === undefined || layer.imageSource === "extracted" || layer.imageSource === "manual") &&
+        ["pending", "offline", "unsupported", "ready", "error"].includes(layer.extractionStatus) &&
+        (layer.extractionMessage === undefined || typeof layer.extractionMessage === "string") &&
+        !Object.hasOwn(value, "fill") && !Object.hasOwn(value, "value") && !Object.hasOwn(value, "points");
+    const validNonImage = layer.type !== LayerType.Image && layer.type !== LayerType.ProductCard && isColor(layer.fill) &&
         (layer.value === undefined || typeof layer.value === "string");
     if (![layer.x, layer.y, layer.width, layer.height].every(Number.isFinite) ||
         layer.width < 0 || layer.height < 0 ||
-        (layer.type === LayerType.Image && (layer.width === 0 || layer.height === 0)) || !(validImage || validNonImage)) {
+        ((layer.type === LayerType.Image || layer.type === LayerType.ProductCard) && (layer.width === 0 || layer.height === 0)) ||
+        !(validImage || validProductCard || validNonImage)) {
         fail("invalid-schema", `Layer ${id} has invalid geometry, fill or content`);
     }
     if (layer.type === LayerType.Path && !isStroke(layer.points)) fail("invalid-schema", `Layer ${id} has an invalid stroke`);

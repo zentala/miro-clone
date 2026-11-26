@@ -8,6 +8,7 @@ check:
     node --test --test-concurrency=1 tests/packaging.test.cjs
     node --test --test-concurrency=1 tests/document-model.test.cjs
     node --test --test-concurrency=1 tests/image-workflow.test.cjs
+    node --test --test-concurrency=1 tests/product-cards.test.cjs
     node --test --test-concurrency=1 tests/progressive-images.test.cjs
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
     node --test --test-concurrency=1 tests/assets.test.cjs

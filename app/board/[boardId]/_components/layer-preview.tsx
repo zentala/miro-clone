@@ -10,6 +10,7 @@ import { Note } from "./note";
 import { Path } from "./path";
 import { colorToCss } from "@/lib/utils";
 import { Image } from "./image";
+import { ProductCard } from "./product-card";
 
 interface LayerPreviewProps {
     id: string;
@@ -74,6 +75,15 @@ export const LayerPreview = memo(
                 return (
                     <Image
                         alt="Board image"
+                        id={id}
+                        layer={layer}
+                        onPointerDown={onLayerPointerDown}
+                        selectionColor={selectionColor}
+                    />
+                );
+            case LayerType.ProductCard:
+                return (
+                    <ProductCard
                         id={id}
                         layer={layer}
                         onPointerDown={onLayerPointerDown}
