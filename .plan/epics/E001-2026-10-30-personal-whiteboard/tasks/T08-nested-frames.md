@@ -45,7 +45,7 @@ Current-source references are baseline evidence; entries marked planned do not e
 
 ## Bounds and proposed write scope
 
-Do not treat screenshot labels/assets as fixtures or accepted pixel layouts. Frame boundary-resize default remains a proposal until aligned; common lock enforcement is T09.
+Do not treat screenshot labels/assets as fixtures or accepted pixel layouts. Frame resizing follows PO decision 1 and the T01 clarification (2026-11-08): change only the frame bounds; do not scale descendants or reparent them when shrinking. Frames do not clip descendants and paint below them. Frames are the only persistent containment type; common lock enforcement is T09.
 
 The frontmatter write_set is a repo-relative proposal for this app only, not current
 authorization. Confirm actual impacted paths, dependency results and compatible filesystem
@@ -57,7 +57,9 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 - [ ] Create/name outer and inner frames; assign/reassign children without coordinate jumps and reject cycles.
 - [ ] Moving an outer frame moves all descendants once, without losing relative geometry or duplicating a descendant's transform.
 - [ ] Undo/redo and reload preserve nesting, names, geometry and layer ordering.
-- [ ] Resolve boundary resize, clipping and group-vs-frame semantics before testing them; proposed default is boundary-only resize without scaling children.
+- [ ] Resizing a frame changes only its own bounds; descendants keep absolute geometry, are not scaled, and are not reparented when left outside (PO decision 1 and T01 clarification, 2026-11-08).
+- [ ] Frames do not clip: a descendant outside the boundary stays visible and selectable; a frame paints below its descendants after create, assign, reassign, undo/redo and reload.
+- [ ] No group type is added; frames are the only persistent containment.
 
 ## Independent verification
 
