@@ -24,6 +24,33 @@ const fill = { r: 20, g: 30, b: 40 };
 const frame = (x, y, extra = {}) => ({ type: 7, x, y, width: 200, height: 120, name: 'Frame', ...extra });
 const shape = (x, y, extra = {}) => ({ type: 0, x, y, width: 40, height: 30, fill, ...extra });
 
+test('frame paint order is a stable topological order after assigning a later ancestor', () => {
+    const layerIds = ['inner', 'unrelated', 'outer'];
+    const layers = new Map([
+        ['inner', frame(0, 0)],
+        ['unrelated', frame(10, 10)],
+        ['outer', frame(20, 20)],
+    ]);
+    assert.deepEqual(version.framesBehindLayers(layerIds, layers), ['inner', 'unrelated', 'outer']);
+    layers.set('inner', { ...layers.get('inner'), parentId: 'outer' });
+    assert.deepEqual(version.framesBehindLayers(layerIds, layers), ['unrelated', 'outer', 'inner'],
+        'The eligible unrelated frame retains its position ahead of the newly required ancestor');
+});
+
+test('only a frame can be the persistent parent of a layer', () => {
+    const valid = { schemaVersion: 5, layerIds: ['frame', 'child'], layers: {
+        frame: frame(0, 0),
+        child: shape(500, 600, { parentId: 'frame' }),
+    } };
+    assert.deepEqual(version.validateDocument(valid), valid);
+
+    const invalid = { schemaVersion: 5, layerIds: ['shape-parent', 'child'], layers: {
+        'shape-parent': shape(0, 0),
+        child: shape(50, 50, { parentId: 'shape-parent' }),
+    } };
+    assert.throws(() => version.validateDocument(invalid), error => error.code === 'invalid-schema');
+});
+
 test('nested frame assignment orders ancestors first; shrink, move, undo and redo preserve descendants once', async () => {
     const document = { schemaVersion: 5, layerIds: ['inner', 'outer', 'shape'], layers: {
         shape: shape(500, 600, { parentId: 'inner' }),

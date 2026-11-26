@@ -141,6 +141,12 @@ export function assertRelations(document: BoardDocument) {
         }
         chain.forEach(visited => resolved.add(visited));
     }
+    for (const id of document.layerIds) {
+        const parentId = document.layers[id].parentId;
+        if (parentId !== undefined && document.layers[parentId].type !== LayerType.Frame) {
+            fail("invalid-schema", `Layer ${id} has non-frame parent ${parentId}`);
+        }
+    }
 }
 
 /**
@@ -175,23 +181,53 @@ export function getDescendantLayerIds(rootId: string, layerIds: readonly string[
 /** Frames form background surfaces; all other persisted paint order stays intact. */
 export function framesBehindLayers(layerIds: readonly string[], layers: ReadonlyMap<string, Layer>): string[] {
     const frames = layerIds.filter(id => layers.get(id)?.type === LayerType.Frame);
-    const frameIds = new Set(frames);
-    const orderedFrames: string[] = [];
-    const visitedFrames = new Set<string>();
-    for (const id of frames) {
-        const path: string[] = [];
-        const pathIds = new Set<string>();
-        let current: string | undefined = id;
-        while (current && frameIds.has(current) && !visitedFrames.has(current) && !pathIds.has(current)) {
-            path.push(current);
-            pathIds.add(current);
-            const parentId = layers.get(current)?.parentId;
-            current = parentId && frameIds.has(parentId) ? parentId : undefined;
+    const frameIndex = new Map<string, number>(frames.map((id, index) => [id, index]));
+    const descendants = frames.map(() => [] as number[]);
+    const remainingParents = frames.map(() => 0);
+    for (let childIndex = 0; childIndex < frames.length; childIndex++) {
+        const parentId = layers.get(frames[childIndex])?.parentId;
+        const parentIndex = parentId === undefined ? undefined : frameIndex.get(parentId);
+        if (parentIndex === undefined) continue;
+        descendants[parentIndex].push(childIndex);
+        remainingParents[childIndex]++;
+    }
+
+    // A min-heap over source indices picks the earliest currently eligible frame.
+    const ready: number[] = [];
+    const enqueue = (index: number) => {
+        ready.push(index);
+        for (let child = ready.length - 1; child > 0;) {
+            const parent = Math.floor((child - 1) / 2);
+            if (ready[parent] <= ready[child]) break;
+            [ready[parent], ready[child]] = [ready[child], ready[parent]];
+            child = parent;
         }
-        for (let index = path.length - 1; index >= 0; index--) {
-            const ancestorFirst = path[index];
-            visitedFrames.add(ancestorFirst);
-            orderedFrames.push(ancestorFirst);
+    };
+    const dequeue = () => {
+        const first = ready[0];
+        const last = ready.pop()!;
+        if (ready.length) {
+            ready[0] = last;
+            for (let parent = 0;;) {
+                const left = parent * 2 + 1;
+                const right = left + 1;
+                let smallest = parent;
+                if (left < ready.length && ready[left] < ready[smallest]) smallest = left;
+                if (right < ready.length && ready[right] < ready[smallest]) smallest = right;
+                if (smallest === parent) break;
+                [ready[parent], ready[smallest]] = [ready[smallest], ready[parent]];
+                parent = smallest;
+            }
+        }
+        return first;
+    };
+    remainingParents.forEach((count, index) => { if (count === 0) enqueue(index); });
+    const orderedFrames: string[] = [];
+    while (ready.length) {
+        const index = dequeue();
+        orderedFrames.push(frames[index]);
+        for (const childIndex of descendants[index]) {
+            if (--remainingParents[childIndex] === 0) enqueue(childIndex);
         }
     }
     return [...orderedFrames, ...layerIds.filter(id => layers.get(id)?.type !== LayerType.Frame)];
