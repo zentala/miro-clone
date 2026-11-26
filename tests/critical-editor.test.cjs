@@ -228,7 +228,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
             await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
         };
-        await clickAt({ x: 500, y: 320 });
+        await clickAt({ x: 450, y: 310 });
         const innerScreen = await evaluate(`(() => {
             const bounds = document.querySelector('[data-frame-name="Inner frame"] [data-frame-bounds]').getBoundingClientRect();
             return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
@@ -246,7 +246,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             document.layers[childId].y >= innerResized.y + innerResized.height, 'The child remains outside the resized inner frame');
         assert.equal(document.layers[innerId].parentId, outerId);
 
-        await clickAt({ x: 800, y: 580 });
+        await clickAt({ x: 830, y: 580 });
         const outerScreen = await evaluate(`(() => {
             const bounds = document.querySelector('[data-frame-name="Outer frame"] [data-frame-bounds]').getBoundingClientRect();
             return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
