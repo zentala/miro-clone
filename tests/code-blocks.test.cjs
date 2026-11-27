@@ -21,6 +21,41 @@ test('code blocks preserve source and settings through history, migration and re
     const boardId = boardUrl.split('/').at(-1);
     const api = `${origin}/api/boards/${boardId}`;
     const readBoard = async () => (await fetch(api, { signal: AbortSignal.timeout(deadline) })).json();
+    const patchDocument = document => fetch(api, {
+        method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document }), signal: AbortSignal.timeout(deadline),
+    });
+    const documentWithLayer = layer => ({ schemaVersion: 5, layerIds: ['candidate'], layers: { candidate: layer } });
+    const ordinaryTextDocument = documentWithLayer({
+        type: 3, x: 1, y: 2, width: 320, height: 180, fill: { r: 255, g: 255, b: 255 }, value: 'ordinary text',
+    });
+    assert.equal((await patchDocument(ordinaryTextDocument)).status, 200, 'Ordinary Text without code metadata remains valid');
+    assert.deepEqual((await readBoard()).document, ordinaryTextDocument);
+    const validCodeRecord = {
+        type: 3, x: 1, y: 2, width: 320, height: 180, fill: { r: 255, g: 255, b: 255 }, value: 'const x = 1;',
+        codeBlock: true, fontSize: 14, showLineNumbers: true,
+    };
+    const invalidCodeRecords = [
+        ['codeBlock false', { ...validCodeRecord, codeBlock: false }],
+        ['non-boolean codeBlock', { ...validCodeRecord, codeBlock: 'true' }],
+        ['code metadata without marker', (() => { const { codeBlock, ...record } = validCodeRecord; return record; })()],
+        ['non-Text code block', { ...validCodeRecord, type: 0 }],
+        ['font size below minimum', { ...validCodeRecord, fontSize: 7 }],
+        ['font size above maximum', { ...validCodeRecord, fontSize: 49 }],
+        ['fractional font size', { ...validCodeRecord, fontSize: 14.5 }],
+        ['string font size', { ...validCodeRecord, fontSize: '14' }],
+        ['missing font size', (() => { const { fontSize, ...record } = validCodeRecord; return record; })()],
+        ['non-boolean line-number setting', { ...validCodeRecord, showLineNumbers: 'true' }],
+        ['missing line-number setting', (() => { const { showLineNumbers, ...record } = validCodeRecord; return record; })()],
+    ];
+    for (const [description, layer] of invalidCodeRecords) {
+        assert.equal((await patchDocument(documentWithLayer(layer))).status, 400, `${description} is rejected`);
+        assert.deepEqual((await readBoard()).document, ordinaryTextDocument, `${description} leaves the saved board unchanged`);
+    }
+    for (const fontSize of [8, 48]) {
+        assert.equal((await patchDocument(documentWithLayer({ ...validCodeRecord, fontSize }))).status, 200, `Font size ${fontSize} is accepted`);
+    }
+    assert.equal((await patchDocument({ schemaVersion: 5, layerIds: [], layers: {} })).status, 200, 'The isolated board is reset for UI coverage');
     const source = 'const answer = 42;\n\tconsole.log(answer);\nwindow.__codeExecuted = true;';
     const clickAt = async point => {
         await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
@@ -160,10 +195,6 @@ test('code blocks preserve source and settings through history, migration and re
     assert.deepEqual(migrated.document.layers['legacy-code'], legacyCode.layers['legacy-code'], 'The existing v4-to-v5 upgrade preserves code metadata');
     t.diagnostic('Code block migration verified');
 
-    const patchDocument = document => fetch(api, {
-        method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document }), signal: AbortSignal.timeout(deadline),
-    });
     const nested = structuredClone(migrated.document);
     nested.layerIds.push('code-frame');
     nested.layers['code-frame'] = { type: 7, x: 150, y: 150, width: 800, height: 500, name: 'Code frame' };

@@ -82,6 +82,12 @@ function validateLayer(id: string, value: unknown) {
         ["pending", "offline", "unsupported", "ready", "error"].includes(layer.extractionStatus) &&
         (layer.extractionMessage === undefined || typeof layer.extractionMessage === "string") &&
         !Object.hasOwn(value, "fill") && !Object.hasOwn(value, "value") && !Object.hasOwn(value, "points");
+    const hasCodeMetadata = Object.hasOwn(value, "codeBlock") || Object.hasOwn(value, "fontSize") || Object.hasOwn(value, "showLineNumbers");
+    if (hasCodeMetadata && (layer.type !== LayerType.Text || value.codeBlock !== true ||
+        !Number.isInteger(value.fontSize) || (value.fontSize as number) < 8 || (value.fontSize as number) > 48 ||
+        typeof value.showLineNumbers !== "boolean")) {
+        fail("invalid-schema", `Layer ${id} has invalid code block metadata`);
+    }
     const validNonImage = layer.type !== LayerType.Image && layer.type !== LayerType.ProductCard && layer.type !== LayerType.Frame && isColor(layer.fill) &&
         (layer.value === undefined || typeof layer.value === "string");
     if (![layer.x, layer.y, layer.width, layer.height].every(Number.isFinite) ||
