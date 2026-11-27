@@ -4,6 +4,7 @@ import { useSelectionBounds } from "@/hooks/use-selection-bounds";
 import { useSelf, useStorage } from "@/hooks/use-local-board";
 import { LayerType, Side, XYWH } from "@/types/canvas";
 import { memo } from "react";
+import { Lock } from "lucide-react";
 
 interface SelectionBoxProps {
     onResizeHandlePointerDown: (corner: Side, initialBounds: XYWH) => void;
@@ -16,9 +17,8 @@ const HANDLE_SCREEN_WIDTH = 6;
 export const SelectionBox = memo(
     ({ onResizeHandlePointerDown, zoom }: SelectionBoxProps) => {
         const handleWidth = HANDLE_SCREEN_WIDTH / zoom;
-        const soleLayerId = useSelf((me) =>
-            me.presence.selection.length === 1 ? me.presence.selection[0] : null
-        );
+        const selection = useSelf((me) => me.presence.selection);
+        const soleLayerId = selection.length === 1 ? selection[0] : null;
 
         const isShowingHandles = useStorage(
             (root) =>
@@ -27,6 +27,12 @@ export const SelectionBox = memo(
         );
 
         const bounds = useSelectionBounds();
+        const isEffectivelyLocked = useStorage(root => selection.some(id => {
+            for (let current: string | undefined = id; current !== undefined; current = root.layers.get(current)?.parentId) {
+                if (root.layers.get(current)?.locked) return true;
+            }
+            return false;
+        }));
 
         if (!bounds) {
             return null;
@@ -35,7 +41,8 @@ export const SelectionBox = memo(
         return (
             <>
                 <rect
-                    className="fill-transparent stroke-blue-500 stroke-1 pointer-events-none"
+                    data-selection-outline="true"
+                    className={`fill-transparent ${isEffectivelyLocked ? "stroke-neutral-400" : "stroke-blue-500"} stroke-1 pointer-events-none`}
                     vectorEffect="non-scaling-stroke"
                     style={{
                         transform: `translate(${bounds.x}px, ${bounds.y}px)`,
@@ -45,6 +52,16 @@ export const SelectionBox = memo(
                     width={bounds.width}
                     height={bounds.height}
                 />
+                {isEffectivelyLocked && <g
+                    data-lock-badge="true"
+                    role="img"
+                    aria-label="Locked"
+                    pointerEvents="none"
+                    transform={`translate(${bounds.x + bounds.width + 9 / zoom} ${bounds.y - 9 / zoom}) scale(${1 / zoom})`}
+                >
+                    <circle r="9" fill="white" stroke="#a3a3a3" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                    <Lock x={-7} y={-7} width={14} height={14} color="#737373" strokeWidth={2} />
+                </g>}
                 {isShowingHandles && (
                     <>
                         <rect

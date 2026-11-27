@@ -422,6 +422,48 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             document.layers[childId].y >= innerResized.y + innerResized.height, 'The child remains outside the resized inner frame');
         assert.equal(document.layers[innerId].parentId, outerId);
 
+        const unlockedSelectionVisuals = await evaluate(`(() => {
+            const outline = document.querySelector('[data-selection-outline]');
+            const button = document.querySelector('button[aria-label="Lock selected objects"]');
+            if (!outline || !button) return false;
+            const rect = outline.getBoundingClientRect();
+            const handles = Array.from(document.querySelectorAll('[data-editor-overlay] rect'))
+                .filter(node => getComputedStyle(node).cursor.endsWith('resize'))
+                .map(node => { const r = node.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; });
+            const r = button.getBoundingClientRect();
+            return {
+                stroke: getComputedStyle(outline).stroke,
+                bounds: [rect.x, rect.y, rect.width, rect.height],
+                handles,
+                button: { x: r.x + r.width / 2, y: r.y + r.height / 2 },
+                buttonBackground: getComputedStyle(button).backgroundColor,
+                buttonColor: getComputedStyle(button).color,
+            };
+        })()`);
+        assert.ok(unlockedSelectionVisuals, 'The selected frame has an outline and lock toggle');
+        assert.equal(unlockedSelectionVisuals.stroke, 'rgb(59, 130, 246)', 'An unlocked selection keeps the blue outline');
+        assert.equal(unlockedSelectionVisuals.handles.length, 8, 'The selection keeps all eight resize handles');
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1100, y: 800 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', x: unlockedSelectionVisuals.button.x, y: unlockedSelectionVisuals.button.y });
+        const hoveredLockButton = await until('lock button hover styling', () => evaluate(`(() => {
+            const button = document.querySelector('button[aria-label="Lock selected objects"]');
+            const background = getComputedStyle(button).backgroundColor;
+            const color = getComputedStyle(button).color;
+            return background !== ${JSON.stringify(unlockedSelectionVisuals.buttonBackground)} &&
+                color !== ${JSON.stringify(unlockedSelectionVisuals.buttonColor)} ? { background, color } : false;
+        })()`));
+        assert.match(hoveredLockButton.background, /59, 130, 246/);
+        assert.match(hoveredLockButton.color, /^rgb\(/);
+        await page('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+        await page('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+        await evaluate(`document.querySelector('button[aria-label="Lock selected objects"]').focus()`);
+        const focusedLockButton = await evaluate(`(() => {
+            const button = document.querySelector('button[aria-label="Lock selected objects"]');
+            return { visible: button.matches(':focus-visible'), shadow: getComputedStyle(button).boxShadow };
+        })()`);
+        assert.equal(focusedLockButton.visible, true, 'The lock button remains visible under keyboard focus');
+        assert.notEqual(focusedLockButton.shadow, 'none', 'The existing focus-visible ring remains rendered');
+
         await click('button[aria-label="Lock selected objects"]');
         await saved();
         document = await readDocument();
@@ -429,6 +471,37 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.equal(document.layers[childId].locked, undefined, 'A frame lock is inherited without rewriting child lock bits');
         assert.equal(await evaluate(`!!document.querySelector('[aria-label="Selection contains locked objects"]')`), true,
             'The selected frame shows a visible lock indicator');
+        const lockedSelectionVisuals = await evaluate(`(() => {
+            const outline = document.querySelector('[data-selection-outline]');
+            const badge = document.querySelector('[data-lock-badge]');
+            if (!outline || !badge) return false;
+            const rect = outline.getBoundingClientRect();
+            const badgeRect = badge.getBoundingClientRect();
+            const handles = Array.from(document.querySelectorAll('[data-editor-overlay] rect'))
+                .filter(node => getComputedStyle(node).cursor.endsWith('resize'))
+                .map(node => { const r = node.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; });
+            return {
+                stroke: getComputedStyle(outline).stroke,
+                bounds: [rect.x, rect.y, rect.width, rect.height],
+                badge: [badgeRect.x, badgeRect.y, badgeRect.width, badgeRect.height],
+                handles,
+            };
+        })()`);
+        assert.ok(lockedSelectionVisuals, 'An effectively locked selection has a top-right lock badge');
+        assert.equal(lockedSelectionVisuals.stroke, 'rgb(163, 163, 163)', 'An effectively locked selection uses neutral-400');
+        assert.deepEqual(lockedSelectionVisuals.bounds, unlockedSelectionVisuals.bounds, 'Lock styling preserves selection geometry');
+        assert.deepEqual(lockedSelectionVisuals.handles, unlockedSelectionVisuals.handles, 'Lock styling preserves all resize handle geometry');
+        assert.ok(Math.abs(lockedSelectionVisuals.badge[2] - 18) < 1 && Math.abs(lockedSelectionVisuals.badge[3] - 18) < 1,
+            `The lock badge stays 18 screen pixels: ${JSON.stringify(lockedSelectionVisuals.badge)}`);
+        assert.ok(Math.abs(lockedSelectionVisuals.badge[0] - (lockedSelectionVisuals.bounds[0] + lockedSelectionVisuals.bounds[2])) < 1 &&
+            Math.abs(lockedSelectionVisuals.badge[1] - (lockedSelectionVisuals.bounds[1] - 18)) < 1,
+        'The lock badge sits at the selection top-right without covering its resize handle');
+        const lockedSelectionScreenshot = join(screenshotDirectory, 'locked-selection.png');
+        await writeFile(lockedSelectionScreenshot, Buffer.from(
+            (await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data,
+            'base64'
+        ));
+        t.diagnostic(`Locked selection screenshot: ${lockedSelectionScreenshot}`);
         await click('button[aria-label="Undo (Ctrl+Z)"]');
         await saved();
         assert.equal((await readDocument()).layers[innerId].locked, undefined, 'Lock changes are undoable');
