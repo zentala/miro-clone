@@ -2,6 +2,92 @@ import type { Board, BoardDocument } from "../types/board";
 import type { Color, Layer } from "../types/canvas";
 import { assertRelations, getDescendantLayerIds } from "../lib/document-version";
 
+export const LOCKED_GEOMETRY_NOTICE = "This object is locked. Unlock it before changing its geometry, parent, order, fill, text, or deleting it.";
+export const LOCKED_FRAME_NOTICE = "This frame is locked. Unlock it before moving objects into it.";
+export const MIXED_LOCK_NOTICE = "This selection contains locked objects. Unlock them before changing the selection's geometry.";
+
+export class LockViolation extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "LockViolation";
+    }
+}
+
+export function isEffectivelyLocked(document: BoardDocument, id: string): boolean {
+    for (let current: string | undefined = id; current !== undefined; current = document.layers[current]?.parentId) {
+        if (document.layers[current]?.locked) return true;
+    }
+    return false;
+}
+
+function withoutOwnLock(layer: Layer): Record<string, unknown> {
+    const content = { ...layer } as Record<string, unknown>;
+    delete content.locked;
+    return content;
+}
+
+function hasContentChanged(before: Layer, after: Layer): boolean {
+    return JSON.stringify(withoutOwnLock(before)) !== JSON.stringify(withoutOwnLock(after));
+}
+
+function changedOrderTouchesLockedLayer(before: BoardDocument, after: BoardDocument): boolean {
+    const afterIndexes = new Map(after.layerIds.map((id, index) => [id, index]));
+    const tree = new Array(after.layerIds.length + 1).fill(0);
+    const countLockedBefore = (position: number) => {
+        let count = 0;
+        for (let index = position; index > 0; index -= index & -index) count += tree[index];
+        return count;
+    };
+    const addLockedPosition = (position: number) => {
+        for (let index = position + 1; index < tree.length; index += index & -index) tree[index]++;
+    };
+    let furthestPriorPosition = -1;
+    let priorLockedCount = 0;
+    for (const id of before.layerIds) {
+        const position = afterIndexes.get(id);
+        if (position === undefined) continue;
+        const hasEarlierInversion = furthestPriorPosition > position;
+        const hasLockedLaterInversion = priorLockedCount - countLockedBefore(position + 1) > 0;
+        if ((hasEarlierInversion && isEffectivelyLocked(before, id)) || hasLockedLaterInversion) return true;
+        furthestPriorPosition = Math.max(furthestPriorPosition, position);
+        if (isEffectivelyLocked(before, id)) {
+            priorLockedCount++;
+            addLockedPosition(position);
+        }
+    }
+    return false;
+}
+
+export function assertUnlockedChanges(before: BoardDocument, after: BoardDocument): void {
+    if (changedOrderTouchesLockedLayer(before, after)) {
+        throw new LockViolation(LOCKED_GEOMETRY_NOTICE);
+    }
+    const changedIds: string[] = [];
+    const lockedChanges: string[] = [];
+    for (const id of before.layerIds) {
+        const previous = before.layers[id];
+        const current = after.layers[id];
+        if (!current) {
+            changedIds.push(id);
+            if (isEffectivelyLocked(before, id)) lockedChanges.push(id);
+            continue;
+        }
+        if (!hasContentChanged(previous, current)) continue;
+        changedIds.push(id);
+        if (isEffectivelyLocked(before, id)) lockedChanges.push(id);
+        if (previous.parentId !== current.parentId && current.parentId !== undefined &&
+            isEffectivelyLocked(after, current.parentId)) {
+            throw new LockViolation(LOCKED_FRAME_NOTICE);
+        }
+    }
+    if (lockedChanges.length && changedIds.length > lockedChanges.length) {
+        throw new LockViolation(MIXED_LOCK_NOTICE);
+    }
+    if (lockedChanges.length) {
+        throw new LockViolation(LOCKED_GEOMETRY_NOTICE);
+    }
+}
+
 /**
  * Copy-on-write edit of one board document during a single mutation.
  * The first write takes a shallow snapshot (paint order, layer record); each layer is
@@ -66,6 +152,7 @@ export class LocalObject<T extends Layer = Layer> {
     }
     get<K extends keyof T>(key: K): T[K] { return this.value[key]; }
     set<K extends keyof T>(key: K, value: T[K]) { this.writable()[key] = value; }
+    unset<K extends keyof T>(key: K) { delete (this.writable() as Partial<T>)[key]; }
     update(values: Partial<T>) { Object.assign(this.writable(), values); }
     clone() { return new LocalObject(structuredClone(this.value)); }
     private writable(): T {
@@ -194,16 +281,39 @@ export class BoardStore {
         if (this.edit) return callback(context);
         const edit = new DocumentEdit(this.document);
         const presenceBefore = { ...this.presence };
-        let result: T, changed: boolean;
+        let result: T, changed: boolean, refusal: LockViolation | null = null;
         this.edit = edit;
         try {
             result = callback(context);
             changed = edit.changed();
             // One relation boundary for every mutation route: never save a missing parent or a cycle.
-            if (changed) assertRelations(this.document);
+            if (changed) {
+                assertRelations(this.document);
+                assertUnlockedChanges(edit.before!, this.document);
+                // A duplicate copies content, not its source object's own editing lock.
+                for (const id of this.document.layerIds) {
+                    if (!Object.hasOwn(edit.before!.layers, id) && this.document.layers[id].locked) {
+                        const layer = edit.writableLayer(id)!;
+                        delete layer.locked;
+                    }
+                }
+                changed = edit.changed();
+            }
         }
-        catch (error) { if (edit.before) this.document = edit.before; throw error; }
+        catch (error) {
+            if (edit.before) this.document = edit.before;
+            if (error instanceof LockViolation) {
+                refusal = error;
+                result = undefined as T;
+                changed = false;
+            } else throw error;
+        }
         finally { this.edit = null; }
+        if (refusal) {
+            this.notice = refusal.message;
+            this.notify();
+            return result!;
+        }
         if (changed) this.record(edit.before!);
         if (changed || this.presenceChanged(presenceBefore)) this.notify();
         return result;

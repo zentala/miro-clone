@@ -422,6 +422,55 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             document.layers[childId].y >= innerResized.y + innerResized.height, 'The child remains outside the resized inner frame');
         assert.equal(document.layers[innerId].parentId, outerId);
 
+        await click('button[aria-label="Lock selected objects"]');
+        await saved();
+        document = await readDocument();
+        assert.equal(document.layers[innerId].locked, true, 'The selection toolbar locks the selected frame');
+        assert.equal(document.layers[childId].locked, undefined, 'A frame lock is inherited without rewriting child lock bits');
+        assert.equal(await evaluate(`!!document.querySelector('[aria-label="Selection contains locked objects"]')`), true,
+            'The selected frame shows a visible lock indicator');
+        await click('button[aria-label="Undo (Ctrl+Z)"]');
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, undefined, 'Lock changes are undoable');
+        await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, true, 'Lock changes are redoable');
+        await page('Input.dispatchKeyEvent', { type: 'keyDown', key: 'l', code: 'KeyL', modifiers: 10 });
+        await page('Input.dispatchKeyEvent', { type: 'keyUp', key: 'l', code: 'KeyL', modifiers: 10 });
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, undefined, 'Ctrl+Shift+L unlocks the selected frame');
+
+        const innerBounds = await evaluate(`(() => { const r = document.querySelector('[data-frame-id="${innerId}"] [data-frame-bounds]').getBoundingClientRect(); return { x: r.left + 20, y: r.top + 20 }; })()`);
+        await page('Input.dispatchMouseEvent', { type: 'mousePressed', x: innerBounds.x, y: innerBounds.y, button: 'right', buttons: 2, clickCount: 1 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseReleased', x: innerBounds.x, y: innerBounds.y, button: 'right', buttons: 0, clickCount: 1 });
+        await until('selected object context menu', () => evaluate(`!!document.querySelector('[role="menuitem"]')`));
+        await click('[role="menuitem"]');
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, true, 'The context menu locks the selected frame');
+        await click('button[aria-label="Unlock selected objects"]');
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, undefined, 'The selection toolbar unlocks the selected frame');
+        await click('button[aria-label="Lock selected objects"]');
+        await saved();
+        await click('button:has(svg.lucide-copy)');
+        await saved();
+        document = await readDocument();
+        const duplicateFrameId = document.layerIds.find(id => id !== outerId && id !== innerId && document.layers[id].type === 7);
+        assert.ok(duplicateFrameId, 'The locked frame can be duplicated');
+        assert.equal(document.layers[duplicateFrameId].locked, undefined, 'A duplicate is an unlocked copy');
+        await click('button:has(svg.lucide-trash2)');
+        await saved();
+        assert.equal((await readDocument()).layers[duplicateFrameId], undefined, 'The unlocked duplicate can be deleted');
+        await click('button[aria-label="Undo (Ctrl+Z)"]');
+        await saved();
+        await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
+        await saved();
+        await clickAt({ x: innerResized.x + 5, y: innerResized.y + 5 });
+        await until('original frame selected after duplicate deletion', () => evaluate(`document.querySelector('input[aria-label="Frame name"]')?.value === 'Inner frame'`));
+        await click('button[aria-label="Unlock selected objects"]');
+        await saved();
+        assert.equal((await readDocument()).layers[innerId].locked, undefined, 'The original frame remains editable after removing its duplicate');
+
         await clickAt({ x: 830, y: 580 });
         const outerScreen = await evaluate(`(() => {
             const bounds = document.querySelector('[data-frame-name="Outer frame"] [data-frame-bounds]').getBoundingClientRect();

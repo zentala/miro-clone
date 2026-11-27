@@ -1,7 +1,7 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { useMutation, useSelf, useStorage } from "@/hooks/use-local-board";
+import { useLocalBoard, useMutation, useSelf, useStorage } from "@/hooks/use-local-board";
 import { Camera, Color, LayerType } from "@/types/canvas";
 import type { FrameLayer } from "@/types/canvas";
 import type { LocalObject } from "@/store/use-board-store";
@@ -10,8 +10,9 @@ import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
-import { BringToFront, Copy, SendToBack, Trash2 } from "lucide-react";
+import { BringToFront, Copy, Lock, SendToBack, Trash2, Unlock } from "lucide-react";
 import { BringToFrontIcon, SendToBackIcon } from "@/components/icon";
+import { toggleObjectLocks } from "@/lib/object-locks";
 
 interface SelectionToolsProps {
     camera: Camera;
@@ -23,6 +24,14 @@ interface SelectionToolsProps {
 export const SelectionTools = memo(
     ({ camera, setLastUsedColor, onDuplicate, lastUsedColor }: SelectionToolsProps) => {
         const selection = useSelf((me) => me.presence.selection);
+        const store = useLocalBoard();
+        const hasEffectiveLock = useStorage(root => selection.some(id => {
+            for (let current: string | undefined = id; current !== undefined; current = root.layers.get(current)?.parentId) {
+                if (root.layers.get(current)?.locked) return true;
+            }
+            return false;
+        }));
+        const allOwnLocked = useStorage(root => selection.length > 0 && selection.every(id => root.layers.get(id)?.locked === true));
         const selectedFrames = useStorage(root => selection.filter(id => root.layers.get(id)?.type === LayerType.Frame));
         const selectedParentId = useStorage(root => {
             const parents = selection.map(id => root.layers.get(id)?.parentId);
@@ -144,6 +153,13 @@ export const SelectionTools = memo(
                 }}
             >
                 {!containsImage && <ColorPicker onChange={setFill} lastUsedColor={lastUsedColor} />}
+                <Hint label={allOwnLocked ? "Unlock selected objects (Ctrl+Shift+L)" : "Lock selected objects (Ctrl+Shift+L)"}>
+                    <Button aria-label={allOwnLocked ? "Unlock selected objects" : "Lock selected objects"}
+                        variant="board" size="icon" onClick={() => toggleObjectLocks(store, selection)}>
+                        {allOwnLocked ? <Unlock /> : <Lock />}
+                    </Button>
+                </Hint>
+                {hasEffectiveLock && <span className="flex h-10 w-10 items-center justify-center text-neutral-500" aria-label="Selection contains locked objects" title="Selection contains locked objects"><Lock /></span>}
                 {activeFrameId && <input aria-label="Frame name" className="h-10 w-32 border rounded px-2 text-sm"
                     value={frameNameDraft} onChange={event => setFrameNameDraft(event.target.value)}
                     onBlur={commitFrameName} onKeyDown={event => {

@@ -268,13 +268,14 @@ test('store deletes a parent without dangling references and rolls back relation
     const realFetch = globalThis.fetch;
     globalThis.fetch = async (url, init) => { saves.push(JSON.parse(init.body).document); return { ok: true }; };
     try {
-        const document = current({ outer: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Outer', locked: true },
+        const document = current({ outer: { type: 7, x: 0, y: 0, width: 10, height: 10, name: 'Outer' },
             inner: { type: 7, x: 50, y: 0, width: 10, height: 10, name: 'Inner', parentId: 'outer' },
             leaf: node(4, { parentId: 'inner', y: 70 }) });
         const board = new store.BoardStore({ id: 'b', title: 'Store', createdAt: 1, updatedAt: 1, document });
         board.mutate(({ storage }) => { storage.get('layers').delete('inner'); const ids = storage.get('layerIds'); ids.delete(ids.indexOf('inner')); });
         assert.deepEqual(board.document.layers.leaf, node(4, { parentId: 'outer', y: 70 }), 'Child moves up a level with unchanged geometry');
-        assert.equal(version.isEffectivelyLocked(board.document, 'leaf'), true);
+        assert.equal(version.isEffectivelyLocked(board.document, 'leaf'), false,
+            'Deleting the unlocked inner frame leaves its child under an unlocked parent');
         const snapshot = structuredClone(board.document);
         assert.throws(() => board.mutate(({ storage }) => { storage.get('layers').get('outer').set('parentId', 'leaf'); }),
             error => error instanceof version.DocumentError && error.code === 'cycle');

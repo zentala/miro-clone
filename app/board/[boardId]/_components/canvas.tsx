@@ -32,6 +32,8 @@ import { LocalObject } from "@/store/use-board-store";
 import { isHttpSourceUrl } from "@/types/extraction";
 import { framesBehindLayers } from "@/lib/document-version";
 import { Button } from "@/components/ui/button";
+import { isEffectivelyLocked, toggleObjectLocks } from "@/lib/object-locks";
+import { Lock, Unlock } from "lucide-react";
 
 const SELECTION_NET_THRESHOLD = 5;
 
@@ -42,12 +44,15 @@ interface CanvasProps {
 export const Canvas = ({ boardId }: CanvasProps) => {
     const [canvasState, setCanvasState] = useState<CanvasState>({ mode: CanvasMode.None });
     const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 255, g: 255, b: 255 });
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const store = useLocalBoard();
     const history = useHistory();
     const layerIds = useStorage((root) => root.layerIds);
     const paintLayerIds = useStorage(root => framesBehindLayers(root.layerIds, root.layers));
     const pencilDraft = useSelf((me) => me.presence.pencilDraft);
+    const selection = useSelf((me) => me.presence.selection);
+    const allOwnLocked = useStorage(root => selection.length > 0 && selection.every(id => root.layers.get(id)?.locked === true));
     const canUndo = useCanUndo();
     const canRedo = useCanRedo();
     const title = useBoardSelector((current) => current.board.title);
@@ -180,6 +185,43 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     });
     useCanvasKeyboard(canvasState.mode, history, duplicateLayers, layerActions.moveSelectedLayers);
 
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return;
+        const onContextMenu = (event: MouseEvent) => {
+            event.preventDefault();
+            if (selection.length) setContextMenu({ x: event.clientX, y: event.clientY });
+        };
+        svg.addEventListener("contextmenu", onContextMenu);
+        return () => svg.removeEventListener("contextmenu", onContextMenu);
+    }, [selection]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target;
+            if (target instanceof HTMLElement && (target.isContentEditable || target.closest("input, textarea, select"))) return;
+            if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "l") {
+                event.preventDefault();
+                toggleObjectLocks(store, selection);
+                setContextMenu(null);
+            }
+        };
+        const onDoubleClick = (event: MouseEvent) => {
+            if (!(event.target instanceof Element) || !svgRef.current?.contains(event.target)) return;
+            if (selection.some(id => isEffectivelyLocked(store.document, id))) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                store.refuse("This object is locked. Unlock it before editing its text.");
+            }
+        };
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("dblclick", onDoubleClick, true);
+        return () => {
+            document.removeEventListener("keydown", onKeyDown);
+            document.removeEventListener("dblclick", onDoubleClick, true);
+        };
+    }, [selection, store]);
+
     const layerPointerDownRef = useRef(layerActions.onLayerPointerDown);
     layerPointerDownRef.current = layerActions.onLayerPointerDown;
     const onStableLayerPointerDown = useCallback(
@@ -225,6 +267,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             />
             <Button aria-label="New frame" className="fixed right-4 top-20 z-30" variant="board" onClick={createFrame}>New frame</Button>
             <div data-canvas-overlay="rich-text-toolbar" className="pointer-events-none fixed inset-0 z-50" />
+            {contextMenu && <div role="menu" className="fixed z-[60] rounded-md border bg-white p-1 shadow-md"
+                style={{ left: contextMenu.x, top: contextMenu.y }}>
+                <button role="menuitem" className="flex h-9 items-center gap-2 rounded px-3 text-sm hover:bg-neutral-100"
+                    onClick={() => { toggleObjectLocks(store, selection); setContextMenu(null); }}>
+                    {allOwnLocked ? <Unlock size={16} /> : <Lock size={16} />}
+                    {allOwnLocked ? "Unlock selected objects" : "Lock selected objects"}
+                </button>
+            </div>}
         </>
     );
 };

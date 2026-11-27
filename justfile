@@ -7,6 +7,7 @@ check:
     node --test --test-concurrency=1 tests/miro-export.test.cjs
     node --test --test-concurrency=1 tests/packaging.test.cjs
     node --test --test-concurrency=1 tests/document-model.test.cjs
+    node --test --test-concurrency=1 tests/locks.test.cjs
     node --test --test-concurrency=1 tests/frames.test.cjs
     node --test --test-concurrency=1 tests/image-workflow.test.cjs
     node --test --test-concurrency=1 tests/product-cards.test.cjs
