@@ -21,8 +21,8 @@ execution: "not-dispatched"
 phase: 5
 completed_at: null
 commits: []
-verification_evidence: ["2026-11-27 bounded package research under accepted PO condition f5270b9: npm registry reports codemirror 6.0.2 MIT; Bundlephobia full package graph 118750 bytes minified+gzip / 373186 minified. @codemirror/lang-javascript 6.2.5 MIT; graph 128676 gzip / 384023 minified. @codemirror/lang-json 6.0.2 MIT; graph 83551 gzip / 259862 minified. The graphs overlap and are not additive. Sources: https://registry.npmjs.org/codemirror/latest, https://registry.npmjs.org/@codemirror%2flang-javascript/latest, https://registry.npmjs.org/@codemirror%2flang-json/latest, https://bundlephobia.com/api/size?package=codemirror@6.0.2, https://bundlephobia.com/api/size?package=@codemirror/lang-javascript@6.2.5, https://bundlephobia.com/api/size?package=@codemirror/lang-json@6.0.2.", "The accepted task and PO decision specify no language set. Deduplicated complete core-plus-selected-language aggregate is NOT_CHECKED; no product choice, install, manifest edit, or source dispatch was made. The PO installation size condition cannot yet be evaluated for the intended bundle. T11 remains pending until an accepted language set exists and its complete minified+gzip size can be compared with twice T01's approximate 120 KB core plus 10–30 KB per language estimate."]
-evidence: ["2026-11-27 CodeMirror research verified exact MIT package versions and individual full package-graph sizes; overlapping graphs are not additive. No accepted language set exists, so intended complete bundle and PO size eligibility remain NOT_CHECKED; nothing was installed and T11 source implementation was not dispatched."]
+verification_evidence: ["2026-11-27 bounded package research under accepted PO condition f5270b9: npm registry reports codemirror 6.0.2 MIT; Bundlephobia full package graph 118750 bytes minified+gzip / 373186 minified. @codemirror/lang-javascript 6.2.5 MIT; graph 128676 gzip / 384023 minified. @codemirror/lang-json 6.0.2 MIT; graph 83551 gzip / 259862 minified. The graphs overlap and are not additive. Sources: https://registry.npmjs.org/codemirror/latest, https://registry.npmjs.org/@codemirror%2flang-javascript/latest, https://registry.npmjs.org/@codemirror%2flang-json/latest, https://bundlephobia.com/api/size?package=codemirror@6.0.2, https://bundlephobia.com/api/size?package=@codemirror/lang-javascript@6.2.5, https://bundlephobia.com/api/size?package=@codemirror/lang-json@6.0.2.", "Initial 2026-11-27 research found no task-specified language set and left the combined bundle NOT_CHECKED; no package was installed in that phase. ROOT clarified the existing accepted task authorizes a minimal reversible technical default: one @codemirror/lang-javascript grammar for JavaScript/TypeScript, with no language picker or autodetection. For codemirror@6.0.2 plus @codemirror/lang-javascript@6.2.5, both MIT, the conservative sum of the separately measured full package graphs is 247426 bytes minified+gzip, below the one-language 2x T01 lower threshold of 260000 bytes. The graphs overlap, so this upper bound is not the final deduplicated application bundle; measure the actual lazy-loaded bundle using the existing production build before acceptance. The existing PO condition permits installation for this exact set."]
+evidence: ["2026-11-27 package research verified exact MIT versions and graph sizes. The minimal JavaScript/TypeScript grammar is selected as a technical default under accepted scope; the separate-graph upper bound is below the PO threshold, while exact deduplicated app-bundle size remains pending the existing production build measurement. No language picker, autodetection or extra grammar is authorized."]
 ---
 # E001-T11: Add syntax-highlighted code with size, line numbers and locks
 
@@ -75,10 +75,12 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 T09 common enforcement and T10 editor boundary first; verify new object type is accepted consistently by server validator and migration version handling.
 
-Current state: pending. Package version/license/individual graph-size research
-is recorded above. No accepted language set exists, so the complete bundle and
-PO size-gate result remain NOT_CHECKED; no package was installed and source
-implementation was not dispatched. Points estimate scope, not a numeric time/token limit.
+Current state: pending. ROOT selected the minimal reversible JavaScript/TypeScript
+default through the single JavaScript grammar under existing T11 scope. The
+existing PO package/license/size condition permits installation for the exact
+MIT packages recorded above; the final deduplicated lazy application bundle and
+integrated acceptance remain pending. No picker, autodetection or extra grammar.
+Points estimate scope, not a numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
