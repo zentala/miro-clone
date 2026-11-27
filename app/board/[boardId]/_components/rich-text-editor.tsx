@@ -112,8 +112,8 @@ export function RichTextEditor({ value, onChange, color, className, style, onDon
     const command = (run: () => void) => (event: React.MouseEvent) => {
         event.preventDefault();
         event.stopPropagation();
-        run();
         editor.commands.focus();
+        run();
     };
     const preserveSelection = (event: React.MouseEvent<HTMLButtonElement>) => event.preventDefault();
     const explicitSize = editor.getAttributes("textStyle").fontSize;

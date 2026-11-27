@@ -75,7 +75,7 @@ test('unknown rich text structure degrades to visible text and malformed values 
 test('rich text editor: native controls, local fonts, paste, history and responsive geometry', { timeout: 180000 }, async t => {
     const context = await createCriticalEditor(t);
     const { page, origin, evaluate, click, until, saved, deadline } = context;
-    const words = 'mouseBold enterBold spaceBold mouseItalic enterItalic spaceItalic canvasGuard doneMouse doneEnter doneSpace fontOverride sizeOverride';
+    const words = 'mouseBold enterBold spaceBold mouseItalic enterItalic spaceItalic canvasGuard doneMouse doneEnter doneSpace fontOverride sizeOverride colorOverride';
     const richNote = richText.encodeRichText({ type: 'doc', content: [{ type: 'paragraph', content: [
         { type: 'text', text: 'Plain note ' },
         { type: 'text', text: 'Explicit Inter', marks: [{ type: 'textStyle', attrs: { fontFamily: 'var(--font-inter)' } }] },
@@ -201,9 +201,9 @@ test('rich text editor: native controls, local fonts, paste, history and respons
             type, key: keyName, code, modifiers, windowsVirtualKeyCode: virtualKey,
         });
     }
-    async function clickDone() {
-        const point = await until('Done toolbar control', () => evaluate(`(() => {
-            const button = Array.from(document.querySelectorAll('button')).find(item => item.textContent.trim() === 'Done');
+    async function clickToolbarButton(label) {
+        const point = await until(`${label} toolbar control`, () => evaluate(`(() => {
+            const button = Array.from(document.querySelectorAll('button')).find(item => item.getAttribute('aria-label') === ${JSON.stringify(label)} || item.textContent.trim() === ${JSON.stringify(label)});
             if (!button) return false;
             const rect = button.getBoundingClientRect();
             return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
@@ -212,6 +212,7 @@ test('rich text editor: native controls, local fonts, paste, history and respons
         await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
         await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
     }
+    async function clickDone() { await clickToolbarButton('Done'); }
     async function assertDefaultSizeToolbarReachable(phrase) {
         await openEditorContaining(phrase);
         await until('ProseMirror receives editing focus', () => evaluate(
@@ -256,13 +257,13 @@ test('rich text editor: native controls, local fonts, paste, history and respons
         await clickDone();
         await until('Done closes the size inspection editor', () => evaluate('!document.querySelector(".ProseMirror")'));
     }
+    const toolbarButton = label => `Array.from(document.querySelectorAll('button')).find(button => button.getAttribute('aria-label') === ${JSON.stringify(label)})`;
     async function activateMark(label, tag, phrase, activation) {
         await selectPhrase(phrase);
         await evaluate('window.__t10ToolbarActivations = []; window.__t10MouseSelection = null; window.__t10MouseSelectionAfterUp = null;');
-        const selector = `button[aria-label="${label}"]`;
-        if (activation === 'mouse') await click(selector);
+        if (activation === 'mouse') await clickToolbarButton(label);
         else {
-            await evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+            await evaluate(`${toolbarButton(label)}.focus()`);
             assert.equal(await evaluate('window.getSelection().toString()'), phrase, `${label} retains selection before ${activation}`);
             await press(activation);
         }
@@ -278,7 +279,7 @@ test('rich text editor: native controls, local fonts, paste, history and respons
         assert.equal(await evaluate('window.getSelection().toString()'), phrase, `${label} preserves browser selection`);
         if (activation === 'mouse') assert.equal(await evaluate('window.__t10MouseSelectionAfterUp'), phrase, `${label} preserves selection through mouseup`);
         assert.deepEqual(await evaluate('window.__t10ToolbarActivations'), [label], `${activation} dispatches one native click`);
-        assert.equal(await evaluate(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-pressed')`), 'true');
+        assert.equal(await evaluate(`${toolbarButton(label)}.getAttribute('aria-pressed')`), 'true');
     }
 
     await evaluate(`(() => {
@@ -343,6 +344,27 @@ test('rich text editor: native controls, local fonts, paste, history and respons
     const withSize = richText.decodeRichText((await readBoard()).document.layers[textId].value);
     assert.ok(withSize.content.some(node => node.content?.some(item => item.text === 'sizeOverride' &&
         item.marks?.some(mark => mark.type === 'textStyle' && mark.attrs?.fontSize === '30px'))), 'Explicit font size is persisted on the selected text');
+    await openTextEditor();
+
+    await selectPhrase('colorOverride');
+    await evaluate(`(() => {
+        const input = document.querySelector('[aria-label="Text color"]');
+        const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setValue.call(input, '#12abef');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await until('explicit text color applied to selected text', () => evaluate(`(() => {
+        const editor = document.querySelector('.ProseMirror');
+        const span = Array.from(editor.querySelectorAll('span[style*="color"]')).find(node => node.textContent === 'colorOverride');
+        return span?.style.color === 'rgb(18, 171, 239)';
+    })()`));
+    await saved();
+    await clickDone();
+    await until('editor closed after explicit text color', () => evaluate('!document.querySelector(".ProseMirror")'));
+    const withColor = richText.decodeRichText((await readBoard()).document.layers[textId].value);
+    assert.ok(withColor.content.some(node => node.content?.some(item => item.text === 'colorOverride' &&
+        item.marks?.some(mark => mark.type === 'textStyle' && mark.attrs?.color === '#12abef'))), 'Text color is persisted on the selected text');
     await openTextEditor();
 
     for (const [label, tag, phrases] of [

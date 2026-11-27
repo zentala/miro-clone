@@ -16,7 +16,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         await page('Page.navigate', { url: origin });
         await until('hydrated dashboard', () => evaluate('document.querySelector("h1")?.textContent === "Boards" && !document.body.textContent.includes("Loading boards")'));
         await click('button');
-        await until('new board editor', () => evaluate('location.pathname.startsWith("/board/") && !!document.querySelector("button[aria-label=Pen]")'));
+        await until('new board editor', () => evaluate(`location.pathname.startsWith("/board/") && !!document.querySelector('button[aria-label="Pen"]')`));
         boardUrl = await evaluate('location.href');
         const response = await fetch(`${origin}/api/boards`);
         assert.equal(response.status, 200);
