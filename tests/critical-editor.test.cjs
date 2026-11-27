@@ -1,8 +1,9 @@
 // The entrypoint shares browser setup with the split workflow helper.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { readFile, writeFile } = require('node:fs/promises');
+const { mkdtemp, readFile, writeFile } = require('node:fs/promises');
 const { join } = require('node:path');
+const { tmpdir } = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const { isDeepStrictEqual } = require('node:util');
 const { createCriticalEditor } = require('./critical-editor/setup.cjs');
@@ -152,11 +153,21 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             }
             await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...to, button: 'left', buttons: 0, clickCount: 1 });
         };
-        const renameSelectedFrame = async name => {
+        const clickAt = async point => {
+            await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+            await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
+            await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
+        };
+        const renameSelectedFrame = async (name, commitKey) => {
             await click('input[aria-label="Frame name"]');
             await key('a', 'KeyA', 65, 2);
-            await page('Input.insertText', { text: name });
-            await key('Tab', 'Tab', 9);
+            await key('Backspace', 'Backspace', 8);
+            assert.equal(await evaluate(`document.querySelector('input[aria-label="Frame name"]').value`), '', 'Clearing the frame name leaves an editable empty draft');
+            for (const character of name) await page('Input.insertText', { text: character });
+            assert.equal(await evaluate(`document.querySelector('input[aria-label="Frame name"]').value`), name,
+                'Per-character input preserves spaces in the in-progress frame name');
+            if (commitKey === 'Enter') await key('Enter', 'Enter', 13);
+            else await key('Tab', 'Tab', 9);
             await saved();
         };
         const selectByArrow = async (direction, code, windowsVirtualKeyCode) => {
@@ -165,18 +176,77 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
             await key('Enter', 'Enter', 13);
         };
 
+        const initialDocument = await readDocument();
+        const syntheticCardId = initialDocument.layerIds.find(id => initialDocument.layers[id].type === 6);
+        assert.ok(syntheticCardId, 'The previously verified synthetic product card is present');
+        const cardTarget = await evaluate(`(() => {
+            const card = document.querySelector('g[data-product-card]');
+            if (!card) return false;
+            const bounds = card.getBoundingClientRect();
+            const point = { x: bounds.left + bounds.width / 2, y: bounds.top + 56 };
+            const hit = document.elementFromPoint(point.x, point.y);
+            return {
+                point,
+                bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+                hitsCard: hit?.closest('g[data-product-card]') === card,
+                hitTag: hit?.tagName ?? null,
+            };
+        })()`);
+        assert.ok(cardTarget, 'The synthetic product card is rendered for native selection');
+        assert.equal(cardTarget.hitsCard, true, `The measured card point must hit the synthetic card: ${JSON.stringify(cardTarget)}`);
+        await clickAt(cardTarget.point);
+        await until('synthetic product card selected by native pointer hit', () => evaluate(`!!document.querySelector('[data-editor-overlay] rect')`));
+        await until('selected product card Delete control', () => evaluate(`!!document.querySelector('button:has(svg.lucide-trash2)')`));
+        await clickAt(await evaluate(`(() => {
+            const bounds = document.querySelector('button:has(svg.lucide-trash2)').getBoundingClientRect();
+            return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
+        })()`));
+        await saved();
+        await until('synthetic product card removed from UI and document', async () => {
+            const current = await readDocument();
+            const cardAbsentFromUi = await evaluate(`!document.querySelector('g[data-product-card]')`);
+            return !current.layers[syntheticCardId] && cardAbsentFromUi;
+        });
+        assert.equal((await readDocument()).layers[syntheticCardId], undefined,
+            'The synthetic product card is deleted through the existing UI');
+
         await click('button[aria-label="New frame"]');
         await until('new frame selected', () => evaluate(`!!document.querySelector("input[aria-label='Frame name']")`));
-        await renameSelectedFrame('Outer frame');
+        await renameSelectedFrame('Outer frame', 'Enter');
         await click('button[aria-label="New frame"]');
         await until('second frame selected', () => evaluate(`!!document.querySelector("input[aria-label='Frame name']")`));
-        await renameSelectedFrame('Inner frame');
+        await renameSelectedFrame('Inner frame', 'Tab');
 
         const created = await readDocument();
         const frameIds = created.layerIds.filter(id => created.layers[id].type === 7);
         assert.equal(frameIds.length, 2);
         const [outerId, innerId] = frameIds;
-        const innerBeforeParent = { x: created.layers[innerId].x, y: created.layers[innerId].y };
+        assert.equal(created.layers[outerId].name, 'Outer frame', 'The exact outer frame name is saved');
+        assert.equal(created.layers[innerId].name, 'Inner frame', 'The exact inner frame name is saved');
+        const initialInnerPosition = { x: created.layers[innerId].x, y: created.layers[innerId].y };
+        const innerMove = await evaluate(`(() => {
+            const frame = document.querySelector('[data-frame-id="${innerId}"]');
+            const bounds = frame?.querySelector('[data-frame-bounds]')?.getBoundingClientRect();
+            if (!frame || !bounds) return false;
+            const point = { x: bounds.left + 10, y: bounds.top + 200 };
+            const hit = document.elementFromPoint(point.x, point.y);
+            return {
+                point,
+                insideBounds: point.x >= bounds.left && point.x < bounds.right && point.y >= bounds.top && point.y < bounds.bottom,
+                hitFrameId: hit?.closest('[data-frame-id]')?.getAttribute('data-frame-id') ?? null,
+                bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+            };
+        })()`);
+        assert.ok(innerMove, 'Inner frame has rendered bounds for a native move');
+        assert.equal(innerMove.insideBounds, true, `Measured Inner frame move point must be inside its bounds: ${JSON.stringify(innerMove)}`);
+        assert.equal(innerMove.hitFrameId, innerId, `Measured Inner frame move point must hit Inner frame: ${JSON.stringify(innerMove)}`);
+        await drag(innerMove.point, { x: innerMove.point.x + 20, y: innerMove.point.y + 40 });
+        await saved();
+        const movedDocument = await readDocument();
+        assert.deepEqual({ x: movedDocument.layers[innerId].x, y: movedDocument.layers[innerId].y },
+            { x: initialInnerPosition.x + 20, y: initialInnerPosition.y + 40 },
+            'A native drag separates the Inner frame origin before containment assignment');
+        let innerBeforeParent = { x: movedDocument.layers[innerId].x, y: movedDocument.layers[innerId].y };
         await selectByArrow('ArrowDown', 'ArrowDown', 40);
         await saved();
         let document = await readDocument();
@@ -223,17 +293,123 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-board-layers]').children).slice(0, 2).map(node => node.getAttribute('data-frame-name'))`),
             ['Outer frame', 'Inner frame'], 'The outer frame paints before its nested frame');
 
-        const clickAt = async point => {
-            await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
-            await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount: 1 });
-            await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount: 1 });
-        };
-        await clickAt({ x: 450, y: 310 });
+        const screenshotDirectory = await mkdtemp(join(tmpdir(), 'miro-frame-evidence-'));
+        t.diagnostic(`Frame screenshot evidence directory: ${screenshotDirectory}`);
+        const preClickState = await evaluate(`(() => {
+            const innerFrame = document.querySelector('[data-frame-id="${innerId}"]');
+            const innerBounds = innerFrame?.querySelector('[data-frame-bounds]')?.getBoundingClientRect();
+            const actualPoint = innerBounds ? { x: innerBounds.left + 10, y: innerBounds.top + 200 } : null;
+            const pointInsideFrameBounds = !!innerBounds && !!actualPoint && actualPoint.x >= innerBounds.left &&
+                actualPoint.x < innerBounds.right && actualPoint.y >= innerBounds.top && actualPoint.y < innerBounds.bottom;
+            const hit = actualPoint ? document.elementFromPoint(actualPoint.x, actualPoint.y) : null;
+            const selectedFrameInput = document.querySelector('input[aria-label="Frame name"]');
+            const frameRects = Array.from(document.querySelectorAll('[data-board-layers] [data-frame-id]')).slice(0, 10).map(frame => {
+                const rect = frame.getBoundingClientRect();
+                return {
+                    id: frame.getAttribute('data-frame-id'),
+                    name: frame.getAttribute('data-frame-name'),
+                    left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+                };
+            });
+            const frameAncestry = hit?.closest('[data-frame-id]');
+            return {
+                actualPoint,
+                pointInsideFrameBounds,
+                expectedFrameId: ${JSON.stringify(innerId)},
+                innerFrameBounds: innerBounds ? {
+                    left: innerBounds.left, top: innerBounds.top, right: innerBounds.right, bottom: innerBounds.bottom,
+                } : null,
+                frames: frameRects,
+                selectedFrameInput: {
+                    exists: !!selectedFrameInput,
+                    value: selectedFrameInput?.value.slice(0, 120) ?? null,
+                },
+                hit: {
+                    tag: hit?.tagName ?? null,
+                    frameId: frameAncestry?.getAttribute('data-frame-id') ?? null,
+                    insideProductCard: !!hit?.closest('[data-product-card]'),
+                    insideEditorOverlay: !!hit?.closest('[data-editor-overlay]'),
+                },
+            };
+        })()`);
+        t.diagnostic(`Frame click pre-state: ${JSON.stringify(preClickState)}`);
+        assert.equal(preClickState.pointInsideFrameBounds, true,
+            `Measured click point must be inside Inner frame bounds: ${JSON.stringify(preClickState)}`);
+        assert.equal(preClickState.hit.frameId, innerId,
+            `Measured click point must hit the expected Inner frame before selection: ${JSON.stringify(preClickState)}`);
+        const actualPoint = preClickState.actualPoint;
+        const beforeClickScreenshot = Buffer.from((await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data, 'base64');
+        await clickAt(actualPoint);
+        const afterClickScreenshot = Buffer.from((await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })).data, 'base64');
+        try {
+            await until('Inner frame selected by the pointer click', () => evaluate(`document.querySelector('input[aria-label="Frame name"]')?.value === 'Inner frame'`));
+        } catch (error) {
+            try {
+                const beforeClickPath = join(screenshotDirectory, 'frame-select-before.png');
+                const afterClickPath = join(screenshotDirectory, 'frame-select-after-failed-wait.png');
+                await writeFile(beforeClickPath, beforeClickScreenshot);
+                await writeFile(afterClickPath, afterClickScreenshot);
+                t.diagnostic(`Frame click screenshot before native click: ${beforeClickPath}`);
+                t.diagnostic(`Frame click screenshot after failed selection wait: ${afterClickPath}`);
+            } catch (screenshotError) {
+                t.diagnostic(`Could not capture post-click failure screenshot: ${screenshotError.message}`);
+            }
+            throw error;
+        }
+        assert.equal(await evaluate(`document.querySelector('input[aria-label="Frame name"]')?.value`), 'Inner frame',
+            'The resize gesture starts with Inner frame selected');
         const innerScreen = await evaluate(`(() => {
             const bounds = document.querySelector('[data-frame-name="Inner frame"] [data-frame-bounds]').getBoundingClientRect();
-            return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+            const selectedFrameName = document.querySelector('input[aria-label="Frame name"]')?.value ?? null;
+            const handles = Array.from(document.querySelectorAll('[data-editor-overlay] rect')).map(handle => {
+                const rect = handle.getBoundingClientRect();
+                return {
+                    node: handle,
+                    tag: handle.tagName,
+                    className: typeof handle.className === 'string' ? handle.className : handle.className.baseVal,
+                    left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+                    center: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+                    cursor: getComputedStyle(handle).cursor,
+                };
+            });
+            const bottomRightHandle = handles
+                .filter(handle => handle.cursor === 'nwse-resize' && handle.right > handle.left && handle.bottom > handle.top)
+                .sort((left, right) => {
+                    const leftDistance = Math.hypot(left.center.x - bounds.right, left.center.y - bounds.bottom);
+                    const rightDistance = Math.hypot(right.center.x - bounds.right, right.center.y - bounds.bottom);
+                    return leftDistance - rightDistance;
+                })[0];
+            const hit = bottomRightHandle && document.elementFromPoint(bottomRightHandle.center.x, bottomRightHandle.center.y);
+            return {
+                selectedFrameName,
+                expectedFrameId: ${JSON.stringify(innerId)},
+                bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
+                bottomRightHandle: bottomRightHandle && {
+                    tag: bottomRightHandle.tag,
+                    className: bottomRightHandle.className,
+                    left: bottomRightHandle.left, top: bottomRightHandle.top,
+                    right: bottomRightHandle.right, bottom: bottomRightHandle.bottom,
+                    center: bottomRightHandle.center,
+                    cursor: bottomRightHandle.cursor,
+                },
+                hit: hit && {
+                    tag: hit.tagName,
+                    className: typeof hit.className === 'string' ? hit.className : hit.className.baseVal,
+                    insideEditorOverlay: !!hit.closest('[data-editor-overlay]'),
+                },
+                exactHandleHit: !!bottomRightHandle && hit === bottomRightHandle.node,
+            };
         })()`);
-        await drag({ x: innerScreen.right - 1, y: innerScreen.bottom - 1 }, { x: innerScreen.left + 110, y: innerScreen.top + 90 });
+        assert.ok(innerScreen.bottomRightHandle, `Expected rendered bottom-right resize handle; measured selection: ${JSON.stringify(innerScreen)}`);
+        assert.ok(innerScreen.bottomRightHandle.right > innerScreen.bottomRightHandle.left &&
+            innerScreen.bottomRightHandle.bottom > innerScreen.bottomRightHandle.top,
+        'The bottom-right resize handle has hit-testable rendered bounds');
+        t.diagnostic(`Resize hit-test: ${JSON.stringify(innerScreen)}`);
+        assert.equal(innerScreen.exactHandleHit, true, `The bottom-right handle must be the native pointer hit target: ${JSON.stringify(innerScreen)}`);
+        await drag(innerScreen.bottomRightHandle.center, {
+            x: innerScreen.bounds.left + 110,
+            y: innerScreen.bounds.top + 90,
+        });
         await saved();
         document = await readDocument();
         const innerResized = document.layers[innerId];
@@ -273,9 +449,41 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         assert.ok(childHit.x < 1280 && childHit.y < 900, 'The outside child fixture is inside the visible viewport');
         await clickAt(childHit);
         await until('visible outside child selected by native pointer hit', () => evaluate(`Array.from(document.querySelectorAll('[data-editor-overlay] rect')).some(node => node.getAttribute('width') === '100' && node.getAttribute('height') === '100')`));
+        const blankCanvasHit = await evaluate(`(() => {
+            const hit = document.elementFromPoint(900, 700);
+            return {
+                tag: hit?.tagName ?? null,
+                isBoardSvg: hit === Array.from(document.querySelectorAll('svg')).find(svg => svg.classList.contains('h-[100vh]')),
+                insideFrame: !!hit?.closest('[data-frame-id]'),
+                insideProductCard: !!hit?.closest('[data-product-card]'),
+                insideEditorOverlay: !!hit?.closest('[data-editor-overlay]'),
+            };
+        })()`);
+        t.diagnostic(`Blank canvas hit at (900,700): ${JSON.stringify(blankCanvasHit)}`);
+        assert.equal(blankCanvasHit.isBoardSvg, true, `Expected blank SVG canvas hit: ${JSON.stringify(blankCanvasHit)}`);
+        assert.equal(blankCanvasHit.insideFrame, false, `Blank canvas point must not hit a frame: ${JSON.stringify(blankCanvasHit)}`);
+        assert.equal(blankCanvasHit.insideProductCard, false, `Blank canvas point must not hit a product card: ${JSON.stringify(blankCanvasHit)}`);
+        await clickAt({ x: 900, y: 700 });
+        await until('SelectionTools removed after clicking blank canvas', () => evaluate(`!document.querySelector('select[aria-label="Containing frame"]')`));
+        assert.equal(await evaluate(`!!document.querySelector('select[aria-label="Containing frame"]')`), false,
+            'A native blank-canvas click clears the outside-child selection tools');
 
         const dragOrigin = { x: resizedOuter.x + resizedOuter.width - 10, y: resizedOuter.y + 5 };
         const movedTo = { x: dragOrigin.x + 20, y: dragOrigin.y + 15 };
+        const outerDragHit = await evaluate(`(() => {
+            const hit = document.elementFromPoint(${JSON.stringify(dragOrigin.x)}, ${JSON.stringify(dragOrigin.y)});
+            const frame = hit?.closest('[data-frame-id]');
+            return {
+                point: { x: ${JSON.stringify(dragOrigin.x)}, y: ${JSON.stringify(dragOrigin.y)} },
+                tag: hit?.tagName ?? null,
+                frameId: frame?.getAttribute('data-frame-id') ?? null,
+                insideProductCard: !!hit?.closest('[data-product-card]'),
+                insideEditorOverlay: !!hit?.closest('[data-editor-overlay]'),
+            };
+        })()`);
+        t.diagnostic(`Outer frame drag hit: ${JSON.stringify(outerDragHit)}`);
+        assert.equal(outerDragHit.frameId, outerId,
+            `The existing outer drag origin must hit the expected frame: ${JSON.stringify(outerDragHit)}`);
         await drag(dragOrigin, movedTo);
         await saved();
         document = await readDocument();
@@ -295,10 +503,23 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         document = await readDocument();
         assert.deepEqual({ x: document.layers[outerId].x, y: document.layers[outerId].y }, { x: resizedOuter.x + 20, y: resizedOuter.y + 15 });
         assert.deepEqual({ x: document.layers[childId].x, y: document.layers[childId].y }, { x: resizedChild.x + 20, y: resizedChild.y + 15 });
+        const previousTimeOrigin = await evaluate('performance.timeOrigin');
         await page('Page.reload', { ignoreCache: true });
         await until('nested frame geometry and names after reload', async () => {
             const current = await readDocument();
-            return current.layers[childId]?.x === resizedChild.x + 20 && current.layers[childId]?.parentId === innerId &&
+            const renderedFrames = await evaluate(`(() => {
+                if (performance.timeOrigin === ${JSON.stringify(previousTimeOrigin)}) return false;
+                const layers = document.querySelector('[data-board-layers]');
+                if (!layers) return false;
+                const frames = Array.from(layers.querySelectorAll('[data-frame-id]'));
+                return [
+                    [${JSON.stringify(outerId)}, 'Outer frame'],
+                    [${JSON.stringify(innerId)}, 'Inner frame'],
+                ].every(([id, name]) => frames.some(frame =>
+                    frame.getAttribute('data-frame-id') === id && frame.getAttribute('data-frame-name') === name
+                ));
+            })()`);
+            return renderedFrames && current.layers[childId]?.x === resizedChild.x + 20 && current.layers[childId]?.parentId === innerId &&
                 current.layers[innerId]?.parentId === outerId && current.layers[outerId]?.name === 'Outer frame' &&
                 current.layers[innerId]?.name === 'Inner frame';
         });
@@ -307,12 +528,40 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
 
         for (const viewport of [{ width: 1280, height: 900, label: 'wide' }, { width: 390, height: 844, label: 'narrow' }]) {
             await page('Emulation.setDeviceMetricsOverride', { ...viewport, deviceScaleFactor: 1, mobile: false });
+            if (viewport.label === 'narrow') {
+                await page('Input.dispatchMouseEvent', {
+                    type: 'mouseWheel', x: viewport.width / 2, y: viewport.height / 2,
+                    deltaX: 350, deltaY: 0, modifiers: 0,
+                });
+                assert.equal(await evaluate('Number(document.querySelector("[data-zoom-level]")?.getAttribute("data-zoom-level"))'), 1,
+                    'Narrow screenshot keeps readable 100% zoom while panning the board');
+            }
+            const framing = await evaluate(`(() => {
+                const frameRects = Array.from(document.querySelectorAll('[data-board-layers] [data-frame-id]'))
+                    .map(node => { const rect = node.getBoundingClientRect(); return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; });
+                const child = Array.from(document.querySelectorAll('[data-board-layers] rect'))
+                    .find(node => node.getAttribute('width') === '100' && node.getAttribute('height') === '100');
+                if (!child) return false;
+                const rect = child.getBoundingClientRect();
+                return { frameRects, child: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }, width: innerWidth, height: innerHeight };
+            })()`);
+            assert.ok(framing && framing.frameRects.length === 2, `${viewport.label} screenshot includes both frames`);
+            for (const rect of [...framing.frameRects, framing.child]) {
+                assert.ok(rect.left >= 0 && rect.top >= 0 && rect.right <= framing.width && rect.bottom <= framing.height,
+                    `${viewport.label} camera framing keeps frames and outside child visible: ${JSON.stringify(rect)}`);
+            }
             const screenshot = await page('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
             const screenshotBytes = Buffer.from(screenshot.data, 'base64');
             assert.deepEqual(screenshotBytes.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-            await writeFile(join(downloads, `frames-${viewport.label}.png`), screenshotBytes);
+            const filename = `frames-${viewport.label}.png`;
+            await writeFile(join(screenshotDirectory, filename), screenshotBytes);
+            t.diagnostic(`Frame screenshot: ${join(screenshotDirectory, filename)}`);
         }
         await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+        await click('button[aria-label="Reset camera"]');
+        await until('camera reset to 100% before image zoom assertions', () => evaluate('Number(document.querySelector("[data-zoom-level]")?.getAttribute("data-zoom-level")) === 1'));
+        assert.equal(await evaluate('Number(document.querySelector("[data-zoom-level]")?.getAttribute("data-zoom-level"))'), 1,
+            'The image request step starts from the default camera zoom');
     });
     await step('visible image requests follow committed camera zoom and rendered CSS pixels', async () => {
         const { Transformer } = require('@napi-rs/image');
@@ -413,7 +662,7 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
                 ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(deadline) });
             return { status: response.status, body: await response.json() };
         };
-        const cycle = { schemaVersion: 2, layerIds: ['a'], layers: { a: { type: 0, x: 0, y: 0, width: 1, height: 1, fill: { r: 0, g: 0, b: 0 }, parentId: 'a' } } };
+        const cycle = { schemaVersion: 5, layerIds: ['a'], layers: { a: { type: 7, x: 0, y: 0, width: 1, height: 1, name: 'Cycle', parentId: 'a' } } };
         assert.deepEqual(await request('future', 'GET'), { status: 409, body: { error: 'Document schema version 99 is newer than supported version 5', code: 'unsupported-version' } });
         assert.equal((await request('future', 'PATCH', { title: 'Renamed' })).status, 409);
         assert.equal((await request('pre-version', 'PATCH', { document: cycle })).body.code, 'cycle');

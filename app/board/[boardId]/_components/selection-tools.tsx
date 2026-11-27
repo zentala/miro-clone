@@ -5,7 +5,7 @@ import { useMutation, useSelf, useStorage } from "@/hooks/use-local-board";
 import { Camera, Color, LayerType } from "@/types/canvas";
 import type { FrameLayer } from "@/types/canvas";
 import type { LocalObject } from "@/store/use-board-store";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export const SelectionTools = memo(
             const layer = activeFrameId ? root.layers.get(activeFrameId) : undefined;
             return layer?.type === LayerType.Frame ? layer.name : undefined;
         });
+        const [frameNameDraft, setFrameNameDraft] = useState(activeFrameName ?? "");
+        useEffect(() => setFrameNameDraft(activeFrameName ?? ""), [activeFrameId, activeFrameName]);
         const assignToFrame = useMutation(({ storage }, targetId: string) => {
             if (!selection.length) return;
             const target = targetId || undefined;
@@ -49,12 +51,17 @@ export const SelectionTools = memo(
             }
         }, [selection]);
         const renameFrame = useMutation(({ storage }, name: string) => {
-            if (!activeFrameId || !name.trim()) return;
+            const trimmedName = name.trim();
+            if (!activeFrameId || !trimmedName) return;
             const layer = storage.get("layers").get(activeFrameId);
             if (layer?.get("type") === LayerType.Frame) {
-                (layer as LocalObject<FrameLayer>).set("name", name.trim());
+                (layer as LocalObject<FrameLayer>).set("name", trimmedName);
             }
         }, [activeFrameId]);
+        const commitFrameName = () => {
+            if (frameNameDraft.trim()) renameFrame(frameNameDraft);
+            else setFrameNameDraft(activeFrameName ?? "");
+        };
         const containsImage = useStorage((root) =>
             selection.some(id => root.layers.get(id)?.type === LayerType.Image)
         );
@@ -137,7 +144,14 @@ export const SelectionTools = memo(
                 }}
             >
                 {!containsImage && <ColorPicker onChange={setFill} lastUsedColor={lastUsedColor} />}
-                {activeFrameId && <input aria-label="Frame name" className="h-10 w-32 border rounded px-2 text-sm" value={activeFrameName ?? ""} onChange={event => renameFrame(event.target.value)} />}
+                {activeFrameId && <input aria-label="Frame name" className="h-10 w-32 border rounded px-2 text-sm"
+                    value={frameNameDraft} onChange={event => setFrameNameDraft(event.target.value)}
+                    onBlur={commitFrameName} onKeyDown={event => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                        }
+                    }} />}
                 {frames.length > 0 && <select aria-label="Containing frame" className="h-10 max-w-40 border rounded px-2 text-sm"
                     value={selectedParentId ?? "__mixed__"} onChange={event => assignToFrame(event.currentTarget.value)}>
                     {selectedParentId === null && <option value="__mixed__" disabled>Multiple frames</option>}

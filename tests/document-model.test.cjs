@@ -143,19 +143,23 @@ test('v1 through v4 documents upgrade to v5; image, product card and frame field
     const upgradedUnversioned = migrations.upgradeDocument(unversioned);
     assert.deepEqual(unversioned, unversionedBefore, 'Unversioned migration does not mutate its input');
     assert.deepEqual(upgradedUnversioned.layerIds, unversioned.layerIds);
-    assert.deepEqual(upgradedUnversioned.layers.child, { ...unversioned.layers.child, legacyParentId: 'parent' });
+    const { parentId: unversionedParentId, ...unversionedChildExpected } = unversioned.layers.child;
+    assert.deepEqual(upgradedUnversioned.layers.child, { ...unversionedChildExpected, legacyParentId: unversionedParentId });
     assert.equal(Object.hasOwn(upgradedUnversioned.layers.child, 'parentId'), false);
     assert.deepEqual(upgradedUnversioned.layers.parent, unversioned.layers.parent);
     const dangling = { schemaVersion: 2, layerIds: ['child'], layers: { child: node(4, { parentId: 'deleted', locked: true, x: 73 }) } };
     const upgradedDangling = migrations.upgradeDocument(dangling);
-    assert.deepEqual(upgradedDangling.layers.child, { ...dangling.layers.child, legacyParentId: 'deleted' });
+    const { parentId: danglingParentId, ...danglingChildExpected } = dangling.layers.child;
+    assert.deepEqual(upgradedDangling.layers.child, { ...danglingChildExpected, legacyParentId: danglingParentId });
     assert.equal(Object.hasOwn(upgradedDangling.layers.child, 'parentId'), false);
     const cyclic = { schemaVersion: 4, layerIds: ['a', 'b'], layers: {
         a: node(0, { parentId: 'b', locked: true, x: 12 }), b: node(3, { parentId: 'a', value: 'cycle' }),
     } };
     const upgradedCycle = migrations.upgradeDocument(cyclic);
-    assert.deepEqual(upgradedCycle.layers.a, { ...cyclic.layers.a, legacyParentId: 'b' });
-    assert.deepEqual(upgradedCycle.layers.b, { ...cyclic.layers.b, legacyParentId: 'a' });
+    const { parentId: cycleAParentId, ...cycleAExpected } = cyclic.layers.a;
+    const { parentId: cycleBParentId, ...cycleBExpected } = cyclic.layers.b;
+    assert.deepEqual(upgradedCycle.layers.a, { ...cycleAExpected, legacyParentId: cycleAParentId });
+    assert.deepEqual(upgradedCycle.layers.b, { ...cycleBExpected, legacyParentId: cycleBParentId });
     assert.deepEqual(upgradedCycle.layerIds, cyclic.layerIds);
     const image = { type: 5, x: 12, y: 24, width: 160, height: 90, assetId: 'a'.repeat(64) };
     const document = { schemaVersion: 5, layerIds: ['image'], layers: { image } };
