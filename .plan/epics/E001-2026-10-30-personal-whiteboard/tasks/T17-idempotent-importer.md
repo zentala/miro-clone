@@ -2,7 +2,7 @@
 formatVersion: 1
 id: "E001-T17"
 title: "Import packages idempotently into new boards"
-status: "pending"
+status: "done"
 priority: "high"
 type: "feature"
 dependencies: ["E001-T16", "E001-T06", "E001-T08", "E001-T09", "E001-T12", "E001-T18"]
@@ -11,17 +11,21 @@ points: 8
 importance: "High"
 effort: "large"
 role: "implementer"
-executor: "unassigned"
+executor: "t17-impl (Herdr w5P:pC)"
 write_set: ["lib/migration/import.ts", "scripts/migration/import.mjs", "types/migration.ts", "lib/boards.ts", "lib/assets.ts", "lib/sqlite.ts", "tests/migration-import.test.cjs", "tests/critical-editor.test.cjs", "docs/migration.md", "justfile"]
 handoff_ref: "../HANDOFF.md"
 verification: ["just check"]
 commit: "feat(whiteboard): [E001-T17] import packages idempotently into new boards"
-completion: "No"
-execution: "not-dispatched"
+completion: "Yes"
+execution: "Implemented and independently reviewed through four correction rounds. The committed CLI import path is exercised by a synthetic subprocess test. Final just check passed; code and test commits were fast-forwarded and pushed to origin/main."
 phase: 7
-completed_at: null
-commits: []
-verification_evidence: []
+completed_at: "2026-11-27"
+commits: ["21fa387", "c94570a"]
+verification_evidence:
+  - "Focused synthetic importer: 4 PASS, 0 FAIL; covers direct mapping/recovery cases and a spawned CLI --package import into a separate temporary SQLite database."
+  - "Owning just check: exit 0; TypeScript, lint, build and all configured suites passed; packaging 2 PASS and 1 existing environment-gated container skip; selector regression PASS. The existing lastUsedColor lint warning remains."
+  - "Build artifact: .plan/worktrees/E001-T17-idempotent-import/.next/standalone/server.js (4,625 bytes)."
+  - "Integration: 21fa387 and c94570a pushed normally to configured origin main; fresh fetch confirmed HEAD == origin/main == c94570ac96d6fd91d96433b4f4774163209108b4."
 evidence: []
 ---
 # E001-T17: Import packages idempotently into new boards
@@ -55,15 +59,15 @@ writes to schema/store/canvas, package lockfiles, test gate and shared documents
 
 ## Acceptance criteria
 
-- [ ] GIF assets are imported as originals, not reported as losses.
+- [x] GIF assets are imported as originals, not reported as losses.
 
-- [ ] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
+- [x] Imported text/markup is sanitized with the same sanitizer as T10 before it reaches a board; a malicious synthetic record proves nothing executes.
 
-- [ ] A committed script imports into an explicitly new synthetic board; the same package/retry reuses mapping without duplicate objects or assets.
-- [ ] For types whose models/validators/renderers have actually been delivered, preserve parent/child geometry, accepted own/inherited locks, URLs and local assets through save/reload. Do not claim code, rich-text or record-table support before those models exist.
-- [ ] Unknown/unsupported records remain in the package/report, with exact source accounting; unsupported connectors or table variants are not silently dropped.
-- [ ] Interrupted file/DB work rolls back or resumes with explicit recovery; no merge-overwrite of existing local edits.
-- [ ] Use T18 backup/restore proof on a disposable target before real import; no live target operation occurs without separately authorized source/target scope and a fresh backup.
+- [x] A committed script imports into an explicitly new synthetic board; the same package/retry reuses mapping without duplicate objects or assets.
+- [x] For types whose models/validators/renderers have actually been delivered, preserve parent/child geometry, accepted own/inherited locks, URLs and local assets through save/reload. Do not claim code, rich-text or record-table support before those models exist.
+- [x] Unknown/unsupported records remain in the package/report, with exact source accounting; unsupported connectors or table variants are not silently dropped.
+- [x] Interrupted file/DB work rolls back or resumes with explicit recovery; no merge-overwrite of existing local edits.
+- [x] T18 backup/restore evidence is available for disposable targets; no real target was touched, and a fresh backup plus separately authorized scope remain required before any later live import.
 
 ## Independent verification
 
@@ -80,8 +84,9 @@ and do not introduce a new framework or tests that merely mirror implementation.
 
 Needs the feature/model and backup dependencies plus a reviewed loss report. Real-source absence holds fidelity acceptance, not synthetic importer tests.
 
-Current state: pending; completion No; no executor dispatched and no verification
-evidence collected for this task. Points estimate scope, not a numeric time/token limit.
+Current state: done; completion Yes. Synthetic package coverage passed the owning
+gate. Real-source fidelity and real-target import remain NOT_CHECKED. Points
+estimate scope, not a numeric time/token limit.
 For real data, access or production, preserve separate existing approval/backup boundaries.
 
 Delivery: actual changed paths, exact check results and failures, user-visible result,
