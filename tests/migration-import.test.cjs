@@ -193,3 +193,43 @@ test('CLI exposes import recovery status from the selected SQLite file', () => {
     assert.equal(recoveryStatus[0].state, 'interrupted');
     assert.match(recoveryStatus[0].error, /destination board has local edits/);
 });
+
+test('CLI imports a generated package and persists its mapped layer in a separate SQLite file', () => {
+    const cliOwned = mkdtempSync(join(tmpdir(), 'miro-migration-import-cli-'));
+    const cliDatabasePath = join(cliOwned, 'data', 'miro.sqlite');
+    const cliAssetsDirectory = join(cliOwned, 'source-assets');
+    const packagePath = join(cliOwned, 'package.json');
+    mkdirSync(cliAssetsDirectory, { recursive: true });
+    writeFileSync(join(cliAssetsDirectory, assetSourceId), gif);
+    const pkg = packageFor('2026-11-27T12:03:00.000Z');
+    const mappedNoteSourceId = '3458764517517852419';
+    const mappedNoteTargetId = pkg.mapping[mappedNoteSourceId];
+    writeFileSync(packagePath, JSON.stringify(pkg));
+
+    try {
+        const script = join(__dirname, '../scripts/migration/import.mjs');
+        const result = spawnSync(process.execPath, [
+            '--experimental-transform-types', '--disable-warning=MODULE_TYPELESS_PACKAGE_JSON',
+            script, '--package', packagePath, '--assets-dir', cliAssetsDirectory,
+        ], {
+            cwd: join(__dirname, '..'),
+            env: { MIRO_SQLITE_PATH: cliDatabasePath },
+            encoding: 'utf8',
+        });
+        assert.equal(result.status, 0, result.stderr);
+        const imported = JSON.parse(result.stdout);
+        assert.ok(imported.boardId);
+        assert.ok(imported.imported.includes(mappedNoteTargetId));
+
+        const db = new DatabaseSync(cliDatabasePath, { readOnly: true });
+        try {
+            const row = db.prepare('SELECT document FROM boards WHERE id=?').get(imported.boardId);
+            assert.ok(row, 'CLI-created board must exist in its isolated SQLite file');
+            const document = JSON.parse(row.document);
+            assert.ok(document.layerIds.includes(mappedNoteTargetId));
+            assert.equal(document.layers[mappedNoteTargetId].value, 'Read the docs and https://example.org/path_(x)');
+        } finally { db.close(); }
+    } finally {
+        rmSync(cliOwned, { recursive: true, force: true });
+    }
+});
