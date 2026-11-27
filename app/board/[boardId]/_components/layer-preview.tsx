@@ -12,6 +12,8 @@ import { colorToCss } from "@/lib/utils";
 import { Image } from "./image";
 import { ProductCard } from "./product-card";
 import { Frame } from "./frame";
+import { Code } from "./code";
+import type { CodeLayer } from "@/types/canvas";
 
 interface LayerPreviewProps {
     id: string;
@@ -48,6 +50,9 @@ export const LayerPreview = memo(
                     />
                 );
             case LayerType.Text:
+                if ("codeBlock" in layer && layer.codeBlock) {
+                    return <Code id={id} layer={layer as CodeLayer} onPointerDown={onLayerPointerDown} selectionColor={selectionColor} />;
+                }
                 return (
                     <Text
                         id={id}

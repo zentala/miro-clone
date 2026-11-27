@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToolButton } from "./tool-button";
 import {
     Circle,
+    Code2,
     ImagePlus,
     MousePointer2,
     Pencil,
@@ -62,6 +63,7 @@ const Toolbar = ({
             const target = e.target as HTMLElement;
             if (selection?.length > 0 || target.isContentEditable || target.closest("input, textarea")) return;
             if ((e.ctrlKey || e.metaKey) && ["a", "t", "n", "r", "e"].includes(e.key.toLowerCase())) e.preventDefault();
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "c") e.preventDefault();
             switch (e.key.toLowerCase()) {
                 case "a":
                     if (e.ctrlKey || e.metaKey) setCanvasState({ mode: CanvasMode.None });
@@ -73,6 +75,11 @@ const Toolbar = ({
                             layerType: LayerType.Text,
                             mode: CanvasMode.Inserting,
                         });
+                    break;
+
+                case "c":
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey)
+                        setCanvasState({ mode: CanvasMode.Inserting, layerType: LayerType.Text, codeBlock: true });
                     break;
 
                 case "n":
@@ -152,8 +159,14 @@ const Toolbar = ({
                     }
                     isActive={
                         canvasState.mode === CanvasMode.Inserting &&
-                        canvasState.layerType === LayerType.Text
+                        canvasState.layerType === LayerType.Text && !canvasState.codeBlock
                     }
+                />
+                <ToolButton
+                    label="Code block (Ctrl+Shift+C)"
+                    icon={Code2}
+                    onClick={() => setCanvasState({ mode: CanvasMode.Inserting, layerType: LayerType.Text, codeBlock: true })}
+                    isActive={canvasState.mode === CanvasMode.Inserting && canvasState.codeBlock === true}
                 />
                 <ToolButton
                     label="Sticky Note (Ctrl+N)"

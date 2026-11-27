@@ -12,6 +12,7 @@
     "lint": "next lint --dir app --dir components --dir hooks --dir lib --dir providers --dir scripts --dir store --dir tools --dir tests --dir types"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "6.2.5",
     "@napi-rs/image": "^1.16.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -27,6 +28,7 @@
     "@tiptap/starter-kit": "^3.35.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "codemirror": "6.0.2",
     "html-to-image": "^1.11.11",
     "lucide-react": "^0.379.0",
     "nanoid": "^5.0.7",

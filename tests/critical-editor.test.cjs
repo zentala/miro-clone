@@ -874,6 +874,44 @@ test('critical editor: UI create, pointer draw, undo, redo, PNG export, durable 
         const decoded = await evaluate(`(async () => { const image = new Image(); image.src = '/api/assets/${asset.id}'; await image.decode(); return [image.naturalWidth, image.naturalHeight]; })()`);
         assert.deepEqual(decoded, [30, 20], 'The browser decodes the served original');
     });
+    await step('code blocks are inserted, edited without execution, and restored by board undo/redo', async () => {
+        await page('Page.navigate', { url: boardUrl });
+        await until('code toolbar control on the board', () => evaluate('!!document.querySelector(\'button[aria-label="Code block (Ctrl+Shift+C)"]\')'));
+        await click('button[aria-label="Code block (Ctrl+Shift+C)"]');
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 500 });
+        await page('Input.dispatchMouseEvent', { type: 'mousePressed', x: 700, y: 500, button: 'left', buttons: 1, clickCount: 1 });
+        await page('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 700, y: 500, button: 'left', buttons: 0, clickCount: 1 });
+        const apiUrl = boardUrl.replace('/board/', '/api/boards/');
+        const codeId = await until('code block persisted', async () => {
+            const board = await (await fetch(apiUrl)).json();
+            return board.document.layerIds.find(id => board.document.layers[id].codeBlock === true) || false;
+        });
+        assert.equal(await evaluate('!document.querySelector(".cm-editor")'), true, 'Interactive editor is not mounted before editing');
+        const point = await until('code block visible for editing', () => evaluate(`(() => {
+            const bounds = document.querySelector('[data-code-block]')?.getBoundingClientRect();
+            return bounds?.width && bounds.right <= innerWidth && bounds.bottom <= innerHeight
+                ? { x: bounds.left + 80, y: bounds.top + 70 } : false;
+        })()`));
+        await page('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point });
+        for (const clickCount of [1, 2]) {
+            await page('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', buttons: 1, clickCount });
+            await page('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', buttons: 0, clickCount });
+        }
+        await until('CodeMirror mounted only after editing starts', () => evaluate('!!document.querySelector(".cm-editor .cm-content[contenteditable=true]")'));
+        await click('.cm-editor .cm-content[contenteditable="true"]');
+        await until('CodeMirror receives editing focus from pointer input', () => evaluate('document.activeElement?.matches(".cm-editor .cm-content[contenteditable=true]")'));
+        const source = 'const kept = "line one";\n\tconst next = 2;';
+        await page('Input.insertText', { text: source });
+        await until('code source persisted exactly', async () => (await (await fetch(apiUrl)).json()).document.layers[codeId].value === source);
+        await saved();
+        assert.equal(await evaluate('window.__codeExecuted === true'), false);
+        await click('button[aria-label="Finish code editing"]');
+        await until('code editor closed', () => evaluate('!document.querySelector(".cm-editor")'));
+        await click('button[aria-label="Undo (Ctrl+Z)"]');
+        await until('undo restores empty code source', async () => (await (await fetch(apiUrl)).json()).document.layers[codeId].value === '');
+        await click('button[aria-label="Redo (Ctrl+Shift+Z)"]');
+        await until('redo restores code source exactly', async () => (await (await fetch(apiUrl)).json()).document.layers[codeId].value === source);
+    });
     assert.deepEqual(exceptions, [], 'No uncaught browser exceptions');
     assert.deepEqual(networkFailures, [], 'No failed browser requests');
 });

@@ -74,6 +74,17 @@ export type TextLayer = ObjectRelations & {
     width: number;
     fill: Color;
     value?: string;
+    /** Optional code-block display fields; absent on existing rich-text records. */
+    codeBlock?: true;
+    fontSize?: number;
+    showLineNumbers?: boolean;
+};
+
+/** A source-code block reuses the validated text record shape for schema compatibility. */
+export type CodeLayer = TextLayer & {
+    codeBlock: true;
+    fontSize: number;
+    showLineNumbers: boolean;
 };
 
 export type NoteLayer = ObjectRelations & {
@@ -174,6 +185,7 @@ export type CanvasState =
               | LayerType.Rectangle
               | LayerType.Text
               | LayerType.Note;
+          codeBlock?: true;
       }
     | {
           mode: CanvasMode.Pencil;

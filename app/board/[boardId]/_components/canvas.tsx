@@ -8,6 +8,7 @@ import {
     type CanvasState,
     type Color,
     type Point,
+    type CodeLayer,
 } from "@/types/canvas";
 import { MAX_LAYERS } from "@/lib/document-version";
 import {
@@ -31,6 +32,7 @@ import { useCanvasPointerHandlers } from "./canvas/use-canvas-pointer-handlers";
 import { LocalObject } from "@/store/use-board-store";
 import { isHttpSourceUrl } from "@/types/extraction";
 import { framesBehindLayers } from "@/lib/document-version";
+import { pointerEventToCanvasPoint } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { isEffectivelyLocked, toggleObjectLocks } from "@/lib/object-locks";
 import { Lock, Unlock } from "lucide-react";
@@ -235,6 +237,40 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
     }, [layerIds.length, title]);
 
+    const onCanvasPointerUp = (event: React.PointerEvent) => {
+        if (canvasState.mode !== CanvasMode.Inserting || canvasState.codeBlock !== true) {
+            pointerHandlers.onPointerUp(event);
+            return;
+        }
+        event.preventDefault();
+        if (layerIds.length >= MAX_LAYERS) {
+            store.refuse(`This board is full: it can hold at most ${MAX_LAYERS} objects.`);
+            setCanvasState({ mode: CanvasMode.None });
+            history.resume();
+            return;
+        }
+        const point = pointerEventToCanvasPoint(event, camera);
+        const id = nanoid();
+        store.mutate(({ storage, setMyPresence }) => {
+            storage.get("layers").set(id, new LocalObject<CodeLayer>({
+                type: LayerType.Text,
+                codeBlock: true,
+                x: point.x,
+                y: point.y,
+                width: 320,
+                height: 220,
+                fill: lastUsedColor,
+                value: "",
+                fontSize: 14,
+                showLineNumbers: true,
+            }));
+            storage.get("layerIds").push(id);
+            setMyPresence({ selection: [id] }, { addToHistory: true });
+        });
+        setCanvasState({ mode: CanvasMode.None });
+        history.resume();
+    };
+
     return (
         <>
             <BoardSurface
@@ -258,7 +294,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 pencilDraft={pencilDraft}
                 onPointerMove={pointerHandlers.onPointerMove}
                 onPointerLeave={pointerHandlers.onPointerLeave}
-                onPointerUp={pointerHandlers.onPointerUp}
+                onPointerUp={onCanvasPointerUp}
                 onPointerDown={pointerHandlers.onPointerDown}
                 onLayerPointerDown={onStableLayerPointerDown}
                 onResizeHandlePointerDown={layerActions.onResizeHandlePointerDown}
