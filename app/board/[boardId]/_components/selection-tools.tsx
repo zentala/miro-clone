@@ -49,6 +49,13 @@ export const SelectionTools = memo(
         });
         const [frameNameDraft, setFrameNameDraft] = useState(activeFrameName ?? "");
         useEffect(() => setFrameNameDraft(activeFrameName ?? ""), [activeFrameId, activeFrameName]);
+        const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+        useEffect(() => {
+            const updateViewport = () => setViewportSize({ width: window.innerWidth, height: window.innerHeight });
+            updateViewport();
+            window.addEventListener("resize", updateViewport);
+            return () => window.removeEventListener("resize", updateViewport);
+        }, []);
         const assignToFrame = useMutation(({ storage }, targetId: string) => {
             if (!selection.length) return;
             const target = targetId || undefined;
@@ -141,6 +148,9 @@ export const SelectionTools = memo(
 
         const x = (selectionBounds.width / 2 + selectionBounds.x) * camera.zoom + camera.x;
         const y = selectionBounds.y * camera.zoom + camera.y;
+        const toolbarY = viewportSize.width > 0 && viewportSize.width <= 640
+            ? viewportSize.height - 48
+            : y;
 
         return (
             <div
@@ -148,7 +158,7 @@ export const SelectionTools = memo(
                 style={{
                     transform: `translate(
                     calc(${x}px - 50%),
-                    calc(${y - 16}px - 100%)
+                    calc(${toolbarY - 16}px - 100%)
                 )`,
                 }}
             >

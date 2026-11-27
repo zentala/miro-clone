@@ -160,14 +160,22 @@ test('code blocks preserve source and settings through history, migration and re
         const editor = document.querySelector('.cm-editor')?.getBoundingClientRect();
         const block = document.querySelector('[data-code-block]')?.getBoundingClientRect();
         const rail = document.querySelector('button[aria-label="Code block (Ctrl+Shift+C)"]')?.closest('div.absolute')?.getBoundingClientRect();
-        return size && lineNumbers && done && editor && block && rail ? {
+        const selectionTools = document.querySelector('button[aria-label="Lock selected objects"]')?.closest('div.absolute')?.getBoundingClientRect();
+        const navigation = document.querySelector('[role="status"]')?.closest('div.absolute')?.getBoundingClientRect();
+        const newFrame = document.querySelector('button[aria-label="New frame"]')?.getBoundingClientRect();
+        const zoom = document.querySelector('button[aria-label="Zoom out"]')?.closest('div.absolute')?.getBoundingClientRect();
+        return size && lineNumbers && done && editor && block && rail && selectionTools && navigation && newFrame && zoom ? {
             viewport: { width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth },
             size: { left: size.left, right: size.right, top: size.top, bottom: size.bottom },
             lineNumbers: { left: lineNumbers.left, right: lineNumbers.right, top: lineNumbers.top, bottom: lineNumbers.bottom },
             done: { left: done.left, right: done.right, top: done.top, bottom: done.bottom },
             editor: { left: editor.left, right: editor.right, top: editor.top, bottom: editor.bottom },
             block: { left: block.left, right: block.right },
-            rail: { left: rail.left, right: rail.right },
+            rail: { left: rail.left, right: rail.right, top: rail.top, bottom: rail.bottom },
+            selectionTools: { left: selectionTools.left, right: selectionTools.right, top: selectionTools.top, bottom: selectionTools.bottom },
+            navigation: { left: navigation.left, right: navigation.right, top: navigation.top, bottom: navigation.bottom },
+            newFrame: { left: newFrame.left, right: newFrame.right, top: newFrame.top, bottom: newFrame.bottom },
+            zoom: { left: zoom.left, right: zoom.right, top: zoom.top, bottom: zoom.bottom },
         } : false;
     })()`));
     for (const control of [narrow.size, narrow.lineNumbers, narrow.done]) {
@@ -175,6 +183,13 @@ test('code blocks preserve source and settings through history, migration and re
     }
     assert.equal(narrow.viewport.scrollWidth, 390, JSON.stringify(narrow));
     assert.ok(narrow.block.left >= narrow.rail.right, JSON.stringify(narrow));
+    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    assert.equal(overlaps(narrow.selectionTools, narrow.rail), false, JSON.stringify(narrow));
+    assert.equal(overlaps(narrow.selectionTools, narrow.navigation), false, JSON.stringify(narrow));
+    assert.equal(overlaps(narrow.selectionTools, narrow.newFrame), false, JSON.stringify(narrow));
+    assert.equal(overlaps(narrow.selectionTools, narrow.zoom), false, JSON.stringify(narrow));
+    assert.ok(narrow.selectionTools.left >= 0 && narrow.selectionTools.right <= narrow.viewport.width && narrow.selectionTools.top >= 0 && narrow.selectionTools.bottom <= narrow.viewport.height, JSON.stringify(narrow));
+    assert.ok(narrow.selectionTools.right <= narrow.viewport.width, JSON.stringify(narrow));
     await screenshot('code-narrow-editing.png');
 
     const legacyCode = {
