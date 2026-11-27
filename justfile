@@ -13,6 +13,7 @@ check:
     node --test --test-concurrency=1 tests/product-cards.test.cjs
     node --test --test-concurrency=1 tests/progressive-images.test.cjs
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-normalize.test.cjs
+    node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 tests/migration-import.test.cjs
     node --test --test-concurrency=1 tests/assets.test.cjs
     node --test --test-concurrency=1 tests/backup-restore.test.cjs
     node --test --test-concurrency=1 scripts/backup-retention.test.mjs
@@ -52,6 +53,14 @@ container-check:
 # Validate a structural Miro export and print its loss report; changes no board.
 migration-dry-run export *args:
     node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migration/dry-run.mjs "{{export}}" {{args}}
+
+# Import a reviewed v1 package; local image originals are supplied explicitly.
+migration-import package *args:
+    node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migration/import.mjs --package "{{package}}" {{args}}
+
+# List or resume interrupted synthetic/package imports from their SQLite ledger.
+migration-import-recovery *args:
+    node --experimental-transform-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migration/import.mjs {{args}}
 
 # Create a verified SQLite-plus-assets snapshot in the chosen local directory.
 backup destination:

@@ -13,7 +13,9 @@ export function getDatabasePath(): string {
 }
 export function getDatabase(): Database {
     if (database) return database;
-    const { DatabaseSync } = require("node:sqlite") as { DatabaseSync: new (path: string) => Database };
+    const runtimeProcess = process as NodeJS.Process & { getBuiltinModule?: (name: string) => unknown };
+    if (!runtimeProcess.getBuiltinModule) throw new Error("This application needs Node.js with built-in SQLite support");
+    const { DatabaseSync } = runtimeProcess.getBuiltinModule("node:sqlite") as { DatabaseSync: new (path: string) => Database };
     const databasePath = getDatabasePath();
     mkdirSync(dirname(databasePath), { recursive: true });
     const db = new DatabaseSync(databasePath);

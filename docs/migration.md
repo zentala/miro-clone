@@ -253,3 +253,41 @@ compared with a source board. The tests compare world boxes and frame containmen
 with hand-calculated values for the synthetic fixture (conversion math only); the
 package marks that `NOT_PERFORMED_HERE`, so a real dry run never claims it.
 NOT_CHECKED: a real export, axis direction, rendering of normalized items (E001-T17).
+
+## Import into a new board
+
+`just migration-import package.json` imports a valid v1 package into a newly
+created local board. It does not merge into an existing board. The command
+never fetches source URLs. For images, place each already obtained original in
+an operator-selected local directory, named by the package's `assetId`, and
+pass `--assets-dir <directory>`. The importer verifies the bytes and stores
+them through the durable asset store; GIF originals remain byte-identical.
+No remote extraction, account session or credential is used.
+
+The package mapping is used as the exact layer ID mapping. Frames keep their
+parent relationships and absolute geometry. Current note/text/rectangle/ellipse,
+image and URL-card layers are imported when the package has the geometry and
+local bytes they require. Text markup is reduced to safe visible text using
+the existing T10 rich-text sanitizer. Records without a faithful current layer
+remain unchanged in the durable import ledger together with the complete v1
+package and its losses; the command reports imported IDs and each unsupported
+record's source index, status, and reason, including records without a target
+ID. Their raw records are not rendered in the board. Current layer models do
+not store rotation, so each imported rotated item also receives an explicit
+import loss while its original geometry remains in the package.
+
+The SQLite import ledger is keyed by the package's SHA-256. Repeating a
+completed import returns its board and leaves local edits and title untouched.
+Before board publication, the ledger records the package and the target board;
+assets use the existing temp-file/fsync/rename/publish sequence. If the process
+stops between file and database work, the ledger reports `interrupted` and
+stored asset files can be recognized by the existing asset report. Resume with
+the same package or run `just migration-import-recovery --resume <package-hash>`;
+`just migration-import-recovery --recovery-status` lists incomplete runs.
+Resume refuses a destination that has acquired local content.
+
+Only generated synthetic packages and disposable targets are covered here.
+Before any separately authorized real-target import, follow T18's backup and
+verified-restore procedure and confirm a fresh backup. NOT_CHECKED: real-source
+fidelity, real import, recovery after power loss, and independent review of the
+T17 implementation.

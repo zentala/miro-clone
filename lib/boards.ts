@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase } from "./sqlite";
-import { Board, BoardDocument, UnreadableBoard, validateTitle } from "../types/board";
+import { validateTitle } from "../types/board";
+import type { Board, BoardDocument, UnreadableBoard } from "../types/board";
 import { createEmptyDocument, DocumentError } from "./document-version";
 import { upgradeDocument } from "./document-migrations";
 
